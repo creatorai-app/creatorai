@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@repo/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
-import { Loader2, Play, Download, UploadCloud, RefreshCw, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, Play, Download, UploadCloud, RefreshCw, ArrowLeft, CheckCircle2, Clock } from "lucide-react";
 import { useDubbing } from "@/hooks/useDubbing";
 import { supportedLanguages } from "@repo/validation";
 import { downloadFile } from "@/lib/download";
@@ -35,6 +35,8 @@ export default function NewDubbing() {
   } = useDubbing();
 
   const [activeTab, setActiveTab] = useState("create");
+
+  const isComingSoon = true;
 
   // Auto-switch to preview tab when dubbing completes
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function NewDubbing() {
   }, [dubbedResult, isVideo]);
 
   return (
-    <div className="container py-8 max-w-full mx-auto">
+    <div className="container py-8 max-w-full mx-auto relative">
       <div className="mb-8 flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">New Dubbing</h1>
@@ -270,6 +272,28 @@ export default function NewDubbing() {
           )}
         </TabsContent>
       </Tabs>
+
+      {isComingSoon && (
+        <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center space-y-4 px-4 max-w-md">
+            <Clock className="h-12 w-12 mx-auto text-slate-500 dark:text-slate-400" />
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              Coming Soon
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400">
+              AI-powered audio &amp; video dubbing is under preparation.<br />
+              Stay tuned, launching very soon!
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/dashboard")}
+              className="bg-slate-950 hover:bg-slate-900 text-white"
+            >
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
