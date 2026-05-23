@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, ParseBoolPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../guards/auth.guard';
 import { YoutubeService } from './youtube.service';
@@ -34,5 +34,23 @@ export class YoutubeController {
       pageToken,
       maxResults ? Math.min(parseInt(maxResults, 10), 24) : 6,
     );
+  }
+
+  @Get('trained-videos')
+  getTrainedVideos(@Req() req: AuthRequest) {
+    const userId = getUserId(req);
+    return this.youtubeService.getTrainedVideos(userId);
+  }
+
+  @Post('trained-videos')
+  saveTrainedVideos(@Req() req: AuthRequest, @Body() data: any) {
+    const userId = getUserId(req);
+    return this.youtubeService.saveTrainedVideos(userId, data.videos);
+  }
+
+  @Get('channel-stats')
+  getChannelStats(@Req() req: AuthRequest, @Query('forceSync', ParseBoolPipe) forceSync?: boolean) {
+    const userId = getUserId(req);
+    return this.youtubeService.getChannelStats(userId, forceSync);
   }
 }
