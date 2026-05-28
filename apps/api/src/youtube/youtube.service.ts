@@ -54,7 +54,8 @@ export class YoutubeService {
     userId: string,
     pageToken?: string,
     maxResults = 6,
-  ): Promise<{ videos: ChannelVideoItem[]; nextPageToken?: string }> {
+    order: 'date' | 'viewCount' = 'viewCount',
+  ): Promise<{ videos: Array<ChannelVideoItem & { likeCount: number; commentCount: number; duration: string }>; nextPageToken?: string }> {
     const { data: channel, error } = await this.supabase
       .from('youtube_channels')
       .select('channel_id, provider_token, refresh_token')
@@ -71,7 +72,7 @@ export class YoutubeService {
       part: 'snippet',
       forMine: 'true',
       type: 'video',
-      order: 'viewCount',
+      order,
       maxResults,
     };
     if (pageToken) searchParams.pageToken = pageToken;
@@ -91,27 +92,36 @@ export class YoutubeService {
 
     const videoIds = items.map((i: any) => i.id.videoId).join(',');
     const statsRes = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
-      params: { part: 'statistics', id: videoIds },
+      params: { part: 'statistics,contentDetails', id: videoIds },
       headers: { Authorization: `Bearer ${accessToken}` },
       timeout: 15000,
     }).catch(() => null);
 
-    const statsMap = new Map<string, number>();
+    const statsMap = new Map<string, { viewCount: number; likeCount: number; commentCount: number; duration: string }>();
     if (statsRes?.data?.items) {
       for (const v of statsRes.data.items) {
-        statsMap.set(v.id, parseInt(v.statistics.viewCount, 10) || 0);
+        statsMap.set(v.id, {
+          viewCount: parseInt(v.statistics?.viewCount ?? '0', 10) || 0,
+          likeCount: parseInt(v.statistics?.likeCount ?? '0', 10) || 0,
+          commentCount: parseInt(v.statistics?.commentCount ?? '0', 10) || 0,
+          duration: v.contentDetails?.duration ?? '',
+        });
       }
     }
 
-    const videos: ChannelVideoItem[] = items.map((item: any) => {
+    const videos = items.map((item: any) => {
       const snippet = item.snippet;
       const thumb = snippet.thumbnails?.high || snippet.thumbnails?.medium || snippet.thumbnails?.default;
+      const stats = statsMap.get(item.id.videoId);
       return {
         id: item.id.videoId,
         title: snippet.title,
         thumbnail: thumb?.url || '',
         publishedAt: snippet.publishedAt,
-        viewCount: statsMap.get(item.id.videoId) ?? 0,
+        viewCount: stats?.viewCount ?? 0,
+        likeCount: stats?.likeCount ?? 0,
+        commentCount: stats?.commentCount ?? 0,
+        duration: stats?.duration ?? '',
       };
     });
 

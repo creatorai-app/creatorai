@@ -23,16 +23,20 @@ export class YoutubeController {
   @ApiOperation({ summary: 'List videos from the connected YouTube channel' })
   @ApiQuery({ name: 'pageToken', required: false })
   @ApiQuery({ name: 'maxResults', required: false, description: 'Capped at 24' })
+  @ApiQuery({ name: 'order', required: false, description: 'date or viewCount' })
   getChannelVideos(
     @Req() req: AuthRequest,
     @Query('pageToken') pageToken?: string,
     @Query('maxResults') maxResults?: string,
+    @Query('order') order?: string,
   ) {
     const userId = getUserId(req);
+    const normalizedOrder = order === 'date' ? 'date' : 'viewCount';
     return this.youtubeService.getChannelVideos(
       userId,
       pageToken,
       maxResults ? Math.min(parseInt(maxResults, 10), 24) : 6,
+      normalizedOrder,
     );
   }
 

@@ -5,15 +5,14 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
+import { Card, CardContent } from "@repo/ui/card";
 import { Skeleton } from "@repo/ui/skeleton";
-import { ArrowLeft, Sparkles, Clock, Coins } from "lucide-react";
+import { ArrowLeft, Sparkles, Clock, Coins, BarChart3 } from "lucide-react";
 import IdeaCard from "@/components/dashboard/research/IdeaCard";
-import TrendSnapshotPanel from "@/components/dashboard/research/TrendSnapshotPanel";
-import OpportunityScoreChart from "@/components/dashboard/research/OpportunityScoreChart";
 import IdeationExportMenu from "@/components/dashboard/research/IdeationExportMenu";
+import PremiumGateModal from "@/components/dashboard/research/PremiumGateModal";
+import { useCurrentPlan } from "@/hooks/useCurrentPlan";
 import { api } from "@/lib/api-client";
 import type { IdeationJob } from "@repo/validation";
 
@@ -23,6 +22,8 @@ export default function IdeationDetailPage() {
   const id = params.id as string;
   const [job, setJob] = useState<IdeationJob | null>(null);
   const [loading, setLoading] = useState(true);
+  const [premiumOpen, setPremiumOpen] = useState(false);
+  const { hasComparisonMetrics } = useCurrentPlan();
 
   useEffect(() => {
     if (!id) return;
@@ -61,7 +62,6 @@ export default function IdeationDetailPage() {
   if (!job) return null;
 
   const result = job.result;
-  const trendSnapshot = result?.trendSnapshot || job.trend_snapshot;
 
   if (job.status === "failed") {
     return (
@@ -122,7 +122,23 @@ export default function IdeationDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {result.ideas.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (hasComparisonMetrics) {
+                  router.push(`/dashboard/research/${job.id}/metrics`);
+                } else {
+                  setPremiumOpen(true);
+                }
+              }}
+            >
+              <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+              Comparison metrics
+            </Button>
+          )}
           <IdeationExportMenu ideationId={job.id} />
           <Button
             onClick={() => router.push("/dashboard/research/new")}
@@ -133,65 +149,17 @@ export default function IdeationDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Main column: Ideas */}
-        <main className="lg:col-span-8 space-y-6">
-          {result.ideas.map((idea, index) => (
-            <IdeaCard key={idea.id || index} idea={idea} index={index} ideationId={job.id} />
-          ))}
-        </main>
+      <main className="max-w-3xl space-y-6">
+        {result.ideas.map((idea, index) => (
+          <IdeaCard key={idea.id || index} idea={idea} index={index} ideationId={job.id} />
+        ))}
+      </main>
 
-        {/* Sidebar: Trends + Chart + Channel Fit */}
-        <aside className="lg:col-span-4 space-y-4">
-          <div className="lg:sticky lg:top-24 space-y-4">
-            <OpportunityScoreChart ideas={result.ideas} />
-
-            {result.channelFit && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-purple-500" /> Channel Fit
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {result.channelFit.bestFormats?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Best Formats</p>
-                      <div className="flex flex-wrap gap-1">
-                        {result.channelFit.bestFormats.map((f, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">{f}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {result.channelFit.contentGaps?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Content Gaps</p>
-                      <ul className="space-y-1">
-                        {result.channelFit.contentGaps.map((g, i) => (
-                          <li key={i} className="text-sm text-slate-600 dark:text-slate-300">{g}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {result.channelFit.titlePatterns?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Title Patterns</p>
-                      <div className="flex flex-wrap gap-1">
-                        {result.channelFit.titlePatterns.map((p, i) => (
-                          <span key={i} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">{p}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {trendSnapshot && <TrendSnapshotPanel snapshot={trendSnapshot} />}
-          </div>
-        </aside>
-      </div>
+      <PremiumGateModal
+        open={premiumOpen}
+        onClose={() => setPremiumOpen(false)}
+        featureLabel="Comparison metrics"
+      />
     </motion.div>
   );
 }

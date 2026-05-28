@@ -26,7 +26,7 @@ export class IdeationController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Queue ideation job' })
   async create(
-    @Body() body: { context?: string; nicheFocus?: string; ideaCount?: number; autoMode?: boolean; useYoutubeContext?: boolean },
+    @Body() body: { context?: string; nicheFocus?: string; ideaCount?: number; autoMode?: boolean },
     @Req() req: AuthRequest,
   ) {
     return this.ideationService.createJob(getUserId(req), body);
