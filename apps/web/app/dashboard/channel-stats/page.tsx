@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useChannelStats } from "@/hooks/useChannelStats";
+import { useChannelVideos } from "@/hooks/useChannelVideos";
 import { itemVariants, formatNumber, parseDuration } from "@/components/dashboard/channel-stats/util";
 import ChannelStatsSkeleton from "@/components/dashboard/channel-stats/Skeleton";
 import { ChannelStatsError } from "@/components/dashboard/channel-stats/ChannelStatsError";
@@ -25,6 +26,14 @@ const containerVariants = {
 export default function ChannelStatsPage() {
   const { profile } = useSupabase();
   const { stats: channel, loading, error, fetchStats } = useChannelStats();
+  const {
+    videos: recentVideos,
+    loading: loadingRecentVideos,
+    loadingMore: loadingMoreRecentVideos,
+    hasMore: hasMoreRecentVideos,
+    fetchVideos: fetchRecentVideos,
+    loadMore: loadMoreRecentVideos,
+  } = useChannelVideos({ maxResults: 6, order: "date" });
 
 
   const isYtConnected = profile?.youtube_connected === true;
@@ -32,13 +41,19 @@ export default function ChannelStatsPage() {
     if (isYtConnected) fetchStats();
   }, [isYtConnected, fetchStats]);
 
+  useEffect(() => {
+    if (isYtConnected) fetchRecentVideos();
+  }, [isYtConnected, fetchRecentVideos]);
+
   if (loading) return <ChannelStatsSkeleton />;
 
   if (error || !profile?.youtube_connected || !channel) {
     return <ChannelStatsError error={error || "No channel connected"} />;
   }
 
-  const usagePercentage = Math.min(100, (channel.usage_count / channel.daily_limit) * 100);
+  const usagePercentage = channel.daily_limit > 0
+    ? Math.min(100, (channel.usage_count / channel.daily_limit) * 100)
+    : 0;
 
   return (
     <motion.div
@@ -155,15 +170,17 @@ export default function ChannelStatsPage() {
 
             {/* Credit count */}
             <div className="flex justify-between items-end">
-              <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{channel.remaining}</span>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">of {channel.daily_limit} remaining</span>
+              <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{profile?.credits ?? 0}</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                account credits available
+              </span>
             </div>
 
             {/* Progress bar */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-                <span>Used: {channel.usage_count}</span>
-                <span>Limit: {channel.daily_limit}</span>
+                <span>Remaining syncs: {channel.remaining}</span>
+                <span>Cooldown: {channel.cooldown_minutes}m</span>
               </div>
               <div className="h-1.5 w-full bg-slate-200/50 dark:bg-slate-800/50 rounded-full overflow-hidden">
                 <motion.div
@@ -287,7 +304,7 @@ export default function ChannelStatsPage() {
           )}
 
           {/* Recent Uploads */}
-          {channel.recentVideos?.length > 0 && (
+          {recentVideos.length > 0 && (
             <motion.div variants={itemVariants} className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-2.5 mb-6">
                 <Clock className="w-4 h-4 text-blue-500" />
@@ -295,7 +312,7 @@ export default function ChannelStatsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {channel.recentVideos.slice(0, 3).map((video) => (
+                {recentVideos.map((video) => (
                   <a
                     key={video.id}
                     href={`https://youtube.com/watch?v=${video.id}`}
@@ -333,6 +350,56 @@ export default function ChannelStatsPage() {
                       <div className="flex items-center gap-2.5 text-[10px] text-white/75 font-medium">
                         <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(video.viewCount)}</span>
                         <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{formatNumber(video.likeCount)}</span>
+                        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{formatNumber(video.commentCount)}</span>
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+              {hasMoreRecentVideos && (
+                <div className="mt-5 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreRecentVideos}
+                    disabled={loadingMoreRecentVideos}
+                    className="rounded-xl"
+                  >
+                    {loadingMoreRecentVideos ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {!recentVideos.length && !loadingRecentVideos && channel.recentVideos?.length > 0 && (
+            <motion.div variants={itemVariants} className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2.5 mb-6">
+                <Clock className="w-4 h-4 text-blue-500" />
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Recent Uploads</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {channel.recentVideos.map((video) => (
+                  <a
+                    key={video.id}
+                    href={`https://youtube.com/watch?v=${video.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group relative rounded-xl overflow-hidden block aspect-video bg-slate-100 dark:bg-slate-800 shadow-sm"
+                  >
+                    <Image
+                      src={video.thumbnail || ""}
+                      alt={video.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      width={100}
+                      height={100}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <p className="text-white text-[11px] font-semibold line-clamp-2 leading-snug mb-1.5">{video.title}</p>
+                      <div className="flex items-center gap-2.5 text-[10px] text-white/75 font-medium">
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatNumber(video.viewCount)}</span>
+                        <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{formatNumber(video.likeCount)}</span>
+                        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{formatNumber(video.commentCount)}</span>
                       </div>
                     </div>
                   </a>

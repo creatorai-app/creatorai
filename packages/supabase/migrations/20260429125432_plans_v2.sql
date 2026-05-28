@@ -1,15 +1,17 @@
-alter table "public"."plans" 
-add column "daily_limit" int NOT NULL DEFAULT 5,
-add column "cooldown_minutes" int NOT NULL DEFAULT 60;
+-- ✅ Plans table: guard all columns
+ALTER TABLE "public"."plans"
+  ADD COLUMN IF NOT EXISTS "daily_limit"       INT NOT NULL DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS "cooldown_minutes"  INT NOT NULL DEFAULT 60;
 
-alter table "public"."youtube_channels" 
-add column "top_videos" jsonb,
-add column "recent_videos" jsonb,
-add column "last_synced_at" timestamp with time zone,
-ADD COLUMN IF NOT EXISTS "last_used_at"     TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS "usage_count"      INT NOT NULL DEFAULT 0,
-ADD COLUMN IF NOT EXISTS "usage_reset_date" DATE NOT NULL DEFAULT CURRENT_DATE,
-ADD COLUMN "youtube_trained_videos" jsonb;
+-- ✅ YouTube channels table: guard all columns
+ALTER TABLE "public"."youtube_channels"
+  ADD COLUMN IF NOT EXISTS "top_videos"             JSONB,
+  ADD COLUMN IF NOT EXISTS "recent_videos"           JSONB,
+  ADD COLUMN IF NOT EXISTS "last_synced_at"          TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS "last_used_at"            TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS "usage_count"             INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "usage_reset_date"        DATE NOT NULL DEFAULT CURRENT_DATE,
+  ADD COLUMN IF NOT EXISTS "youtube_trained_videos"  JSONB;
 
 
 

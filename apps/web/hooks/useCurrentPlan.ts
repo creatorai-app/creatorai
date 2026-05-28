@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api } from "@/lib/api-client";
+import {
+  getIdeationLimitsForPlan,
+  hasIdeationComparisonMetrics,
+  type IdeationPlanName,
+} from "@repo/validation";
 
 interface Plan {
   id: string;
@@ -26,9 +31,20 @@ export function useCurrentPlan() {
       .finally(() => setLoading(false));
   }, []);
 
+  const ideationLimits = useMemo(
+    () => getIdeationLimitsForPlan(planName ?? "Starter"),
+    [planName],
+  );
+
   return {
     planName,
-    isStarter: !loading && planName === "Starter",
     loading,
+    isStarter: !loading && planName === "Starter",
+    isCreatorPlus: !loading && planName === "Creator+",
+    isEnterprise: !loading && planName === "Enterprise",
+    maxIdeas: ideationLimits.maxIdeas,
+    hasComparisonMetrics: !loading && hasIdeationComparisonMetrics(planName),
+    ideationLimits,
+    planTier: (planName ?? "Starter") as IdeationPlanName,
   };
 }

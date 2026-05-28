@@ -15,10 +15,11 @@ import {
   hasEnoughCredits,
   getMinimumCreditsForIdeation,
   IDEATION_CREDIT_MULTIPLIER,
+  getIdeationLimitsForPlan,
 } from '@repo/validation';
+import { BillingService } from '../billing/billing.service';
 import { PDFDocument, PDFPage, PDFImage, rgb, StandardFonts, PDFFont } from 'pdf-lib';
 
-const MAX_IDEA_COUNT = 5;
 const MAX_NICHE_FOCUS_LENGTH = 200;
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -37,6 +38,7 @@ const COLORS = {
 export class IdeationService {
   constructor(
     private readonly supabaseService: SupabaseService,
+    private readonly billingService: BillingService,
     @InjectQueue('ideation') private readonly queue: Queue,
   ) {}
 
@@ -49,9 +51,17 @@ export class IdeationService {
     nicheFocus?: string;
     ideaCount?: number;
     autoMode?: boolean;
-    useYoutubeContext?: boolean;
   }) {
-    const ideaCount = Math.min(MAX_IDEA_COUNT, Math.max(1, input.ideaCount || 3));
+    const billing = await this.billingService.getBillingInfo(userId);
+    const planLimits = getIdeationLimitsForPlan(billing.currentPlan?.name);
+    const requestedCount = input.ideaCount ?? (planLimits.maxIdeas === 1 ? 1 : Math.min(3, planLimits.maxIdeas));
+    const ideaCount = Math.min(planLimits.maxIdeas, Math.max(1, requestedCount));
+
+    if (requestedCount > planLimits.maxIdeas) {
+      throw new ForbiddenException(
+        `Your ${billing.currentPlan?.name ?? 'Starter'} plan allows up to ${planLimits.maxIdeas} idea${planLimits.maxIdeas === 1 ? '' : 's'} per run.`,
+      );
+    }
 
     if (input.nicheFocus && input.nicheFocus.length > MAX_NICHE_FOCUS_LENGTH) {
       throw new BadRequestException(`Niche focus must be under ${MAX_NICHE_FOCUS_LENGTH} characters`);
@@ -106,22 +116,6 @@ export class IdeationService {
       throw new InternalServerErrorException('Failed to create ideation job');
     }
 
-    let youtubeContext: string | undefined;
-    if (input.useYoutubeContext) {
-      const { data: channel } = await this.supabase
-        .from('youtube_channels')
-        .select('channel_id, channel_title, channel_description')
-        .eq('user_id', userId)
-        .single();
-
-      if (channel) {
-        youtubeContext = [
-          channel.channel_title ? `Channel: ${channel.channel_title}` : '',
-          channel.channel_description ? `Description: ${channel.channel_description}` : '',
-        ].filter(Boolean).join('\n');
-      }
-    }
-
     const bullJobId = `ideation-${userId}-${Date.now()}`;
     await this.queue.add(
       'generate-ideas',
@@ -132,7 +126,6 @@ export class IdeationService {
         nicheFocus: input.nicheFocus || '',
         ideaCount,
         autoMode: input.autoMode ?? false,
-        youtubeContext,
       },
       {
         jobId: bullJobId,

@@ -37,9 +37,8 @@ export function useIdeation() {
 
   const [context, setContext] = useState("");
   const [nicheFocus, setNicheFocus] = useState("");
-  const [ideaCount, setIdeaCount] = useState(3);
+  const [ideaCount, setIdeaCount] = useState(1);
   const [autoMode, setAutoMode] = useState(false);
-  const [useYoutubeContext, setUseYoutubeContext] = useState(false);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -116,7 +115,8 @@ export function useIdeation() {
     },
   });
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (countOverride?: number) => {
+    const effectiveCount = countOverride ?? ideaCount;
     setIsGenerating(true);
     setGeneratedResult(null);
 
@@ -126,9 +126,8 @@ export function useIdeation() {
         {
           context: context.trim() || undefined,
           nicheFocus: nicheFocus.trim() || undefined,
-          ideaCount,
+          ideaCount: effectiveCount,
           autoMode,
-          useYoutubeContext,
         },
         { requireAuth: true },
       );
@@ -160,9 +159,8 @@ export function useIdeation() {
   const clearForm = () => {
     setContext("");
     setNicheFocus("");
-    setIdeaCount(3);
+    setIdeaCount(1);
     setAutoMode(false);
-    setUseYoutubeContext(false);
     setGeneratedResult(null);
   };
 
@@ -171,7 +169,6 @@ export function useIdeation() {
     nicheFocus, setNicheFocus,
     ideaCount, setIdeaCount,
     autoMode, setAutoMode,
-    useYoutubeContext, setUseYoutubeContext,
     isGenerating,
     progress: sse.progress,
     statusMessage: sse.statusMessage,
