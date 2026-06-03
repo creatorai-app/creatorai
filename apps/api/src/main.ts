@@ -1,9 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import axios from 'axios';
+import {
+  CREATOR_AI_USER_AGENT,
+  installCreatorAiAxiosDefaults,
+  installCreatorAiFetchDefaults,
+} from '@repo/validation';
 import { AppModule } from './app.module';
+
+installCreatorAiFetchDefaults();
+installCreatorAiAxiosDefaults(axios);
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  app.use((_req, res, next) => {
+    res.setHeader('Server', CREATOR_AI_USER_AGENT);
+    next();
+  });
 
   const isWorker = process.env.NODE_ENV === 'worker';
 

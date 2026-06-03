@@ -10,6 +10,7 @@ import axios, {
   AxiosProgressEvent
 } from 'axios';
 import { createClient } from "@/lib/supabase/client";
+import { CREATOR_AI_USER_AGENT } from "@repo/validation";
 
 
 export interface ApiErrorResponse {
@@ -88,6 +89,8 @@ const axiosInstance = axios.create({
   baseURL: getBackendUrl(),
   headers: {
     'Content-Type': 'application/json',
+    'User-Agent': CREATOR_AI_USER_AGENT,
+    'X-Creator-AI-Agent': CREATOR_AI_USER_AGENT,
   },
 });
 
