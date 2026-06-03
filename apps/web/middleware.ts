@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
+import { CREATOR_AI_USER_AGENT, type UserRole } from "@repo/validation"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
@@ -10,14 +11,19 @@ const BYPASS_PATHS = [
   "/api/youtube/callback",
 ]
 
-async function getUserRole(supabase: ReturnType<typeof createServerClient>, userId: string) {
+async function getUserRole(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<UserRole | undefined> {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("role")
       .eq("user_id", userId)
-      .single()
-    return data?.role as string | undefined
+      .single<{ role: UserRole }>()
+
+    if (error || !data) return undefined
+    return data.role
   } catch {
     return undefined
   }
@@ -27,10 +33,13 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (BYPASS_PATHS.includes(pathname)) {
-    return NextResponse.next()
+    const response = NextResponse.next()
+    response.headers.set("Server", CREATOR_AI_USER_AGENT)
+    return response
   }
 
   const response = NextResponse.next()
+  response.headers.set("Server", CREATOR_AI_USER_AGENT)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

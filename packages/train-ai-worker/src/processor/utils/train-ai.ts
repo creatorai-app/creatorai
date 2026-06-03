@@ -90,7 +90,7 @@ export async function fetchVideoData(
     try {
       const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
         params: { part: 'snippet,contentDetails,statistics,topicDetails', id: videoIds.join(','), mine: true },
-        headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'ScriptAI/1.0' },
+        headers: { Authorization: `Bearer ${accessToken}` },
         timeout: 30000,
       });
       const videos = response.data.items;

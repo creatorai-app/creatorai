@@ -169,7 +169,7 @@ export class YoutubeService {
       if (!usageData.allowed) {
         throw new BadRequestException(usageData.message);
       }
-     
+
       const { data: channel, error } = await this.supabase
         .from('youtube_channels')
         .select('channel_id, provider_token, refresh_token')

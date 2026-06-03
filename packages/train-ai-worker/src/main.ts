@@ -1,6 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import axios from 'axios';
+import {
+  installCreatorAiAxiosDefaults,
+  installCreatorAiFetchDefaults,
+} from '@repo/validation';
 import { WorkerModule } from './worker.module';
+
+installCreatorAiFetchDefaults();
+installCreatorAiAxiosDefaults(axios);
 
 async function bootstrap() {
   const app = await NestFactory.create(WorkerModule);

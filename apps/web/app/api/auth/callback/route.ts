@@ -2,6 +2,7 @@ import { type EmailOtpType } from '@supabase/supabase-js';
 import { type NextRequest } from 'next/server';
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { creatorAiFetch } from '@/lib/creator-ai-http';
 import { Resend } from 'resend';
 import { BACKEND_URL } from '@/lib/constants';
 
@@ -104,7 +105,7 @@ async function processReferral(
   userEmail: string,
 ) {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/v1/referral/track`, {
+    const response = await creatorAiFetch(`${BACKEND_URL}/api/v1/referral/track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ referralCode, userEmail }),

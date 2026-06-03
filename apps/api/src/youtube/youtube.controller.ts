@@ -10,7 +10,7 @@ import { getUserId } from '../common/get-user-id';
 @Controller('youtube')
 @UseGuards(SupabaseAuthGuard)
 export class YoutubeController {
-  constructor(private readonly youtubeService: YoutubeService) {}
+  constructor(private readonly youtubeService: YoutubeService) { }
 
   @Get('video-metadata')
   @ApiOperation({ summary: 'Resolve YouTube video metadata from URL' })
