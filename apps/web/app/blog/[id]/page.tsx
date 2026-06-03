@@ -142,14 +142,30 @@ const markdownComponents: Components = {
   hr: () => (
     <hr className="my-10 border-slate-200" />
   ),
-  a: ({ children, ...props }) => (
-    <a
-      className="text-purple-600 font-medium underline underline-offset-4 decoration-purple-300 hover:decoration-purple-500 transition-colors"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href, ...props }) => {
+    const linkClass =
+      "text-purple-600 font-medium underline underline-offset-4 decoration-purple-300 hover:decoration-purple-500 transition-colors"
+    const isExternal = !!href && /^https?:\/\//.test(href)
+    if (href && href.startsWith("/")) {
+      return (
+        <Link href={href} className={linkClass}>
+          {children}
+        </Link>
+      )
+    }
+    return (
+      <a
+        href={href}
+        className={linkClass}
+        {...(isExternal
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+        {...props}
+      >
+        {children}
+      </a>
+    )
+  },
 }
 
 export default function BlogDetailPage() {
