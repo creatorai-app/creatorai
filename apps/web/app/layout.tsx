@@ -87,6 +87,18 @@ export default function RootLayout({
             <Script src="https://lmsqueezy.com/affiliate.js" strategy="afterInteractive" />
           </>
         )}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-RVSYKESCPC"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-RVSYKESCPC');
+          `}
+        </Script>
         <SpeedInsights />
         <Analytics />
       </body>
