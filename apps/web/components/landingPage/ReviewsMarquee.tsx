@@ -43,7 +43,7 @@ function ReviewCard({
           width={32}
           height={32}
           loading="lazy"
-          alt={`${name}, Creator AI user`}
+          alt={`${name}, YouTube creator`}
           src={img}
         />
         <div className="min-w-0 flex-1">

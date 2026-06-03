@@ -3,7 +3,27 @@ import { getBlogBySlug } from "@/lib/blog-data";
 
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
-export const alt = "Creator AI Blog";
+
+export async function generateImageMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const post = getBlogBySlug(id);
+
+  return [
+    {
+      id: "default",
+      alt:
+        post?.keywords[0] ??
+        post?.title ??
+        "Creator AI blog post for YouTube creators",
+      size: OG_SIZE,
+      contentType: OG_CONTENT_TYPE,
+    },
+  ];
+}
 
 export default async function Image({
   params,

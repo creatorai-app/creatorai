@@ -25,22 +25,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     });
   }
 
+  const publishedTime = toIsoDate(post.date);
+
   return createMetadata({
-    title: `${post.title} | Creator AI Blog`,
-    description: post.excerpt,
+    title: post.seoTitle,
+    description: post.seoDescription,
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
       url: `/blog/${post.slug}`,
       type: "article",
-      title: post.title,
-      description: post.excerpt,
+      title: post.seoTitle,
+      description: post.seoDescription,
+      publishedTime,
+      modifiedTime: publishedTime,
+      authors: [post.author],
+      section: post.category,
+      tags: post.tags,
     },
-    keywords: [
-      ...post.tags,
-      "Creator AI",
-      "YouTube",
-      "content creation",
-    ],
+    keywords: post.keywords,
   });
 }
 
@@ -63,7 +65,7 @@ export default async function BlogPostLayout({
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: post.title,
-    description: post.excerpt,
+    description: post.seoDescription,
     image: `${url}/opengraph-image`,
     datePublished: publishedAt,
     dateModified: publishedAt,
@@ -98,10 +100,24 @@ export default async function BlogPostLayout({
     ],
   };
 
+  const faqJsonLd =
+    post.faqs.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: post.faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: { "@type": "Answer", text: faq.answer },
+          })),
+        }
+      : null;
+
   return (
     <>
       <JsonLd data={articleJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
+      {faqJsonLd && <JsonLd data={faqJsonLd} />}
       {children}
     </>
   );
