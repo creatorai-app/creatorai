@@ -142,14 +142,30 @@ const markdownComponents: Components = {
   hr: () => (
     <hr className="my-10 border-slate-200" />
   ),
-  a: ({ children, ...props }) => (
-    <a
-      className="text-purple-600 font-medium underline underline-offset-4 decoration-purple-300 hover:decoration-purple-500 transition-colors"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href, ...props }) => {
+    const linkClass =
+      "text-purple-600 font-medium underline underline-offset-4 decoration-purple-300 hover:decoration-purple-500 transition-colors"
+    const isExternal = !!href && /^https?:\/\//.test(href)
+    if (href && href.startsWith("/")) {
+      return (
+        <Link href={href} className={linkClass}>
+          {children}
+        </Link>
+      )
+    }
+    return (
+      <a
+        href={href}
+        className={linkClass}
+        {...(isExternal
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+        {...props}
+      >
+        {children}
+      </a>
+    )
+  },
 }
 
 export default function BlogDetailPage() {
@@ -159,10 +175,18 @@ export default function BlogDetailPage() {
   const [activeSection, setActiveSection] = useState<string>("")
   const rafIdRef = useRef<number>(0)
 
-  const headings = useMemo(
-    () => (post ? extractHeadings(post.content) : []),
-    [post]
-  )
+  const headings = useMemo(() => {
+    if (!post) return []
+    const extracted = extractHeadings(post.content)
+    if (post.faqs.length > 0) {
+      extracted.push({
+        id: "frequently-asked-questions",
+        title: "Frequently Asked Questions",
+        level: 2,
+      })
+    }
+    return extracted
+  }, [post])
 
   useEffect(() => {
     const lenis = new Lenis()
@@ -354,6 +378,34 @@ export default function BlogDetailPage() {
                 <ReactMarkdown components={markdownComponents}>
                   {post.content}
                 </ReactMarkdown>
+
+                {/* FAQ */}
+                {post.faqs.length > 0 && (
+                  <div className="mt-16 pt-10 border-t border-slate-200">
+                    <h2
+                      id="frequently-asked-questions"
+                      className="scroll-mt-24 text-2xl md:text-[1.65rem] font-bold text-slate-900 tracking-tight mt-14 mb-5 pb-3 border-b border-slate-200"
+                    >
+                      Frequently Asked Questions
+                    </h2>
+                    <div className="space-y-3">
+                      {post.faqs.map((faq) => (
+                        <details
+                          key={faq.question}
+                          className="group rounded-xl border border-slate-200 bg-white px-5 open:bg-slate-50/60 transition-colors"
+                        >
+                          <summary className="flex cursor-pointer items-center justify-between gap-4 py-4 list-none font-semibold text-slate-800">
+                            {faq.question}
+                            <ChevronRight className="w-4 h-4 shrink-0 text-slate-400 transition-transform group-open:rotate-90" />
+                          </summary>
+                          <p className="pb-5 -mt-1 text-[1.02rem] leading-relaxed text-slate-600">
+                            {faq.answer}
+                          </p>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 {post.tags.length > 0 && (

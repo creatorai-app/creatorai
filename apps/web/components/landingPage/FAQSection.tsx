@@ -7,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@repo/ui/accordion"
+import JsonLd from "@/components/JsonLd"
 
 const faqs = [
   {
@@ -52,9 +53,20 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.q,
+    acceptedAnswer: { "@type": "Answer", text: faq.a },
+  })),
+}
+
 export default function FAQSection() {
   return (
     <section id="faq" className="py-20 bg-slate-50 dark:bg-slate-900">
+      <JsonLd data={faqJsonLd} />
       <div className="container px-4 md:px-6">
         <motion.div
           className="flex flex-col items-center text-center space-y-4 mb-12"
