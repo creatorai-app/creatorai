@@ -136,6 +136,72 @@ export default function AboutPage() {
           </div>
         </section>
 
+        {/* Entity Profile — factual summary for search & AI crawlers */}
+        <section className="py-16 bg-white border-b border-slate-100">
+          <div className="container max-w-3xl mx-auto px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-6">
+                What is Creator AI?
+              </h2>
+              <div className="prose prose-slate max-w-none text-slate-600 leading-relaxed space-y-4">
+                <p>
+                  <strong className="text-slate-800">Creator AI</strong> is an AI-powered production
+                  platform for YouTube creators, available at{" "}
+                  <a href="https://tryscriptai.com" className="text-purple-600 hover:text-purple-700">
+                    tryscriptai.com
+                  </a>
+                  . Founded to solve the gap between generic AI tools and YouTube-specific content
+                  creation, Creator AI learns each creator&apos;s unique voice from their existing
+                  videos and generates scripts, thumbnails, subtitles, and dubbed audio in one
+                  workflow.
+                </p>
+                <p>
+                  Unlike general-purpose chatbots such as ChatGPT, Creator AI is built exclusively
+                  for the YouTube creator pipeline — from topic research and story planning through
+                  voice-matched script generation, CTR-optimized thumbnails, SRT/VTT subtitle export,
+                  and AI dubbing in 24+ languages.
+                </p>
+              </div>
+              <dl className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+                <div>
+                  <dt className="font-semibold text-slate-800 mb-1">Product</dt>
+                  <dd className="text-slate-600">Creator AI — AI assistant for YouTube creators</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-800 mb-1">Website</dt>
+                  <dd className="text-slate-600">tryscriptai.com</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-800 mb-1">Core capability</dt>
+                  <dd className="text-slate-600">Voice-matched script generation from your YouTube channel</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-800 mb-1">Target users</dt>
+                  <dd className="text-slate-600">YouTube UGC creators — solo and small teams</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-800 mb-1">Key features</dt>
+                  <dd className="text-slate-600">Scripts, thumbnails, subtitles, dubbing, ideation, story blueprints</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-800 mb-1">Differentiator</dt>
+                  <dd className="text-slate-600">Learns your voice from videos — not prompt-based tone guessing</dd>
+                </div>
+              </dl>
+              <blockquote className="mt-8 border-l-4 border-purple-400 pl-6 italic text-slate-700">
+                &ldquo;Every creator has a voice their audience trusts. Generic AI flattens that voice.
+                Creator AI exists so creators can publish faster without sounding like everyone
+                else.&rdquo; — Creator AI Team
+              </blockquote>
+            </motion.div>
+          </div>
+        </section>
+
         {/* UVP */}
         <section className="py-24 bg-white overflow-hidden">
           <div className="container max-w-4xl mx-auto px-6 mb-12">
