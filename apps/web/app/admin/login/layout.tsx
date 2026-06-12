@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { createMetadata } from "@/lib/seo";
+import { createMetadata, noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = createMetadata({
   title: "Admin Login",
   description: "Admin access portal for Creator AI.",
   alternates: { canonical: "/admin/login" },
   openGraph: { url: "/admin/login" },
-  robots: { index: false, follow: false },
+  robots: noIndexRobots,
 });
 
 export default function AdminLoginLayout({

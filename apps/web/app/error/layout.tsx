@@ -1,18 +1,17 @@
 import type { Metadata } from "next"
 import type React from "react"
 import { createMetadata, noIndexRobots } from "@/lib/seo"
-import DashboardShell from "./dashboard-shell"
 
 export const metadata: Metadata = createMetadata({
-  title: "Dashboard",
-  description: "Your Creator AI workspace.",
+  title: "Error",
+  description: "An error occurred.",
   robots: noIndexRobots,
 })
 
-export default function DashboardLayout({
+export default function ErrorLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <DashboardShell>{children}</DashboardShell>
+  return children
 }

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { createMetadata } from "@/lib/seo";
+import { createMetadata, noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = createMetadata({
   title: "Reset Password",
   description: "Set a new password for your Creator AI account.",
   alternates: { canonical: "/reset-password" },
-  robots: { index: false, follow: true },
+  robots: noIndexRobots,
 });
 
 export default function ResetPasswordLayout({

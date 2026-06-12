@@ -26,6 +26,15 @@ export const siteConfig = {
   locale: "en_US",
 } as const;
 
+export const noIndexRobots: NonNullable<Metadata["robots"]> = {
+  index: false,
+  follow: true,
+  googleBot: {
+    index: false,
+    follow: true,
+  },
+};
+
 export function createMetadata(overrides: Metadata = {}): Metadata {
   const title =
     overrides.title ?? `${siteConfig.name} — AI Assistant for YouTube Creators`;
