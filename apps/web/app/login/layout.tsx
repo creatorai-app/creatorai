@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createMetadata } from "@/lib/seo";
+import { createMetadata, noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = createMetadata({
   title: "Log In",
@@ -7,7 +7,7 @@ export const metadata: Metadata = createMetadata({
     "Log in to Creator AI and access your personalized YouTube content creation dashboard.",
   alternates: { canonical: "/login" },
   openGraph: { url: "/login" },
-  robots: { index: false, follow: true },
+  robots: noIndexRobots,
 });
 
 export default function LoginLayout({

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createMetadata, siteConfig } from "@/lib/seo";
+import { createMetadata, noIndexRobots, siteConfig } from "@/lib/seo";
 import { getBlogBySlug } from "@/lib/blog-data";
 import JsonLd from "@/components/JsonLd";
 
@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return createMetadata({
       title: "Post Not Found",
       description: "The blog post you're looking for doesn't exist.",
+      robots: noIndexRobots,
     });
   }
 
