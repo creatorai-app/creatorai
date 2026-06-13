@@ -19,7 +19,8 @@ import {
   List,
 } from "lucide-react"
 import { getBlogBySlug, blogPosts } from "@/lib/blog-data"
-import ReactMarkdown, { type Components } from "react-markdown"
+import { type Components } from "react-markdown"
+import BlogContent from "@/components/blog/BlogContent"
 import { cn } from "@/lib/utils"
 
 function slugify(text: string): string {
@@ -110,34 +111,6 @@ const markdownComponents: Components = {
     >
       {children}
     </blockquote>
-  ),
-  table: ({ children, ...props }) => (
-    <div className="my-8 overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-      <table className="w-full text-sm" {...props}>
-        {children}
-      </table>
-    </div>
-  ),
-  thead: ({ children, ...props }) => (
-    <thead className="bg-slate-50" {...props}>
-      {children}
-    </thead>
-  ),
-  th: ({ children, ...props }) => (
-    <th
-      className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200"
-      {...props}
-    >
-      {children}
-    </th>
-  ),
-  td: ({ children, ...props }) => (
-    <td
-      className="px-5 py-3.5 text-slate-600 border-b border-slate-100"
-      {...props}
-    >
-      {children}
-    </td>
   ),
   hr: () => (
     <hr className="my-10 border-slate-200" />
@@ -375,9 +348,7 @@ export default function BlogDetailPage() {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="max-w-none min-w-0"
               >
-                <ReactMarkdown components={markdownComponents}>
-                  {post.content}
-                </ReactMarkdown>
+                <BlogContent content={post.content} components={markdownComponents} />
 
                 {/* FAQ */}
                 {post.faqs.length > 0 && (
