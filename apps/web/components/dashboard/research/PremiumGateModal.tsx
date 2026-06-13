@@ -20,7 +20,6 @@ interface PremiumGateModalProps {
 const PERKS = [
   "Generate up to 3 ideas per run",
   "Comparison metrics: trends & keywords",
-  "Export as PDF & JSON",
 ];
 
 export default function PremiumGateModal({ open, onClose, featureLabel }: PremiumGateModalProps) {

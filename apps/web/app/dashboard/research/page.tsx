@@ -21,7 +21,7 @@ import {
 } from "@repo/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@repo/ui/alert-dialog";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,7 +56,7 @@ export default function IdeationListPage() {
     if (!jobToDelete) return;
     try {
       await api.delete(`/api/v1/ideation/${jobToDelete}`, { requireAuth: true });
-      setJobs(jobs.filter((j) => j.id !== jobToDelete));
+      setJobs((prev) => prev.filter((j) => j.id !== jobToDelete));
       toast.success("Ideation job deleted");
     } catch (error: unknown) {
       const msg = error instanceof ApiClientError ? error.message : "Failed to delete";
@@ -169,6 +169,8 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
   onExport: (id: string) => Promise<void>;
 }) {
   const [isExporting, setIsExporting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const date = new Date(job.created_at).toLocaleDateString();
   const ideaCount = job.result?.ideas?.length || job.idea_count;
   const linkHref = job.status === "completed" ? `/dashboard/research/${job.id}` : "#";
@@ -181,6 +183,27 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const openDeleteDialog = () => {
+    setToDelete(job.id);
+    setMenuOpen(false);
+    setDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setDialogOpen(false);
+    setToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    setDialogOpen(false);
+    await onDelete();
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) setToDelete(null);
   };
 
   return (
@@ -217,8 +240,8 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
         </Link>
 
         <div className="absolute top-4 right-4 z-10">
-          <AlertDialog>
-            <DropdownMenu>
+          <AlertDialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   className="h-8 w-8 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
@@ -240,15 +263,12 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
                     </DropdownMenuItem>
                   )
                 )}
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem
-                    className="text-red-500 focus:text-red-500 cursor-pointer"
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={() => setToDelete(job.id)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
+                <DropdownMenuItem
+                  className="text-red-500 focus:text-red-500 cursor-pointer"
+                  onClick={openDeleteDialog}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <AlertDialogContent>
@@ -257,8 +277,8 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
                 <AlertDialogDescription>This will permanently delete this ideation and all generated ideas.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setToDelete(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDelete} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
+                <AlertDialogCancel onClick={closeDeleteDialog}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
