@@ -9,7 +9,7 @@ import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
 import { Switch } from "@repo/ui/switch";
 import { Skeleton } from "@repo/ui/skeleton";
-import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, Lock } from "lucide-react";
 import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired";
 import IdeationProgress from "@/components/dashboard/research/IdeationProgress";
 import PremiumGateModal from "@/components/dashboard/research/PremiumGateModal";
@@ -85,7 +85,16 @@ export default function NewIdeationPage() {
   };
 
   const creatorOptions = Array.from({ length: maxIdeas }, (_, i) => i + 1);
+  const starterPreviewOptions = [1, 2, 3];
   const showHowItWorks = !isLoadingProfile && !planLoading && aiTrained;
+
+  const handleIdeaCountClick = (n: number) => {
+    if (isStarter && n > 1) {
+      setPremiumModalOpen(true);
+      return;
+    }
+    setIdeaCount(n);
+  };
 
   let content: React.ReactNode;
 
@@ -203,11 +212,7 @@ export default function NewIdeationPage() {
             <motion.div className="space-y-2">
               <Label>Number of ideas</Label>
 
-              {isStarter ? (
-                <p className="text-sm text-slate-500 py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  1 idea per run on Starter
-                </p>
-              ) : isEnterprise ? (
+              {isEnterprise ? (
                 <div className="flex items-center gap-3">
                   <Input
                     type="number"
@@ -221,33 +226,34 @@ export default function NewIdeationPage() {
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  {creatorOptions.map((n) => (
-                    <motion.button
-                      key={n}
-                      type="button"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setIdeaCount(n)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        ideaCount === n
-                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      {n}
-                    </motion.button>
-                  ))}
+                  {(isStarter ? starterPreviewOptions : creatorOptions).map((n) => {
+                    const locked = isStarter && n > 1;
+                    const selected = ideaCount === n && !locked;
+                    return (
+                      <motion.button
+                        key={n}
+                        type="button"
+                        whileHover={{ scale: locked ? 1 : 1.03 }}
+                        whileTap={{ scale: locked ? 1 : 0.97 }}
+                        onClick={() => handleIdeaCountClick(n)}
+                        className={`relative flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          selected
+                            ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                            : locked
+                              ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-pointer"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {n}
+                        {locked && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-sm">
+                            <Lock className="h-2 w-2 text-white" />
+                          </span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
                 </div>
-              )}
-
-              {isStarter && (
-                <button
-                  type="button"
-                  onClick={() => setPremiumModalOpen(true)}
-                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
-                >
-                  Upgrade for up to 3 ideas + comparison metrics
-                </button>
               )}
             </motion.div>
 
@@ -327,7 +333,7 @@ export default function NewIdeationPage() {
       <PremiumGateModal
         open={premiumModalOpen}
         onClose={() => setPremiumModalOpen(false)}
-        featureLabel="More ideas & comparison metrics"
+        featureLabel="Generating more ideas"
       />
     </motion.div>
   );

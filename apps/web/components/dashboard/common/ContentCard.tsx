@@ -120,6 +120,11 @@ export function ContentCard({
         await onDelete();
     };
 
+    const handleDialogOpenChange = (open: boolean) => {
+        setDialogOpen(open);
+        if (!open) setToDelete(null);
+    };
+
     return (
         <motion.div
             variants={itemVariants}
@@ -160,7 +165,7 @@ export function ContentCard({
                 </Link>
 
                 <div className="absolute top-4 right-4 z-10">
-                    <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <AlertDialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
                         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
                             <DropdownMenuTrigger asChild>
                                 <Button
