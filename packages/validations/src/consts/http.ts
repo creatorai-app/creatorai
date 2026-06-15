@@ -1,8 +1,9 @@
 export const CREATOR_AI_USER_AGENT = 'CreatorAI/1.0 (+https://tryscriptai.com)';
+export const CREATOR_AI_CLIENT_HEADER = 'X-Creator-AI-Agent';
 
 export function mergeCreatorAiHeaders(headers?: HeadersInit): Headers {
   const merged = new Headers(headers);
-  merged.set('User-Agent', CREATOR_AI_USER_AGENT);
+  merged.set(CREATOR_AI_CLIENT_HEADER, CREATOR_AI_USER_AGENT);
   return merged;
 }
 
@@ -24,5 +25,5 @@ export function installCreatorAiFetchDefaults(): void {
 export function installCreatorAiAxiosDefaults(axios: {
   defaults: { headers: { common: { [key: string]: unknown } } };
 }): void {
-  axios.defaults.headers.common['User-Agent'] = CREATOR_AI_USER_AGENT;
+  axios.defaults.headers.common[CREATOR_AI_CLIENT_HEADER] = CREATOR_AI_USER_AGENT;
 }
