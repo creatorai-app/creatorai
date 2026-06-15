@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { SupabaseService } from '../supabase/supabase.service';
 
-export type UserRole = 'user' | 'admin' | 'sales_rep';
+export type UserRole = 'user' | 'admin';
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
 

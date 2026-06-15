@@ -65,8 +65,6 @@ export default function LoginPage() {
       }
       if (redirectTo) {
         router.replace(redirectTo)
-      } else if (profile.role === "sales_rep") {
-        router.replace("/dashboard/sales-rep")
       } else {
         router.replace("/dashboard")
       }
@@ -112,11 +110,7 @@ export default function LoginPage() {
           toast.error("Access Denied", { description: "Admins must use the admin login portal." })
           return
         }
-        if (role === "sales_rep") {
-          router.push("/dashboard/sales-rep")
-        } else {
-          router.push("/dashboard")
-        }
+        router.push("/dashboard")
       }
     } catch (error: any) {
       if (isZodError(error)) {

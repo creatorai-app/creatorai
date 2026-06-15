@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   Users,
-  UserCog,
   FileText,
   DollarSign,
   Activity,
@@ -26,7 +25,6 @@ import {
 const adminLinks = [
   { label: "Dashboard", href: "/dashboard/admin", icon: LayoutDashboard },
   { label: "Users", href: "/dashboard/admin/users", icon: Users },
-  { label: "Sales Reps", href: "/dashboard/admin/sales-reps", icon: UserCog },
   { label: "Jobs", href: "/dashboard/admin/jobs", icon: Briefcase },
   { label: "Applications", href: "/dashboard/admin/applications", icon: ClipboardList },
   { label: "Blogs", href: "/dashboard/admin/blogs", icon: FileText },

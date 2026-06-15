@@ -57,26 +57,6 @@ export function useAdminUsers(page = 1, search?: string, role?: string) {
   return { ...data, loading, refresh: fetchUsers };
 }
 
-export function useAdminSalesReps(page = 1) {
-  const [data, setData] = useState<PaginatedResponse<Record<string, unknown>> | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchReps = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api.get<PaginatedResponse<Record<string, unknown>>>(`/api/v1/admin/sales-reps?page=${page}`, AUTH);
-      setData(res);
-    } catch (err) {
-      console.error('Failed to fetch sales reps:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
-
-  useEffect(() => { fetchReps(); }, [fetchReps]);
-  return { ...data, loading, refresh: fetchReps };
-}
-
 export function useAdminBlogs(page = 1, status?: string) {
   const [data, setData] = useState<PaginatedResponse<BlogPost> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,10 +214,6 @@ export const adminApi = {
     api.put(`/api/v1/admin/users/${userId}`, updates, AUTH),
   deleteUser: (userId: string) =>
     api.delete(`/api/v1/admin/users/${userId}`, AUTH),
-  createSalesRep: (data: { email: string; name: string; password: string }) =>
-    api.post('/api/v1/admin/sales-reps', data, AUTH),
-  removeSalesRep: (userId: string) =>
-    api.delete(`/api/v1/admin/sales-reps/${userId}`, AUTH),
   createBlog: (data: Partial<BlogPost>) =>
     api.post<BlogPost>('/api/v1/admin/blogs', data, AUTH),
   updateBlog: (id: string, data: Partial<BlogPost>) =>

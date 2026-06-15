@@ -19,7 +19,6 @@ export default function DashboardShell({
   const router = useRouter()
 
   const isAdminRoute = pathname.startsWith("/dashboard/admin")
-  const isSalesRepRoute = pathname.startsWith("/dashboard/sales-rep")
 
   useEffect(() => {
     if (!loading && !profileLoading && profile?.role === "admin" && !isAdminRoute) {
@@ -27,7 +26,7 @@ export default function DashboardShell({
     }
   }, [loading, profileLoading, profile, isAdminRoute, router])
 
-  if (isAdminRoute || isSalesRepRoute) {
+  if (isAdminRoute) {
     return <>{children}</>
   }
 

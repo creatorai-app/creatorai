@@ -98,7 +98,6 @@ export default function AdminUsersPage() {
             <SelectItem value="all">All roles</SelectItem>
             <SelectItem value="user">User</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="sales_rep">Sales Rep</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -138,8 +137,6 @@ export default function AdminUsersPage() {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                         user.role === "admin"
                           ? "bg-purple-900/40 text-purple-400"
-                          : user.role === "sales_rep"
-                          ? "bg-blue-900/40 text-blue-400"
                           : "bg-slate-800 text-slate-400"
                       }`}>
                         {user.role === "admin" && <Shield className="h-3 w-3" />}
@@ -207,7 +204,6 @@ export default function AdminUsersPage() {
                 <SelectContent className="bg-slate-800 border-slate-700">
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="sales_rep">Sales Rep</SelectItem>
                 </SelectContent>
               </Select>
             </div>

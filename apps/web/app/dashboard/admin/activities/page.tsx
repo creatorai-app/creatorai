@@ -48,7 +48,6 @@ export default function AdminActivitiesPage() {
           <SelectContent className="bg-slate-900 border-slate-700">
             <SelectItem value="all">All types</SelectItem>
             <SelectItem value="user">User</SelectItem>
-            <SelectItem value="sales_rep">Sales Rep</SelectItem>
             <SelectItem value="blog">Blog</SelectItem>
             <SelectItem value="affiliate_sale">Affiliate Sale</SelectItem>
           </SelectContent>

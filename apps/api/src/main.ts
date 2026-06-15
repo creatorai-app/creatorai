@@ -59,7 +59,6 @@ async function bootstrap() {
       .addTag('dubbing', 'Video dubbing')
       .addTag('ideation', 'Content ideation')
       .addTag('referral', 'Referral system')
-      .addTag('sales-rep', 'Sales representative portal')
       .addTag('script', 'Script generation')
       .addTag('story-builder', 'Story builder')
       .addTag('subtitle', 'Subtitle management')

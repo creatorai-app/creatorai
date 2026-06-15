@@ -24,8 +24,6 @@ import { IdeationController } from '../src/ideation/ideation.controller';
 import { IdeationService } from '../src/ideation/ideation.service';
 import { ReferralController } from '../src/referral/referral.controller';
 import { ReferralService } from '../src/referral/referral.service';
-import { SalesRepController } from '../src/sales-rep/sales-rep.controller';
-import { SalesRepService } from '../src/sales-rep/sales-rep.service';
 import { ScriptController } from '../src/script/script.controller';
 import { ScriptService } from '../src/script/script.service';
 import { StoryBuilderController } from '../src/story-builder/story-builder.controller';
@@ -72,7 +70,6 @@ describe('Swagger / OpenAPI Specification', () => {
         DubbingController,
         IdeationController,
         ReferralController,
-        SalesRepController,
         ScriptController,
         StoryBuilderController,
         SubtitleController,
@@ -87,13 +84,12 @@ describe('Swagger / OpenAPI Specification', () => {
         { provide: SupabaseService, useValue: stub(['getClient', 'getAdminClient']) },
         { provide: AuthService, useValue: stub(['forgotPassword', 'verifyOtp', 'resetPassword']) },
         { provide: BillingService, useValue: stub(['getPlans', 'getBillingInfo', 'getUsageHistory', 'createCheckoutSession', 'getCustomerPortalUrl', 'cancelActiveSubscription', 'verifyWebhookSignature', 'handleSubscriptionCreated', 'handleSubscriptionUpdated', 'handleSubscriptionCancelled', 'handleSubscriptionExpired', 'handleSubscriptionPaymentSuccess']) },
-        { provide: AdminService, useValue: stub(['getDashboardStats', 'getUsers', 'getUser', 'updateUser', 'deleteUser', 'getSalesReps', 'createSalesRep', 'removeSalesRepRole', 'getBlogs', 'getBlog', 'createBlog', 'updateBlog', 'deleteBlog', 'getActivities', 'getMails', 'updateMailStatus', 'getJobPosts', 'getJobPost', 'createJobPost', 'updateJobPost', 'deleteJobPost', 'getApplications', 'getApplication', 'updateApplicationStatus', 'deleteApplication', 'getAllAffiliateLinks', 'getAllAffiliateSales', 'updateAffiliateLink', 'updateAffiliateSaleStatus', 'logActivity']) },
+        { provide: AdminService, useValue: stub(['getDashboardStats', 'getUsers', 'getUser', 'updateUser', 'deleteUser', 'getBlogs', 'getBlog', 'createBlog', 'updateBlog', 'deleteBlog', 'getActivities', 'getMails', 'updateMailStatus', 'getJobPosts', 'getJobPost', 'createJobPost', 'updateJobPost', 'deleteJobPost', 'getApplications', 'getApplication', 'updateApplicationStatus', 'deleteApplication', 'getAllAffiliateLinks', 'getAllAffiliateSales', 'updateAffiliateLink', 'updateAffiliateSaleStatus', 'logActivity']) },
         { provide: AffiliateService, useValue: stub(['submitRequest', 'getRequestStatus', 'getRequests', 'reviewRequest', 'createAffiliateLinkForRep', 'getLsAffiliates', 'getLsAffiliateSignupUrl']) },
         { provide: CourseService, useValue: stub(['generate']) },
         { provide: DubbingService, useValue: stub(['createDub', 'streamDubbingStatus', 'listDubs', 'getDub', 'deleteDub']) },
         { provide: IdeationService, useValue: stub(['createJob', 'listJobs', 'getProfileStatus', 'getJob', 'deleteJob', 'exportPdf', 'exportJson']) },
         { provide: ReferralService, useValue: stub(['getReferralData', 'generateReferralCode', 'trackReferral']) },
-        { provide: SalesRepService, useValue: stub(['getDashboardStats', 'getAffiliateLinks', 'createAffiliateLink', 'updateAffiliateLink', 'deleteAffiliateLink', 'getInvitedUsers', 'inviteUser', 'deleteInvitation', 'getSales', 'getLsAffiliateData']) },
         { provide: ScriptService, useValue: stub(['createJob', 'list', 'exportPdf', 'getOne', 'update', 'remove']) },
         { provide: StoryBuilderService, useValue: stub(['createJob', 'getProfileStatus', 'listJobs', 'getJob', 'deleteJob']) },
         { provide: SubtitleService, useValue: stub(['create', 'findAll', 'upload', 'update', 'findOne', 'remove', 'updateSubtitles', 'burnSubtitle']) },
@@ -222,9 +218,6 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', 'users/{userId}'],
       ['put', 'users/{userId}'],
       ['delete', 'users/{userId}'],
-      ['get', 'sales-reps'],
-      ['post', 'sales-reps'],
-      ['delete', 'sales-reps/{userId}'],
       ['get', 'blogs'],
       ['get', 'blogs/{id}'],
       ['post', 'blogs'],
@@ -322,27 +315,6 @@ describe('Swagger / OpenAPI Specification', () => {
     it('GET /', () => expect(spec.paths[base]?.get).toBeDefined());
     it('POST /generate', () => expect(spec.paths[`${base}/generate`]?.post).toBeDefined());
     it('POST /track', () => expect(spec.paths[`${base}/track`]?.post).toBeDefined());
-  });
-
-  // ─── Sales Rep ───
-
-  describe('Sales Rep', () => {
-    const base = '/api/v1/sales-rep';
-
-    it.each([
-      ['get', 'stats'],
-      ['get', 'links'],
-      ['post', 'links'],
-      ['put', 'links/{id}'],
-      ['delete', 'links/{id}'],
-      ['get', 'invited'],
-      ['post', 'invite'],
-      ['delete', 'invited/{id}'],
-      ['get', 'sales'],
-      ['get', 'ls-tracking'],
-    ])('%s /%s', (method, path) => {
-      expect((spec.paths[`${base}/${path}`] as any)?.[method]).toBeDefined();
-    });
   });
 
   // ─── Script ───
@@ -468,7 +440,7 @@ describe('Swagger / OpenAPI Specification', () => {
   describe('Tag coverage', () => {
     const expectedTags = [
       'health', 'auth', 'billing', 'admin', 'course', 'dubbing',
-      'ideation', 'referral', 'sales-rep', 'script', 'story-builder',
+      'ideation', 'referral', 'script', 'story-builder',
       'subtitle', 'support', 'thumbnail', 'train-ai', 'upload', 'youtube', 'app',
       'affiliate',
     ];
@@ -509,9 +481,6 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', '/api/v1/admin/users/{userId}'],
       ['put', '/api/v1/admin/users/{userId}'],
       ['delete', '/api/v1/admin/users/{userId}'],
-      ['get', '/api/v1/admin/sales-reps'],
-      ['post', '/api/v1/admin/sales-reps'],
-      ['delete', '/api/v1/admin/sales-reps/{userId}'],
       ['get', '/api/v1/admin/blogs'],
       ['get', '/api/v1/admin/blogs/{id}'],
       ['post', '/api/v1/admin/blogs'],
@@ -557,16 +526,6 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', '/api/v1/referral'],
       ['post', '/api/v1/referral/generate'],
       ['post', '/api/v1/referral/track'],
-      ['get', '/api/v1/sales-rep/stats'],
-      ['get', '/api/v1/sales-rep/links'],
-      ['post', '/api/v1/sales-rep/links'],
-      ['put', '/api/v1/sales-rep/links/{id}'],
-      ['delete', '/api/v1/sales-rep/links/{id}'],
-      ['get', '/api/v1/sales-rep/invited'],
-      ['post', '/api/v1/sales-rep/invite'],
-      ['delete', '/api/v1/sales-rep/invited/{id}'],
-      ['get', '/api/v1/sales-rep/sales'],
-      ['get', '/api/v1/sales-rep/ls-tracking'],
       ['post', '/api/v1/script/generate'],
       ['get', '/api/v1/script'],
       ['get', '/api/v1/script/{id}/export'],

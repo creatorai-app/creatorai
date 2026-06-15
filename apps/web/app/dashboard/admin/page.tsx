@@ -6,7 +6,6 @@ import { useSupabase } from "@/components/supabase-provider"
 import { AdminButton } from "@/components/admin/admin-button"
 import {
   Users,
-  UserCog,
   CreditCard,
   FileText,
   DollarSign,
@@ -72,7 +71,6 @@ export default function AdminDashboardPage() {
 
   const growth: StatConfig[] = [
     { label: "Total Users", value: stats?.totalUsers ?? 0, icon: Users, gradient: "from-blue-500 to-cyan-500", accent: "text-blue-400", href: "/dashboard/admin/users" },
-    { label: "Sales Reps", value: stats?.totalSalesReps ?? 0, icon: UserCog, gradient: "from-purple-500 to-fuchsia-500", accent: "text-purple-400", href: "/dashboard/admin/sales-reps" },
     { label: "New Users", value: stats?.newUsers30d ?? 0, icon: UserPlus, gradient: "from-emerald-500 to-green-500", accent: "text-emerald-400", hint: "last 30 days" },
     { label: "Active Subs", value: stats?.activeSubscriptions ?? 0, icon: CreditCard, gradient: "from-cyan-500 to-sky-500", accent: "text-cyan-400" },
   ]
