@@ -18,7 +18,6 @@ export class AdminService {
   async getDashboardStats() {
     const [
       usersRes,
-      salesRepsRes,
       newUsersRes,
       subsRes,
       blogsRes,
@@ -29,7 +28,6 @@ export class AdminService {
       affiliateRequestsRes,
     ] = await Promise.all([
       this.db.from('profiles').select('id', { count: 'exact', head: true }),
-      this.db.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'sales_rep'),
       this.db.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
       this.db.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       this.db.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published'),
@@ -44,7 +42,6 @@ export class AdminService {
 
     return {
       totalUsers: usersRes.count ?? 0,
-      totalSalesReps: salesRepsRes.count ?? 0,
       newUsers30d: newUsersRes.count ?? 0,
       activeSubscriptions: subsRes.count ?? 0,
       publishedBlogs: blogsRes.count ?? 0,
@@ -121,50 +118,6 @@ export class AdminService {
     const { error } = await this.db.auth.admin.deleteUser(userId);
     if (error) throw new BadRequestException(error.message);
     return { success: true };
-  }
-
-  // ==================== SALES REP MANAGEMENT ====================
-
-  async createSalesRep(email: string, name: string, password: string) {
-    const { data: authData, error: authError } = await this.db.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name },
-    });
-
-    if (authError) throw new BadRequestException(authError.message);
-
-    await this.db
-      .from('profiles')
-      .update({ role: 'sales_rep', full_name: name })
-      .eq('user_id', authData.user.id);
-
-    return { id: authData.user.id, email, name, role: 'sales_rep' };
-  }
-
-  async getSalesReps(page = 1, limit = 20) {
-    const { data, error, count } = await this.db
-      .from('profiles')
-      .select('id, user_id, full_name, name, email, role, created_at, avatar_url', { count: 'exact' })
-      .eq('role', 'sales_rep')
-      .order('created_at', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
-
-    if (error) throw new BadRequestException(error.message);
-    return { data, total: count ?? 0, page, limit };
-  }
-
-  async removeSalesRepRole(userId: string) {
-    const { data, error } = await this.db
-      .from('profiles')
-      .update({ role: 'user' })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) throw new BadRequestException(error.message);
-    return data;
   }
 
   // ==================== BLOGS CRUD ====================

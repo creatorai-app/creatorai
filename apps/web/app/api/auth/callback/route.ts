@@ -238,8 +238,6 @@ async function getRedirectByRole(supabase: any, userId: string, fallback: string
     if (fallback && fallback.startsWith('/dashboard') && !fallback.startsWith('/dashboard/admin')) {
       return fallback;
     }
-
-    if (data?.role === 'sales_rep') return '/dashboard/sales-rep';
   } catch { }
   return '/dashboard';
 }

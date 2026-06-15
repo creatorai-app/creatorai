@@ -89,48 +89,6 @@ export class AdminController {
     return this.adminService.deleteUser(userId);
   }
 
-  // ==================== SALES REPS ====================
-
-  @Get('sales-reps')
-  @ApiOperation({ summary: 'List sales reps' })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'limit', required: false })
-  getSalesReps(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return this.adminService.getSalesReps(Number(page) || 1, Number(limit) || 20);
-  }
-
-  @Post('sales-reps')
-  @ApiOperation({ summary: 'Create sales rep user' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['email', 'name', 'password'],
-      properties: {
-        email: { type: 'string', format: 'email' },
-        name: { type: 'string' },
-        password: { type: 'string' },
-      },
-    },
-  })
-  createSalesRep(
-    @Body() body: { email: string; name: string; password: string },
-    @Req() req: AuthRequest,
-  ) {
-    this.adminService.logActivity(this.getUserId(req), 'create_sales_rep', 'sales_rep', undefined, { email: body.email });
-    return this.adminService.createSalesRep(body.email, body.name, body.password);
-  }
-
-  @Delete('sales-reps/:userId')
-  @ApiOperation({ summary: 'Remove sales rep role' })
-  @ApiParam({ name: 'userId' })
-  removeSalesRep(@Param('userId') userId: string, @Req() req: AuthRequest) {
-    this.adminService.logActivity(this.getUserId(req), 'remove_sales_rep', 'sales_rep', userId);
-    return this.adminService.removeSalesRepRole(userId);
-  }
-
   // ==================== BLOGS ====================
 
   @Get('blogs')

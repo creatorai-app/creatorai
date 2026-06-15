@@ -22,7 +22,6 @@ import { SupportModule } from './support/support.module';
 import { IdeationModule } from './ideation/ideation.module';
 import { BillingModule } from './billing/billing.module';
 import { AdminModule } from './admin/admin.module';
-import { SalesRepModule } from './sales-rep/sales-rep.module';
 import { AffiliateModule } from './affiliate/affiliate.module';
 
 @Module({
@@ -64,7 +63,6 @@ import { AffiliateModule } from './affiliate/affiliate.module';
     IdeationModule,
     BillingModule,
     AdminModule,
-    SalesRepModule,
     AffiliateModule,
   ],
   controllers: [AppController, HealthController],

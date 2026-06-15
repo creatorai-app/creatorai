@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'sales_rep';
+export type UserRole = 'user' | 'admin';
 
 export interface UserProfile {
   avatar_url: string
@@ -14,7 +14,6 @@ export interface UserProfile {
 
 export interface AdminDashboardStats {
   totalUsers: number
-  totalSalesReps: number
   newUsers30d: number
   activeSubscriptions: number
   publishedBlogs: number
@@ -23,15 +22,6 @@ export interface AdminDashboardStats {
   unreadMails: number
   pendingApplications: number
   pendingAffiliateRequests: number
-}
-
-export interface SalesRepDashboardStats {
-  totalLinks: number
-  confirmedSales: number
-  totalInvited: number
-  totalCommission: number
-  pendingCommission: number
-  paidCommission: number
 }
 
 export interface BlogPost {
@@ -105,18 +95,6 @@ export interface AffiliateSale {
   amount: number
   commission: number
   status: 'pending' | 'confirmed' | 'paid' | 'refunded'
-  created_at: string
-  updated_at: string
-  affiliate_links?: { code: string; label: string }
-}
-
-export interface InvitedUser {
-  id: string
-  invited_by: string
-  email: string
-  status: 'pending' | 'registered' | 'subscribed' | 'expired'
-  affiliate_link_id?: string
-  registered_user_id?: string
   created_at: string
   updated_at: string
   affiliate_links?: { code: string; label: string }
