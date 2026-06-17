@@ -5,6 +5,8 @@ import { api } from "@/lib/api-client"
 import {
   useAdminAffiliateRequests,
   useAdminLsAffiliates,
+  useAdminPromoCodes,
+  useAdminWithdrawals,
   adminApi,
 } from "@/hooks/useAdmin"
 import {
@@ -29,6 +31,8 @@ import {
   Mail,
   Calendar,
   StickyNote,
+  Ticket,
+  Banknote,
 } from "lucide-react"
 import { AdminButton } from "@/components/admin/admin-button"
 import { Input } from "@repo/ui/input"
@@ -49,7 +53,7 @@ import {
   SelectValue,
 } from "@repo/ui/select"
 import { toast } from "sonner"
-import type { AffiliateLink, AffiliateRequest, AffiliateSale, PaginatedResponse } from "@repo/validation"
+import type { AffiliateLink, AffiliateRequest, AffiliateSale, AffiliatePromoCode, AffiliateWithdrawal, PaginatedResponse } from "@repo/validation"
 
 function LinksTab() {
   const [page, setPage] = useState(1)
@@ -57,8 +61,9 @@ function LinksTab() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [reps, setReps] = useState<Array<{ user_id: string; full_name: string; email: string }>>([])
-  const [form, setForm] = useState({ sales_rep_id: "", code: "", label: "", commission_rate: "10", ls_affiliate_id: "" })
+  const [users, setUsers] = useState<Array<{ user_id: string; full_name: string; email: string }>>([])
+  const [userSearch, setUserSearch] = useState("")
+  const [form, setForm] = useState({ sales_rep_id: "", code: "", label: "", commission_rate: "20", ls_affiliate_id: "" })
   const [editLink, setEditLink] = useState<(AffiliateLink & { profiles?: { full_name: string; email: string } }) | null>(null)
   const [editForm, setEditForm] = useState({ label: "", commission_rate: "", is_active: true, ls_affiliate_id: "" })
   const [saving, setSaving] = useState(false)
@@ -80,17 +85,25 @@ function LinksTab() {
 
   useEffect(() => { fetchLinks() }, [fetchLinks])
 
-  const loadReps = async () => {
+  const loadUsers = useCallback(async (search: string) => {
     try {
+      const params = new URLSearchParams({ limit: "50" })
+      if (search.trim()) params.set("search", search.trim())
       const res = await api.get<PaginatedResponse<{ user_id: string; full_name: string; email: string }>>(
-        '/api/v1/admin/sales-reps?limit=100',
+        `/api/v1/admin/users?${params}`,
         { requireAuth: true }
       )
-      setReps(res.data || [])
+      setUsers(res.data || [])
     } catch {
-      console.error("Failed to load reps")
+      console.error("Failed to load users")
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!showCreate) return
+    const t = setTimeout(() => loadUsers(userSearch), 300)
+    return () => clearTimeout(t)
+  }, [userSearch, showCreate, loadUsers])
 
   const generateCode = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -99,19 +112,19 @@ function LinksTab() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.sales_rep_id) { toast.error("Select a sales rep"); return }
+    if (!form.sales_rep_id) { toast.error("Select a user"); return }
     try {
       setCreating(true)
       await adminApi.createAffiliateLinkForRep({
-        sales_rep_id: form.sales_rep_id,
+        owner_id: form.sales_rep_id,
         code: form.code || generateCode(),
         label: form.label || undefined,
-        commission_rate: Number(form.commission_rate) || 10,
+        commission_rate: Number(form.commission_rate) || 20,
         ls_affiliate_id: form.ls_affiliate_id || undefined,
       })
-      toast.success("Affiliate link created and assigned to sales rep")
+      toast.success("Affiliate link created and assigned")
       setShowCreate(false)
-      setForm({ sales_rep_id: "", code: "", label: "", commission_rate: "10", ls_affiliate_id: "" })
+      setForm({ sales_rep_id: "", code: "", label: "", commission_rate: "20", ls_affiliate_id: "" })
       fetchLinks()
     } catch {
       toast.error("Failed to create link")
@@ -164,13 +177,13 @@ function LinksTab() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-400">{data?.total ?? 0} total links</p>
         <AdminButton
-          onClick={() => { setForm({ sales_rep_id: "", code: generateCode(), label: "", commission_rate: "10", ls_affiliate_id: "" }); loadReps(); setShowCreate(true) }}
+          onClick={() => { setForm({ sales_rep_id: "", code: generateCode(), label: "", commission_rate: "20", ls_affiliate_id: "" }); setUserSearch(""); setShowCreate(true) }}
           variant="primary"
           tone="success"
           size="sm"
         >
           <Plus className="h-4 w-4" />
-          Create Link for Rep
+          Create Link
         </AdminButton>
       </div>
 
@@ -181,7 +194,7 @@ function LinksTab() {
               <tr className="bg-slate-900/50 text-slate-400 text-left">
                 <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Label</th>
-                <th className="px-4 py-3 font-medium">Sales Rep</th>
+                <th className="px-4 py-3 font-medium">Owner</th>
                 <th className="px-4 py-3 font-medium">Commission %</th>
                 <th className="px-4 py-3 font-medium">Clicks</th>
                 <th className="px-4 py-3 font-medium">LS ID</th>
@@ -259,19 +272,25 @@ function LinksTab() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <DialogHeader>
-            <DialogTitle>Create Affiliate Link for Sales Rep</DialogTitle>
+            <DialogTitle>Create Affiliate Link</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 py-4">
             <div>
-              <label className="text-sm text-slate-400 mb-1 block">Sales Rep *</label>
+              <label className="text-sm text-slate-400 mb-1 block">Assign to user *</label>
+              <Input
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Search users by name or email"
+                className="bg-slate-800 border-slate-700 text-slate-200 mb-2"
+              />
               <Select value={form.sales_rep_id} onValueChange={(v: string) => setForm({ ...form, sales_rep_id: v })}>
                 <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200">
-                  <SelectValue placeholder="Select a sales rep" />
+                  <SelectValue placeholder="Select a user" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-700">
-                  {reps.map((rep) => (
-                    <SelectItem key={rep.user_id} value={rep.user_id}>
-                      {rep.full_name || rep.email}
+                  {users.map((u) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.full_name || u.email}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -813,6 +832,381 @@ function LsAffiliatesTab() {
   )
 }
 
+function PromoCodesTab() {
+  const [page, setPage] = useState(1)
+  const { data, total, loading, refresh } = useAdminPromoCodes(page)
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [users, setUsers] = useState<Array<{ user_id: string; full_name: string; email: string }>>([])
+  const [userSearch, setUserSearch] = useState("")
+  const [form, setForm] = useState({ owner_id: "", code: "", amount: "20", amount_type: "percent", commission_rate: "20", label: "" })
+  const [edit, setEdit] = useState<AffiliatePromoCode | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const loadUsers = useCallback(async (search: string) => {
+    try {
+      const params = new URLSearchParams({ limit: "50" })
+      if (search.trim()) params.set("search", search.trim())
+      const res = await api.get<PaginatedResponse<{ user_id: string; full_name: string; email: string }>>(
+        `/api/v1/admin/users?${params}`, { requireAuth: true })
+      setUsers(res.data || [])
+    } catch { console.error("Failed to load users") }
+  }, [])
+
+  useEffect(() => {
+    if (!showCreate) return
+    const t = setTimeout(() => loadUsers(userSearch), 300)
+    return () => clearTimeout(t)
+  }, [userSearch, showCreate, loadUsers])
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.owner_id) { toast.error("Select a user"); return }
+    if (!form.code || form.code.length < 3) { toast.error("Code must be at least 3 characters"); return }
+    try {
+      setCreating(true)
+      await adminApi.createPromoCode({
+        owner_id: form.owner_id,
+        code: form.code.toUpperCase(),
+        amount: Number(form.amount),
+        amount_type: form.amount_type as "percent" | "fixed",
+        commission_rate: Number(form.commission_rate) || 20,
+        label: form.label || undefined,
+      })
+      toast.success("Promo code created in Lemon Squeezy and assigned")
+      setShowCreate(false)
+      setForm({ owner_id: "", code: "", amount: "20", amount_type: "percent", commission_rate: "20", label: "" })
+      refresh()
+    } catch {
+      toast.error("Failed to create promo code")
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!edit) return
+    try {
+      setSaving(true)
+      await adminApi.updatePromoCode(edit.id, {
+        commission_rate: edit.commission_rate,
+        label: edit.label || undefined,
+        is_active: edit.is_active,
+      })
+      toast.success("Promo code updated")
+      setEdit(null)
+      refresh()
+    } catch {
+      toast.error("Failed to update promo code")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const totalPages = Math.ceil((total || 0) / 20)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-400">{total ?? 0} promo codes</p>
+        <AdminButton onClick={() => { setUserSearch(""); setShowCreate(true) }} variant="primary" tone="success" size="sm">
+          <Plus className="h-4 w-4" /> Create Promo Code
+        </AdminButton>
+      </div>
+
+      <div className="rounded-xl border border-slate-800 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-900/50 text-slate-400 text-left">
+                <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium">Owner</th>
+                <th className="px-4 py-3 font-medium">Discount</th>
+                <th className="px-4 py-3 font-medium">Commission %</th>
+                <th className="px-4 py-3 font-medium">Active</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-5 bg-slate-800 rounded animate-pulse" /></td></tr>
+                ))
+              ) : !data?.length ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    <Ticket className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    No promo codes yet
+                  </td>
+                </tr>
+              ) : (
+                data.map((promo) => (
+                  <tr key={promo.id} className="hover:bg-slate-900/30">
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-pink-400 bg-pink-900/20 px-2 py-0.5 rounded">{promo.code}</span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400">{promo.profiles?.full_name || promo.profiles?.email || "—"}</td>
+                    <td className="px-4 py-3 text-slate-300">
+                      {promo.amount_type === "percent" ? `${promo.amount}%` : `$${promo.amount}`}
+                    </td>
+                    <td className="px-4 py-3 text-slate-300">{promo.commission_rate}%</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${promo.is_active ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"}`}>
+                        {promo.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => setEdit(promo)} className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200" title="Edit">
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">{total} promo codes</p>
+          <div className="flex gap-2">
+            <AdminButton variant="secondary" size="icon" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></AdminButton>
+            <span className="flex items-center text-sm text-slate-400 px-2">{page} / {totalPages}</span>
+            <AdminButton variant="secondary" size="icon" disabled={page >= totalPages} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></AdminButton>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Create Promo Code</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4 py-4">
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Assign to user *</label>
+              <Input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Search users by name or email" className="bg-slate-800 border-slate-700 text-slate-200 mb-2" />
+              <Select value={form.owner_id} onValueChange={(v: string) => setForm({ ...form, owner_id: v })}>
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200"><SelectValue placeholder="Select a user" /></SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {users.map((u) => (<SelectItem key={u.user_id} value={u.user_id}>{u.full_name || u.email}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Code *</label>
+              <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="e.g. CREATOR20" className="bg-slate-800 border-slate-700 text-slate-200 font-mono" required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">Discount amount</label>
+                <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="bg-slate-800 border-slate-700 text-slate-200" min="1" />
+              </div>
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">Type</label>
+                <Select value={form.amount_type} onValueChange={(v: string) => setForm({ ...form, amount_type: v })}>
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="percent">Percent (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Commission rate (%)</label>
+              <Input type="number" value={form.commission_rate} onChange={(e) => setForm({ ...form, commission_rate: e.target.value })} className="bg-slate-800 border-slate-700 text-slate-200" min="0" max="100" />
+            </div>
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Label (optional)</label>
+              <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Internal name" className="bg-slate-800 border-slate-700 text-slate-200" />
+            </div>
+            <DialogFooter>
+              <AdminButton type="button" variant="tertiary" onClick={() => setShowCreate(false)}>Cancel</AdminButton>
+              <AdminButton type="submit" variant="primary" tone="success" disabled={creating}>{creating ? "Creating..." : "Create"}</AdminButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!edit} onOpenChange={() => setEdit(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Edit Promo Code — <span className="font-mono text-pink-400">{edit?.code}</span></DialogTitle>
+          </DialogHeader>
+          {edit && (
+            <form onSubmit={handleSaveEdit} className="space-y-4 py-4">
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">Commission rate (%)</label>
+                <Input type="number" value={edit.commission_rate} onChange={(e) => setEdit({ ...edit, commission_rate: Number(e.target.value) })} className="bg-slate-800 border-slate-700 text-slate-200" min="0" max="100" />
+              </div>
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">Label</label>
+                <Input value={edit.label || ""} onChange={(e) => setEdit({ ...edit, label: e.target.value })} className="bg-slate-800 border-slate-700 text-slate-200" />
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setEdit({ ...edit, is_active: !edit.is_active })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${edit.is_active ? "bg-green-600" : "bg-slate-700"}`}>
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${edit.is_active ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+                <span className="text-sm text-slate-300">{edit.is_active ? "Active" : "Inactive"}</span>
+              </div>
+              <DialogFooter>
+                <AdminButton type="button" variant="tertiary" onClick={() => setEdit(null)}>Cancel</AdminButton>
+                <AdminButton type="submit" variant="primary" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</AdminButton>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+const WITHDRAWAL_STATUS_META: Record<AffiliateWithdrawal["status"], string> = {
+  requested: "bg-yellow-900/40 text-yellow-400 border border-yellow-800/50",
+  approved: "bg-blue-900/40 text-blue-400 border border-blue-800/50",
+  paid: "bg-green-900/40 text-green-400 border border-green-800/50",
+  rejected: "bg-red-900/40 text-red-400 border border-red-800/50",
+}
+
+function WithdrawalsTab() {
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined)
+  const [page, setPage] = useState(1)
+  const { data, total, loading, refresh } = useAdminWithdrawals(page, statusFilter)
+  const [selected, setSelected] = useState<AffiliateWithdrawal | null>(null)
+  const [notes, setNotes] = useState("")
+  const [submitting, setSubmitting] = useState<string | null>(null)
+
+  const act = async (status: "approved" | "paid" | "rejected") => {
+    if (!selected || submitting) return
+    try {
+      setSubmitting(status)
+      await adminApi.updateWithdrawal(selected.id, status, notes || undefined)
+      toast.success(`Withdrawal ${status}`)
+      setSelected(null)
+      setNotes("")
+      refresh()
+    } catch {
+      toast.error("Failed to update withdrawal")
+    } finally {
+      setSubmitting(null)
+    }
+  }
+
+  const totalPages = Math.ceil((total || 0) / 20)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Select value={statusFilter || "all"} onValueChange={(v: string) => { setStatusFilter(v === "all" ? undefined : v); setPage(1) }}>
+          <SelectTrigger className="w-36 bg-slate-800 border-slate-700 text-slate-300 text-xs h-8"><SelectValue placeholder="Filter status" /></SelectTrigger>
+          <SelectContent className="bg-slate-800 border-slate-700">
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="requested">Requested</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-slate-500">{total ?? 0} withdrawals</p>
+      </div>
+
+      <div className="rounded-xl border border-slate-800 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-900/50 text-slate-400 text-left">
+                <th className="px-4 py-3 font-medium">Affiliate</th>
+                <th className="px-4 py-3 font-medium">Amount</th>
+                <th className="px-4 py-3 font-medium">Method</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Requested</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-5 bg-slate-800 rounded animate-pulse" /></td></tr>
+                ))
+              ) : !data?.length ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    <Banknote className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    No withdrawal requests
+                  </td>
+                </tr>
+              ) : (
+                data.map((w) => (
+                  <tr key={w.id} className="hover:bg-slate-900/30">
+                    <td className="px-4 py-3 text-slate-400">{w.profiles?.full_name || w.profiles?.email || "—"}</td>
+                    <td className="px-4 py-3 text-slate-100 font-semibold">${Number(w.amount).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-slate-300 capitalize">{w.method}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${WITHDRAWAL_STATUS_META[w.status]}`}>{w.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400">{new Date(w.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3">
+                      <AdminButton variant="secondary" size="sm" onClick={() => { setSelected(w); setNotes(w.admin_notes || "") }}>Review</AdminButton>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">{total} withdrawals</p>
+          <div className="flex gap-2">
+            <AdminButton variant="secondary" size="icon" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></AdminButton>
+            <span className="flex items-center text-sm text-slate-400 px-2">{page} / {totalPages}</span>
+            <AdminButton variant="secondary" size="icon" disabled={page >= totalPages} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></AdminButton>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={!!selected} onOpenChange={() => { setSelected(null); setNotes("") }}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Withdrawal — ${selected ? Number(selected.amount).toFixed(2) : ""}</DialogTitle>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-4 py-4">
+              <DetailRow icon={Users} label="Affiliate" value={selected.profiles?.full_name || selected.profiles?.email} />
+              <DetailRow icon={Banknote} label="Method" value={selected.method} />
+              {Object.entries(selected.details || {}).map(([k, v]) => (
+                <DetailRow key={k} icon={StickyNote} label={k.replace(/_/g, " ")} value={String(v)} mono />
+              ))}
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">Admin notes (optional)</label>
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Payment reference, reason, etc." className="bg-slate-800 border-slate-700 text-slate-200" rows={3} />
+              </div>
+              <DialogFooter className="gap-2">
+                <AdminButton type="button" variant="primary" tone="danger" disabled={!!submitting} onClick={() => act("rejected")}>
+                  {submitting === "rejected" ? "..." : "Reject"}
+                </AdminButton>
+                <AdminButton type="button" variant="secondary" disabled={!!submitting} onClick={() => act("approved")}>
+                  {submitting === "approved" ? "..." : "Approve"}
+                </AdminButton>
+                <AdminButton type="button" variant="primary" tone="success" disabled={!!submitting} onClick={() => act("paid")}>
+                  {submitting === "paid" ? "..." : "Mark Paid"}
+                </AdminButton>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 export default function AdminAffiliatesPage() {
   return (
     <div className="space-y-6">
@@ -831,6 +1225,14 @@ export default function AdminAffiliatesPage() {
             <Users className="h-4 w-4 mr-1.5" />
             Requests
           </TabsTrigger>
+          <TabsTrigger value="promo-codes" className="data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">
+            <Ticket className="h-4 w-4 mr-1.5" />
+            Promo Codes
+          </TabsTrigger>
+          <TabsTrigger value="withdrawals" className="data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">
+            <Banknote className="h-4 w-4 mr-1.5" />
+            Withdrawals
+          </TabsTrigger>
           <TabsTrigger value="sales" className="data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">
             <DollarSign className="h-4 w-4 mr-1.5" />
             Sales
@@ -847,6 +1249,14 @@ export default function AdminAffiliatesPage() {
 
         <TabsContent value="requests" className="mt-4">
           <RequestsTab />
+        </TabsContent>
+
+        <TabsContent value="promo-codes" className="mt-4">
+          <PromoCodesTab />
+        </TabsContent>
+
+        <TabsContent value="withdrawals" className="mt-4">
+          <WithdrawalsTab />
         </TabsContent>
 
         <TabsContent value="sales" className="mt-4">
