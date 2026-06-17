@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@repo/ui/button";
 import { Separator } from "@repo/ui/separator";
 import { Skeleton } from "@repo/ui/skeleton";
@@ -24,6 +24,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@repo/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/ui/dialog";
 import { useBilling } from "@/hooks/useBilling";
 import {
   AlertTriangle,
@@ -51,18 +58,29 @@ export function BillingInfo() {
   } = useBilling();
 
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     const status = searchParams.get("status");
     if (status === "success") {
-      toast.success("Subscription activated!", {
-        description: "Your plan has been upgraded successfully.",
-      });
+      setShowSuccess(true);
+      // Pull the freshly-awarded credits / new plan.
       refresh();
+      // Drop the status param so a manual refresh doesn't replay the modal.
+      window.history.replaceState(null, "", "/dashboard/settings?tab=billing");
+      // Show the confirmation for 3s, then send the user to their dashboard
+      // (staying on the same origin they checked out from).
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+        router.push("/dashboard");
+      }, 3000);
+      return () => clearTimeout(timer);
     } else if (status === "cancelled") {
       toast.info("Checkout cancelled");
+      window.history.replaceState(null, "", "/dashboard/settings?tab=billing");
     }
-  }, [searchParams, refresh]);
+  }, [searchParams, refresh, router]);
 
   const currentPlanName = billingInfo?.currentPlan?.name ?? "Starter";
   const hasActiveSubscription = !!billingInfo?.subscription;
@@ -71,6 +89,22 @@ export function BillingInfo() {
 
   return (
     <div className="space-y-6">
+      {/* Order confirmation modal (shown after a successful checkout redirect) */}
+      <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="items-center text-center">
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
+              <Check className="h-7 w-7 text-green-600 dark:text-green-400" />
+            </div>
+            <DialogTitle className="text-center">Payment successful 🎉</DialogTitle>
+            <DialogDescription className="text-center">
+              Your <strong>{currentPlanName}</strong> plan is now active and your
+              credits have been added. Taking you to your dashboard…
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
       {/* Current Plan Card */}
       <Card className="border border-slate-200 dark:border-slate-800 shadow-sm">
         <CardHeader>

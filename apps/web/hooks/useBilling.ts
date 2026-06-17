@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
+import { useSupabase } from "@/components/supabase-provider";
 
 interface Plan {
   id: string;
@@ -28,6 +29,7 @@ interface BillingInfo {
 }
 
 export function useBilling() {
+  const { user, fetchUserProfile } = useSupabase();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billingInfo, setBillingInfo] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +84,12 @@ export function useBilling() {
       }
       const { url } = await api.post<{ url: string }>(
         "/api/v1/billing/checkout",
-        { planId, affiliateCode },
+        {
+          planId,
+          affiliateCode,
+          origin:
+            typeof window !== "undefined" ? window.location.origin : undefined,
+        },
         { requireAuth: true },
       );
       if (url) window.location.href = url;
@@ -102,6 +109,8 @@ export function useBilling() {
         description: "You have been switched to the free plan.",
       });
       await loadAll();
+      // Refresh the shared profile so the header credit badge updates immediately.
+      if (user?.id) await fetchUserProfile(user.id);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to cancel subscription";
@@ -109,7 +118,7 @@ export function useBilling() {
     } finally {
       setCancelLoading(false);
     }
-  }, [loadAll]);
+  }, [loadAll, user?.id, fetchUserProfile]);
 
   return {
     plans,

@@ -11,9 +11,13 @@ import {
   createCheckout,
   getSubscription,
   cancelSubscription,
+  listDiscountRedemptions,
   type NewCheckout,
 } from '@lemonsqueezy/lemonsqueezy.js';
 import * as crypto from 'crypto';
+
+const COMMISSION_MATURITY_DAYS = 30;
+const MAX_COMMISSIONED_PAYMENTS = 12;
 
 export interface PlanRecord {
   id: string;
@@ -129,7 +133,12 @@ export class BillingService {
     };
   }
 
-  async createCheckoutSession(userId: string, planId: string, affiliateCode?: string) {
+  async createCheckoutSession(
+    userId: string,
+    planId: string,
+    affiliateCode?: string,
+    origin?: string,
+  ) {
     this.initLemonSqueezy();
     const supabase = this.supabaseService.getClient();
 
@@ -157,10 +166,7 @@ export class BillingService {
     const storeId = this.configService.get<string>('LEMONSQUEEZY_STORE_ID');
     if (!storeId) throw new BadRequestException('Store not configured');
 
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_PROD_URL') ||
-      this.configService.get<string>('FRONTEND_DEV_URL') ||
-      'http://localhost:3000';
+    const frontendUrl = this.resolveFrontendBase(origin);
 
     const checkoutData: NewCheckout = {
       productOptions: {
@@ -261,7 +267,10 @@ export class BillingService {
   private async createFreePlanSubscription(userId: string) {
     const supabase = this.supabaseService.getClient();
     const starter = await this.getStarterPlan();
-    if (!starter) return;
+    if (!starter) {
+      this.logger.error(`Cannot create free plan / reset credits for ${userId}: no free plan`);
+      return;
+    }
 
     await supabase.from('subscriptions').insert({
       user_id: userId,
@@ -273,6 +282,88 @@ export class BillingService {
       current_period_start: new Date().toISOString(),
       current_period_end: null,
     });
+
+    // Downgrade the credit balance to the free plan allowance.
+    const { error } = await supabase
+      .from('profiles')
+      .update({ credits: starter.credits_monthly })
+      .eq('user_id', userId);
+
+    if (error) {
+      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
+    } else {
+      this.logger.log(`Reset credits to ${starter.credits_monthly} (free plan) for ${userId}`);
+    }
+  }
+
+  /**
+   * Reset a user's credit balance to the free (Starter) plan allowance without
+   * creating a new subscription row — used when a free subscription already exists.
+   */
+  private async resetCreditsToFreePlan(
+    userId: string,
+    supabase: ReturnType<typeof this.supabaseService.getClient>,
+  ) {
+    const starter = await this.getStarterPlan();
+    if (!starter) {
+      this.logger.error(`Cannot reset credits for ${userId}: no free plan`);
+      return;
+    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ credits: starter.credits_monthly })
+      .eq('user_id', userId);
+
+    if (error) {
+      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
+    } else {
+      this.logger.log(`Reset credits to ${starter.credits_monthly} (free plan) for ${userId}`);
+    }
+  }
+
+  /**
+   * Downgrade the owner of a Lemon Squeezy subscription to the free plan and
+   * reset their credits. Safe to call from any "subscription ended" webhook
+   * (cancelled / expired / updated→cancelled) — it is idempotent and will NOT
+   * downgrade a user who still has another active paid subscription.
+   */
+  private async downgradeToFreePlan(
+    lsSubId: string,
+    supabase: ReturnType<typeof this.supabaseService.getClient>,
+  ) {
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('user_id')
+      .eq('ls_subscription_id', lsSubId)
+      .maybeSingle();
+    if (!sub?.user_id) return;
+
+    // Don't downgrade if the user still has another active paid subscription
+    // (e.g. they cancelled one plan but upgraded to another).
+    const { data: activePaid } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', sub.user_id)
+      .not('ls_subscription_id', 'is', null)
+      .in('status', ['active', 'on_trial', 'past_due'])
+      .maybeSingle();
+    if (activePaid) return;
+
+    const { data: existingFreeSub } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', sub.user_id)
+      .is('ls_subscription_id', null)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (existingFreeSub) {
+      await this.resetCreditsToFreePlan(sub.user_id, supabase);
+    } else {
+      await this.createFreePlanSubscription(sub.user_id);
+    }
+
+    this.logger.log(`Downgraded user ${sub.user_id} to free plan (sub ${lsSubId})`);
   }
 
   // --- Webhook handlers ---
@@ -288,6 +379,21 @@ export class BillingService {
     }
 
     const supabase = this.supabaseService.getClient();
+    const lsSubId = String(event.data.id);
+
+    // Idempotency: Lemon Squeezy retries failed deliveries (and the event may be
+    // registered to more than one endpoint), so the same subscription_created can
+    // arrive multiple times. Skip if we've already recorded this subscription to
+    // avoid duplicate rows and double-awarding credits.
+    const { data: existingSub } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('ls_subscription_id', lsSubId)
+      .maybeSingle();
+    if (existingSub) {
+      this.logger.log(`subscription_created already processed for ${lsSubId}`);
+      return;
+    }
 
     await supabase
       .from('subscriptions')
@@ -295,20 +401,27 @@ export class BillingService {
       .eq('user_id', userId)
       .in('status', ['active', 'on_trial', 'past_due']);
 
-    await supabase.from('subscriptions').insert({
-      user_id: userId,
-      plan_id: planId,
-      ls_subscription_id: String(event.data.id),
-      ls_customer_id: String(attrs.customer_id ?? ''),
-      ls_order_id: String(attrs.order_id ?? ''),
-      status: this.mapLsStatus(String(attrs.status ?? 'active')),
-      current_period_start: attrs.created_at
-        ? new Date(attrs.created_at as string).toISOString()
-        : null,
-      current_period_end: attrs.renews_at
-        ? new Date(attrs.renews_at as string).toISOString()
-        : null,
-    });
+    const { data: insertedSub } = await supabase
+      .from('subscriptions')
+      .insert({
+        user_id: userId,
+        plan_id: planId,
+        ls_subscription_id: lsSubId,
+        ls_customer_id: String(attrs.customer_id ?? ''),
+        ls_order_id: String(attrs.order_id ?? ''),
+        status: this.mapLsStatus(String(attrs.status ?? 'active')),
+        current_period_start: attrs.created_at
+          ? new Date(attrs.created_at as string).toISOString()
+          : null,
+        current_period_end: attrs.renews_at
+          ? new Date(attrs.renews_at as string).toISOString()
+          : null,
+      })
+      .select('id')
+      .single();
+
+    const subscriptionId = insertedSub?.id ?? null;
+    const customerEmail = (attrs.user_email as string | undefined) ?? null;
 
     const { data: plan } = await supabase
       .from('plans')
@@ -325,7 +438,23 @@ export class BillingService {
 
     const affiliateCode = event.meta.custom_data?.affiliate_code;
     if (affiliateCode) {
-      await this.trackAffiliateConversion(affiliateCode, userId, planId, supabase);
+      await this.trackAffiliateConversion(
+        affiliateCode,
+        userId,
+        planId,
+        supabase,
+        customerEmail,
+        subscriptionId,
+      );
+    } else if (attrs.order_id != null) {
+      await this.trackPromoConversion(
+        String(attrs.order_id),
+        userId,
+        planId,
+        supabase,
+        customerEmail,
+        subscriptionId,
+      );
     }
 
     this.logger.log(`Subscription created for user ${userId}`);
@@ -335,16 +464,24 @@ export class BillingService {
     const attrs = event.data.attributes;
     const supabase = this.supabaseService.getClient();
     const lsSubId = String(event.data.id);
+    const mappedStatus = this.mapLsStatus(String(attrs.status ?? ''));
 
     await supabase
       .from('subscriptions')
       .update({
-        status: this.mapLsStatus(String(attrs.status ?? '')),
+        status: mappedStatus,
         current_period_end: attrs.renews_at
           ? new Date(attrs.renews_at as string).toISOString()
           : null,
       })
       .eq('ls_subscription_id', lsSubId);
+
+    // Lemon Squeezy fires subscription_updated (not always a dedicated
+    // subscription_cancelled) when a subscription is cancelled or lapses, so this
+    // is the reliable place to downgrade credits to the free plan.
+    if (mappedStatus === 'canceled' || mappedStatus === 'expired') {
+      await this.downgradeToFreePlan(lsSubId, supabase);
+    }
   }
 
   async handleSubscriptionCancelled(event: LsWebhookEvent) {
@@ -355,37 +492,20 @@ export class BillingService {
       .from('subscriptions')
       .update({ status: 'canceled' })
       .eq('ls_subscription_id', lsSubId);
+
+    await this.downgradeToFreePlan(lsSubId, supabase);
   }
 
   async handleSubscriptionExpired(event: LsWebhookEvent) {
     const supabase = this.supabaseService.getClient();
     const lsSubId = String(event.data.id);
 
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('user_id')
-      .eq('ls_subscription_id', lsSubId)
-      .single();
-
     await supabase
       .from('subscriptions')
       .update({ status: 'expired' })
       .eq('ls_subscription_id', lsSubId);
 
-    if (sub?.user_id) {
-      // Skip if user already has a free plan subscription (e.g. from manual downgrade)
-      const { data: existingFreeSub } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', sub.user_id)
-        .is('ls_subscription_id', null)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (!existingFreeSub) {
-        await this.createFreePlanSubscription(sub.user_id);
-      }
-    }
+    await this.downgradeToFreePlan(lsSubId, supabase);
   }
 
   async handleSubscriptionPaymentSuccess(event: LsWebhookEvent) {
@@ -397,7 +517,7 @@ export class BillingService {
 
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('user_id, plan_id')
+      .select('id, user_id, plan_id')
       .eq('ls_subscription_id', lsSubId)
       .single();
 
@@ -416,7 +536,20 @@ export class BillingService {
         .eq('user_id', sub.user_id);
     }
 
-    await this.trackRenewalCommission(sub.user_id, sub.plan_id, supabase);
+    // The first ("initial") invoice fires alongside subscription_created, which
+    // already records the affiliate conversion. Only genuine renewals add a new
+    // recurring commission — otherwise the initial purchase is commissioned twice.
+    const billingReason = String(attrs.billing_reason ?? '');
+    if (billingReason === 'renewal') {
+      const customerEmail = (attrs.user_email as string | undefined) ?? null;
+      await this.trackRenewalCommission(
+        sub.user_id,
+        sub.plan_id,
+        supabase,
+        customerEmail,
+        sub.id,
+      );
+    }
   }
 
   // --- Usage history ---
@@ -498,14 +631,51 @@ export class BillingService {
 
   // --- Helpers ---
 
+  /**
+   * Resolve which frontend origin the post-checkout redirect should return to.
+   * Prefers the caller's own origin (so a checkout started on localhost returns
+   * to localhost and keeps the user's session/cookies) — but only when it is an
+   * allowed origin. Falls back to the configured env URLs otherwise.
+   */
+  private resolveFrontendBase(origin?: string): string {
+    const devUrl = this.configService.get<string>('FRONTEND_DEV_URL');
+    const prodUrl = this.configService.get<string>('FRONTEND_PROD_URL');
+    const allowed = [devUrl, prodUrl].filter(Boolean) as string[];
+
+    if (origin && allowed.includes(origin)) return origin;
+
+    return prodUrl || devUrl || 'http://localhost:3000';
+  }
+
   private async getStarterPlan(): Promise<PlanRecord | null> {
     const supabase = this.supabaseService.getClient();
-    const { data } = await supabase
+
+    // Prefer the explicit free plan (price 0) so a renamed "Starter" can't break
+    // downgrades; fall back to a case-insensitive name match.
+    const { data: freePlan } = await supabase
       .from('plans')
       .select('*')
-      .eq('name', 'Starter')
-      .single();
-    return data;
+      .eq('price_monthly', 0)
+      .order('credits_monthly', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (freePlan) return freePlan;
+
+    const { data: named } = await supabase
+      .from('plans')
+      .select('*')
+      .ilike('name', 'starter')
+      .limit(1)
+      .maybeSingle();
+
+    if (!named) {
+      this.logger.error('No free/Starter plan found in plans table');
+    }
+    return named ?? null;
+  }
+
+  private maturityDate(): string {
+    return new Date(Date.now() + COMMISSION_MATURITY_DAYS * 86400000).toISOString();
   }
 
   private async trackAffiliateConversion(
@@ -513,6 +683,8 @@ export class BillingService {
     customerId: string,
     planId: string,
     supabase: ReturnType<typeof this.supabaseService.getClient>,
+    customerEmail?: string | null,
+    subscriptionId?: string | null,
   ) {
     const { data: link } = await supabase
       .from('affiliate_links')
@@ -544,36 +716,51 @@ export class BillingService {
       affiliate_link_id: link.id,
       sales_rep_id: link.sales_rep_id,
       customer_id: customerId,
+      customer_email: customerEmail ?? null,
+      subscription_id: subscriptionId ?? null,
       amount,
       commission,
       status: 'pending',
+      source: 'link',
+      mature_at: this.maturityDate(),
     });
 
     this.logger.log(`Affiliate conversion tracked for code ${code}`);
   }
 
-  private async trackRenewalCommission(
-    userId: string,
+  private async trackPromoConversion(
+    orderId: string,
+    customerId: string,
     planId: string,
     supabase: ReturnType<typeof this.supabaseService.getClient>,
+    customerEmail?: string | null,
+    subscriptionId?: string | null,
   ) {
-    const { data: original } = await supabase
-      .from('affiliate_sales')
-      .select('affiliate_link_id, sales_rep_id')
-      .eq('customer_id', userId)
-      .order('created_at', { ascending: true })
-      .limit(1)
+    this.initLemonSqueezy();
+
+    const { data: redemptions, error } = await listDiscountRedemptions({ filter: { orderId } });
+    if (error || !redemptions?.data?.length) return;
+
+    const discountCode = (
+      redemptions.data[0]?.attributes as { discount_code?: string } | undefined
+    )?.discount_code;
+    if (!discountCode) return;
+
+    const { data: promo } = await supabase
+      .from('affiliate_promo_codes')
+      .select('id, owner_id, commission_rate')
+      .eq('code', discountCode)
+      .eq('is_active', true)
       .maybeSingle();
+    if (!promo) return;
 
-    if (!original) return;
-
-    const { data: link } = await supabase
-      .from('affiliate_links')
-      .select('commission_rate, is_active')
-      .eq('id', original.affiliate_link_id)
-      .single();
-
-    if (!link?.is_active) return;
+    const { data: existing } = await supabase
+      .from('affiliate_sales')
+      .select('id')
+      .eq('promo_code_id', promo.id)
+      .eq('customer_id', customerId)
+      .maybeSingle();
+    if (existing) return;
 
     const { data: plan } = await supabase
       .from('plans')
@@ -582,18 +769,122 @@ export class BillingService {
       .single();
 
     const amount = plan?.price_monthly ?? 0;
-    const commission = Number(((amount * link.commission_rate) / 100).toFixed(2));
+    const commission = Number(((amount * promo.commission_rate) / 100).toFixed(2));
+
+    await supabase.from('affiliate_sales').insert({
+      affiliate_link_id: null,
+      sales_rep_id: promo.owner_id,
+      customer_id: customerId,
+      customer_email: customerEmail ?? null,
+      subscription_id: subscriptionId ?? null,
+      amount,
+      commission,
+      status: 'pending',
+      source: 'promo',
+      promo_code_id: promo.id,
+      mature_at: this.maturityDate(),
+    });
+
+    this.logger.log(`Promo conversion tracked for code ${discountCode}`);
+  }
+
+  private async trackRenewalCommission(
+    userId: string,
+    planId: string,
+    supabase: ReturnType<typeof this.supabaseService.getClient>,
+    customerEmail?: string | null,
+    subscriptionId?: string | null,
+  ) {
+    const { data: original } = await supabase
+      .from('affiliate_sales')
+      .select('affiliate_link_id, sales_rep_id, source, promo_code_id')
+      .eq('customer_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!original) return;
+
+    // Recurring commission applies only to the first MAX_COMMISSIONED_PAYMENTS payments.
+    const { count: priorCount } = await supabase
+      .from('affiliate_sales')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', userId)
+      .eq('sales_rep_id', original.sales_rep_id);
+    if ((priorCount ?? 0) >= MAX_COMMISSIONED_PAYMENTS) return;
+
+    let commissionRate: number | null = null;
+    if (original.source === 'promo' && original.promo_code_id) {
+      const { data: promo } = await supabase
+        .from('affiliate_promo_codes')
+        .select('commission_rate, is_active')
+        .eq('id', original.promo_code_id)
+        .single();
+      if (promo?.is_active) commissionRate = promo.commission_rate;
+    } else if (original.affiliate_link_id) {
+      const { data: link } = await supabase
+        .from('affiliate_links')
+        .select('commission_rate, is_active')
+        .eq('id', original.affiliate_link_id)
+        .single();
+      if (link?.is_active) commissionRate = link.commission_rate;
+    }
+
+    if (commissionRate == null) return;
+
+    const { data: plan } = await supabase
+      .from('plans')
+      .select('price_monthly')
+      .eq('id', planId)
+      .single();
+
+    const amount = plan?.price_monthly ?? 0;
+    const commission = Number(((amount * commissionRate) / 100).toFixed(2));
 
     await supabase.from('affiliate_sales').insert({
       affiliate_link_id: original.affiliate_link_id,
       sales_rep_id: original.sales_rep_id,
       customer_id: userId,
+      customer_email: customerEmail ?? null,
+      subscription_id: subscriptionId ?? null,
       amount,
       commission,
       status: 'pending',
+      source: original.source ?? 'link',
+      promo_code_id: original.promo_code_id ?? null,
+      mature_at: this.maturityDate(),
     });
 
     this.logger.log(`Renewal commission tracked for user ${userId}`);
+  }
+
+  async handleOrderRefunded(event: LsWebhookEvent) {
+    const attrs = event.data.attributes;
+    const customerId = attrs.customer_id != null ? String(attrs.customer_id) : null;
+    const orderId = String(event.data.id);
+    const supabase = this.supabaseService.getClient();
+
+    // Resolve the affected subscriber: prefer the subscription tied to this order.
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('user_id')
+      .eq('ls_order_id', orderId)
+      .maybeSingle();
+
+    const userId = sub?.user_id;
+    if (!userId && !customerId) return;
+
+    let query = supabase
+      .from('affiliate_sales')
+      .update({ status: 'refunded' })
+      .in('status', ['pending', 'confirmed']);
+
+    query = userId
+      ? query.eq('customer_id', userId)
+      : query.eq('customer_id', customerId as string);
+
+    await query;
+    this.logger.log(`Affiliate commissions clawed back for order ${orderId}`);
   }
 
   private mapLsStatus(status: string): string {
