@@ -1,17 +1,16 @@
 "use client";
 
 import { Suspense, useState, useMemo, useCallback, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { BarChart3, Bell, CreditCard, UserCircle, Handshake } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { BarChart3, Bell, CreditCard, UserCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 import { ProfileSettingsForm } from "@/components/dashboard/settings/ProfileSettingsForm";
 import { NotificationSettingsForm } from "@/components/dashboard/settings/NotificationSettingsForm";
 import { BillingInfo } from "@/components/dashboard/settings/BillingInfo";
 import { UsageInfo } from "@/components/dashboard/settings/UsageInfo";
-import { AffiliateStatus } from "@/components/dashboard/settings/AffiliateStatus";
 
-type NavItemId = "profile" | "notifications" | "billing" | "usage" | "affiliate";
+type NavItemId = "profile" | "notifications" | "billing" | "usage";
 
 interface NavItem {
   id: NavItemId;
@@ -30,8 +29,17 @@ export default function Settings() {
 
 function SettingsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // The affiliate hub moved to its own page; redirect old ?tab=affiliate links.
+  useEffect(() => {
+    if (searchParams.get("tab") === "affiliate") {
+      router.replace("/dashboard/affiliate");
+    }
+  }, [searchParams, router]);
+
   const initialTab = (searchParams.get("tab") as NavItemId) || "profile";
-  const validTabs: NavItemId[] = ["profile", "notifications", "billing", "usage", "affiliate"];
+  const validTabs: NavItemId[] = ["profile", "notifications", "billing", "usage"];
   const [activeTab, setActiveTab] = useState<NavItemId>(
     validTabs.includes(initialTab) ? initialTab : "profile",
   );
@@ -61,12 +69,6 @@ function SettingsContent() {
         icon: CreditCard,
         label: "Billing",
         description: "View subscription and payment details"
-      },
-      {
-        id: "affiliate",
-        icon: Handshake,
-        label: "Affiliate",
-        description: "Manage your affiliate status"
       }
     ],
     []
@@ -229,18 +231,6 @@ function SettingsContent() {
                     transition={{ duration: 0.25, ease: "easeOut" }}
                   >
                     <UsageInfo />
-                  </motion.div>
-                )}
-
-                {activeTab === "affiliate" && (
-                  <motion.div
-                    key="affiliate"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
-                  >
-                    <AffiliateStatus />
                   </motion.div>
                 )}
               </AnimatePresence>

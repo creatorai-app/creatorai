@@ -7,8 +7,22 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
-import { lemonSqueezySetup } from '@lemonsqueezy/lemonsqueezy.js';
+import {
+  lemonSqueezySetup,
+  createDiscount,
+  listDiscounts,
+} from '@lemonsqueezy/lemonsqueezy.js';
 import { Resend } from 'resend';
+import {
+  MIN_WITHDRAWAL_AMOUNT,
+  type AffiliateHubStats,
+  type AffiliateEarningPoint,
+  type CreatePromoCodeInput,
+  type UpdatePromoCodeInput,
+  type PayoutMethodInput,
+  type UpdateWithdrawalInput,
+  type CreateAffiliateLinkInput,
+} from '@repo/validation';
 
 interface LsAffiliateAttributes {
   store_id: number;
@@ -275,29 +289,33 @@ export class AffiliateService {
   // ==================== ADMIN: Create affiliate link for a rep ====================
 
   async createAffiliateLinkForRep(adminId: string, body: {
-    sales_rep_id: string;
+    owner_id?: string;
+    sales_rep_id?: string;
     code: string;
     label?: string;
     target_url?: string;
     commission_rate?: number;
     ls_affiliate_id?: string;
   }) {
-    const { data: rep } = await this.db
+    const ownerId = body.owner_id ?? body.sales_rep_id;
+    if (!ownerId) throw new BadRequestException('owner_id is required');
+
+    const { data: owner } = await this.db
       .from('profiles')
-      .select('user_id, role')
-      .eq('user_id', body.sales_rep_id)
+      .select('user_id')
+      .eq('user_id', ownerId)
       .single();
 
-    if (!rep) throw new NotFoundException('Sales rep not found');
+    if (!owner) throw new NotFoundException('User not found');
 
     const { data, error } = await this.db
       .from('affiliate_links')
       .insert({
-        sales_rep_id: body.sales_rep_id,
+        sales_rep_id: ownerId,
         code: body.code,
         label: body.label,
         target_url: body.target_url || '/',
-        commission_rate: body.commission_rate ?? 10,
+        commission_rate: body.commission_rate ?? 20,
         ls_affiliate_id: body.ls_affiliate_id || null,
       })
       .select()
@@ -349,5 +367,363 @@ export class AffiliateService {
   getLsAffiliateSignupUrl(): string {
     const storeId = this.configService.get<string>('LEMONSQUEEZY_STORE_ID');
     return `https://app.lemonsqueezy.com/affiliates/store/${storeId || ''}`;
+  }
+
+  // ==================== USER HUB ====================
+
+  async getHubStats(userId: string): Promise<AffiliateHubStats> {
+    const [salesRes, linksRes, withdrawalsRes] = await Promise.all([
+      this.db.from('affiliate_sales').select('commission, status, mature_at, created_at').eq('sales_rep_id', userId),
+      this.db.from('affiliate_links').select('click_count').eq('sales_rep_id', userId),
+      this.db.from('affiliate_withdrawals').select('amount, status').eq('affiliate_id', userId),
+    ]);
+
+    const sales = salesRes.data ?? [];
+    const now = Date.now();
+
+    let pendingEarnings = 0;
+    let maturedEarnings = 0;
+    let totalConversions = 0;
+    const buckets: Record<string, number> = {};
+
+    for (const s of sales) {
+      if (s.status === 'refunded') continue;
+      const commission = Number(s.commission ?? 0);
+      totalConversions += 1;
+      const matured =
+        s.status === 'confirmed' ||
+        s.status === 'paid' ||
+        (s.status === 'pending' && s.mature_at != null && new Date(s.mature_at).getTime() <= now);
+      if (matured) maturedEarnings += commission;
+      else pendingEarnings += commission;
+
+      const d = new Date(s.created_at);
+      const weekStart = new Date(d);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const key = weekStart.toISOString().split('T')[0]!;
+      buckets[key] = (buckets[key] ?? 0) + commission;
+    }
+
+    let totalWithdrawn = 0;
+    let reserved = 0;
+    for (const w of withdrawalsRes.data ?? []) {
+      const amt = Number(w.amount ?? 0);
+      if (w.status === 'paid') totalWithdrawn += amt;
+      else if (w.status === 'requested' || w.status === 'approved') reserved += amt;
+    }
+
+    const earnings: AffiliateEarningPoint[] = Object.entries(buckets)
+      .map(([date, commission]) => ({ date, commission: this.round2(commission) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      availableBalance: Math.max(0, this.round2(maturedEarnings - totalWithdrawn - reserved)),
+      pendingEarnings: this.round2(pendingEarnings),
+      lifetimeEarnings: this.round2(maturedEarnings + pendingEarnings),
+      totalWithdrawn: this.round2(totalWithdrawn),
+      reservedBalance: this.round2(reserved),
+      totalClicks: (linksRes.data ?? []).reduce((sum, l) => sum + (l.click_count ?? 0), 0),
+      totalConversions,
+      totalLinks: (linksRes.data ?? []).length,
+      minWithdrawal: MIN_WITHDRAWAL_AMOUNT,
+      earnings,
+    };
+  }
+
+  async getUserLinks(userId: string) {
+    const { data, error } = await this.db
+      .from('affiliate_links')
+      .select('*')
+      .eq('sales_rep_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return data ?? [];
+  }
+
+  async createUserLink(userId: string, input: CreateAffiliateLinkInput) {
+    const code = await this.generateUniqueLinkCode();
+    const { data, error } = await this.db
+      .from('affiliate_links')
+      .insert({
+        sales_rep_id: userId,
+        code,
+        label: input.label,
+        target_url: input.target_url || '/',
+        commission_rate: 20,
+      })
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return data;
+  }
+
+  private static readonly USER_LINK_FIELDS = new Set(['label', 'target_url', 'is_active']);
+
+  async updateUserLink(userId: string, id: string, updates: Record<string, unknown>) {
+    const filtered: Record<string, unknown> = {};
+    for (const key of Object.keys(updates)) {
+      if (AffiliateService.USER_LINK_FIELDS.has(key)) filtered[key] = updates[key];
+    }
+    if (Object.keys(filtered).length === 0) throw new BadRequestException('No valid fields to update');
+
+    const { data, error } = await this.db
+      .from('affiliate_links')
+      .update(filtered)
+      .eq('id', id)
+      .eq('sales_rep_id', userId)
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new NotFoundException('Link not found');
+    return data;
+  }
+
+  async deleteUserLink(userId: string, id: string) {
+    const { error } = await this.db
+      .from('affiliate_links')
+      .delete()
+      .eq('id', id)
+      .eq('sales_rep_id', userId);
+    if (error) throw new BadRequestException(error.message);
+    return { success: true };
+  }
+
+  async getUserPromoCodes(userId: string) {
+    const { data, error } = await this.db
+      .from('affiliate_promo_codes')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return data ?? [];
+  }
+
+  async getUserSales(userId: string, page = 1, limit = 20) {
+    const { data, error, count } = await this.db
+      .from('affiliate_sales')
+      .select('*, affiliate_links(code, label)', { count: 'exact' })
+      .eq('sales_rep_id', userId)
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    if (error) throw new BadRequestException(error.message);
+    return { data: data ?? [], total: count ?? 0, page, limit };
+  }
+
+  async getPayoutMethod(userId: string) {
+    const { data, error } = await this.db
+      .from('affiliate_payout_methods')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    return data;
+  }
+
+  async upsertPayoutMethod(userId: string, input: PayoutMethodInput) {
+    const { data, error } = await this.db
+      .from('affiliate_payout_methods')
+      .upsert({ user_id: userId, method: input.method, details: input.details }, { onConflict: 'user_id' })
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return data;
+  }
+
+  async getUserWithdrawals(userId: string, page = 1, limit = 20) {
+    const { data, error, count } = await this.db
+      .from('affiliate_withdrawals')
+      .select('*', { count: 'exact' })
+      .eq('affiliate_id', userId)
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    if (error) throw new BadRequestException(error.message);
+    return { data: data ?? [], total: count ?? 0, page, limit };
+  }
+
+  async requestWithdrawal(userId: string, amount: number) {
+    if (amount < MIN_WITHDRAWAL_AMOUNT) {
+      throw new BadRequestException(`Minimum withdrawal is $${MIN_WITHDRAWAL_AMOUNT}`);
+    }
+
+    const payoutMethod = await this.getPayoutMethod(userId);
+    if (!payoutMethod) {
+      throw new BadRequestException('Add a payout method before requesting a withdrawal');
+    }
+
+    const stats = await this.getHubStats(userId);
+    if (amount > stats.availableBalance) {
+      throw new BadRequestException('Amount exceeds your available balance');
+    }
+
+    const { data, error } = await this.db
+      .from('affiliate_withdrawals')
+      .insert({
+        affiliate_id: userId,
+        amount,
+        method: payoutMethod.method,
+        details: payoutMethod.details,
+        status: 'requested',
+      })
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return data;
+  }
+
+  // ==================== ADMIN: Promo codes ====================
+
+  async getPromoCodes(page = 1, limit = 20) {
+    const { data, error, count } = await this.db
+      .from('affiliate_promo_codes')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    if (error) throw new BadRequestException(error.message);
+
+    const ownerIds = [...new Set((data ?? []).map((p) => p.owner_id))];
+    const { data: profiles } = ownerIds.length
+      ? await this.db.from('profiles').select('user_id, full_name, email').in('user_id', ownerIds)
+      : { data: [] };
+    const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+
+    const enriched = (data ?? []).map((p) => ({ ...p, profiles: profileMap.get(p.owner_id) ?? null }));
+    return { data: enriched, total: count ?? 0, page, limit };
+  }
+
+  async createPromoCode(input: CreatePromoCodeInput) {
+    this.initLemonSqueezy();
+    const storeId = this.configService.get<string>('LEMONSQUEEZY_STORE_ID');
+    if (!storeId) throw new BadRequestException('Store not configured');
+
+    const { data: owner } = await this.db
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', input.owner_id)
+      .single();
+    if (!owner) throw new NotFoundException('User not found');
+
+    const lsAmount = input.amount_type === 'fixed' ? Math.round(input.amount * 100) : input.amount;
+
+    const { data: discount, error: lsError } = await createDiscount({
+      storeId,
+      name: input.label || input.code,
+      code: input.code,
+      amount: lsAmount,
+      amountType: input.amount_type,
+    });
+
+    if (lsError || !discount) {
+      this.logger.error(`LS createDiscount failed: ${JSON.stringify(lsError)}`);
+      throw new BadRequestException('Failed to create discount in Lemon Squeezy');
+    }
+
+    const { data, error } = await this.db
+      .from('affiliate_promo_codes')
+      .insert({
+        owner_id: input.owner_id,
+        code: input.code,
+        ls_discount_id: String(discount.data.id),
+        amount: input.amount,
+        amount_type: input.amount_type,
+        commission_rate: input.commission_rate,
+        label: input.label,
+      })
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    return data;
+  }
+
+  async updatePromoCode(id: string, updates: UpdatePromoCodeInput) {
+    const { data, error } = await this.db
+      .from('affiliate_promo_codes')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new NotFoundException('Promo code not found');
+    return data;
+  }
+
+  async getLsDiscounts() {
+    this.initLemonSqueezy();
+    const storeId = this.configService.get<string>('LEMONSQUEEZY_STORE_ID');
+    const { data, error } = await listDiscounts(
+      storeId ? { filter: { storeId } } : {},
+    );
+    if (error) throw new BadRequestException('Failed to fetch Lemon Squeezy discounts');
+    return (data?.data ?? []).map((d) => ({
+      id: d.id,
+      name: d.attributes.name,
+      code: d.attributes.code,
+      amount: d.attributes.amount,
+      amount_type: d.attributes.amount_type,
+      status: d.attributes.status,
+      created_at: d.attributes.created_at,
+    }));
+  }
+
+  // ==================== ADMIN: Withdrawals ====================
+
+  async getWithdrawals(page = 1, limit = 20, status?: string) {
+    let query = this.db
+      .from('affiliate_withdrawals')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    if (status) query = query.eq('status', status);
+
+    const { data, error, count } = await query;
+    if (error) throw new BadRequestException(error.message);
+
+    const affiliateIds = [...new Set((data ?? []).map((w) => w.affiliate_id))];
+    const { data: profiles } = affiliateIds.length
+      ? await this.db.from('profiles').select('user_id, full_name, email').in('user_id', affiliateIds)
+      : { data: [] };
+    const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+
+    const enriched = (data ?? []).map((w) => ({ ...w, profiles: profileMap.get(w.affiliate_id) ?? null }));
+    return { data: enriched, total: count ?? 0, page, limit };
+  }
+
+  async updateWithdrawal(id: string, processedBy: string, input: UpdateWithdrawalInput) {
+    const updates: Record<string, unknown> = { status: input.status };
+    if (input.admin_notes !== undefined) updates.admin_notes = input.admin_notes;
+    if (input.status === 'paid') {
+      updates.processed_by = processedBy;
+      updates.processed_at = new Date().toISOString();
+    }
+
+    const { data, error } = await this.db
+      .from('affiliate_withdrawals')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new NotFoundException('Withdrawal not found');
+    return data;
+  }
+
+  // ==================== Helpers ====================
+
+  private round2(n: number): number {
+    return Number(n.toFixed(2));
+  }
+
+  private async generateUniqueLinkCode(): Promise<string> {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      let code = '';
+      for (let i = 0; i < 8; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+      const { data } = await this.db
+        .from('affiliate_links')
+        .select('id')
+        .eq('code', code)
+        .maybeSingle();
+      if (!data) return code;
+    }
+    throw new InternalServerErrorException('Failed to generate unique code');
   }
 }

@@ -67,16 +67,26 @@ export class BillingController {
       properties: {
         planId: { type: 'string' },
         affiliateCode: { type: 'string' },
+        origin: {
+          type: 'string',
+          description:
+            'Frontend origin the checkout was started from (e.g. http://localhost:3000). Used to return the user to the same origin after payment.',
+        },
       },
     },
   })
   createCheckoutSession(
     @Req() req: AuthRequest,
-    @Body() body: { planId: string; affiliateCode?: string },
+    @Body() body: { planId: string; affiliateCode?: string; origin?: string },
   ) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
-    return this.billingService.createCheckoutSession(userId, body.planId, body.affiliateCode);
+    return this.billingService.createCheckoutSession(
+      userId,
+      body.planId,
+      body.affiliateCode,
+      body.origin,
+    );
   }
 
   @Post('portal')

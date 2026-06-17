@@ -95,9 +95,74 @@ export interface AffiliateSale {
   amount: number
   commission: number
   status: 'pending' | 'confirmed' | 'paid' | 'refunded'
+  source: 'link' | 'promo'
+  promo_code_id?: string
+  mature_at?: string
   created_at: string
   updated_at: string
   affiliate_links?: { code: string; label: string }
+}
+
+export type AffiliateAmountType = 'percent' | 'fixed'
+
+export interface AffiliatePromoCode {
+  id: string
+  owner_id: string
+  code: string
+  ls_discount_id?: string
+  amount: number
+  amount_type: AffiliateAmountType
+  commission_rate: number
+  label?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  profiles?: { full_name: string; email: string } | null
+}
+
+export type PayoutMethodType = 'paypal' | 'wise' | 'bank'
+
+export interface AffiliatePayoutMethod {
+  user_id: string
+  method: PayoutMethodType
+  details: Record<string, string>
+  created_at: string
+  updated_at: string
+}
+
+export type WithdrawalStatus = 'requested' | 'approved' | 'paid' | 'rejected'
+
+export interface AffiliateWithdrawal {
+  id: string
+  affiliate_id: string
+  amount: number
+  method: PayoutMethodType
+  details: Record<string, string>
+  status: WithdrawalStatus
+  admin_notes?: string
+  processed_by?: string
+  processed_at?: string
+  created_at: string
+  updated_at: string
+  profiles?: { full_name: string; email: string } | null
+}
+
+export interface AffiliateEarningPoint {
+  date: string
+  commission: number
+}
+
+export interface AffiliateHubStats {
+  availableBalance: number
+  pendingEarnings: number
+  lifetimeEarnings: number
+  totalWithdrawn: number
+  reservedBalance: number
+  totalClicks: number
+  totalConversions: number
+  totalLinks: number
+  minWithdrawal: number
+  earnings: AffiliateEarningPoint[]
 }
 
 export interface MailMessage {

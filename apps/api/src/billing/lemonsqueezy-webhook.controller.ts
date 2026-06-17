@@ -82,6 +82,10 @@ export class LemonSqueezyWebhookController {
         case 'subscription_payment_success':
           await this.billingService.handleSubscriptionPaymentSuccess(event);
           break;
+        case 'order_refunded':
+        case 'subscription_payment_refunded':
+          await this.billingService.handleOrderRefunded(event);
+          break;
         default:
           this.logger.log(`Unhandled event: ${eventName}`);
       }

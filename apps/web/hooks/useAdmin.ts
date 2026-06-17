@@ -8,6 +8,8 @@ import type {
   JobPost,
   JobApplication,
   AffiliateRequest,
+  AffiliatePromoCode,
+  AffiliateWithdrawal,
   LsAffiliate,
   PaginatedResponse,
 } from '@repo/validation';
@@ -189,6 +191,48 @@ export function useAdminAffiliateRequests(page = 1, status?: string) {
   return { ...data, loading, refresh: fetchRequests };
 }
 
+export function useAdminPromoCodes(page = 1) {
+  const [data, setData] = useState<PaginatedResponse<AffiliatePromoCode> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPromoCodes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get<PaginatedResponse<AffiliatePromoCode>>(`/api/v1/affiliate/admin/promo-codes?page=${page}`, AUTH);
+      setData(res);
+    } catch (err) {
+      console.error('Failed to fetch promo codes:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => { fetchPromoCodes(); }, [fetchPromoCodes]);
+  return { ...data, loading, refresh: fetchPromoCodes };
+}
+
+export function useAdminWithdrawals(page = 1, status?: string) {
+  const [data, setData] = useState<PaginatedResponse<AffiliateWithdrawal> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchWithdrawals = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (status) params.set('status', status);
+      const res = await api.get<PaginatedResponse<AffiliateWithdrawal>>(`/api/v1/affiliate/admin/withdrawals?${params}`, AUTH);
+      setData(res);
+    } catch (err) {
+      console.error('Failed to fetch withdrawals:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, status]);
+
+  useEffect(() => { fetchWithdrawals(); }, [fetchWithdrawals]);
+  return { ...data, loading, refresh: fetchWithdrawals };
+}
+
 export function useAdminLsAffiliates() {
   const [affiliates, setAffiliates] = useState<LsAffiliate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,7 +289,8 @@ export const adminApi = {
   reviewAffiliateRequest: (id: string, status: 'approved' | 'denied' | 'pending', admin_notes?: string) =>
     api.put(`/api/v1/affiliate/requests/${id}`, { status, admin_notes }, AUTH),
   createAffiliateLinkForRep: (data: {
-    sales_rep_id: string;
+    owner_id?: string;
+    sales_rep_id?: string;
     code: string;
     label?: string;
     target_url?: string;
@@ -254,4 +299,16 @@ export const adminApi = {
   }) => api.post('/api/v1/affiliate/admin/create-link', data, AUTH),
   getLsSignupUrl: () =>
     api.get<string>('/api/v1/affiliate/admin/ls-signup-url', AUTH),
+  createPromoCode: (data: {
+    owner_id: string;
+    code: string;
+    amount: number;
+    amount_type: 'percent' | 'fixed';
+    commission_rate?: number;
+    label?: string;
+  }) => api.post('/api/v1/affiliate/admin/promo-codes', data, AUTH),
+  updatePromoCode: (id: string, updates: { commission_rate?: number; label?: string; is_active?: boolean }) =>
+    api.put(`/api/v1/affiliate/admin/promo-codes/${id}`, updates, AUTH),
+  updateWithdrawal: (id: string, status: 'approved' | 'paid' | 'rejected', admin_notes?: string) =>
+    api.put(`/api/v1/affiliate/admin/withdrawals/${id}`, { status, admin_notes }, AUTH),
 };
