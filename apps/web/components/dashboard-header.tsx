@@ -124,10 +124,10 @@ export default function DashboardHeader() {
                     Referrals
                   </Button>
                 </Link>
-                <Link href="/dashboard/settings?tab=affiliate">
+                <Link href="/dashboard/affiliate">
                   <Button variant="ghost" className="w-full justify-start gap-2 px-2">
                     <Handshake className="h-4 w-4" />
-                    Become an Affiliate
+                    Affiliate Hub
                   </Button>
                 </Link>
               </div>
