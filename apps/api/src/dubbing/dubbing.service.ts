@@ -273,7 +273,7 @@ export class DubbingService {
   private async callModalDub(modalUrl: string, text: string, referenceAudio: Buffer): Promise<Buffer> {
     const formData = new FormData();
     formData.append('text', text);
-    formData.append('reference', new Blob([referenceAudio]), 'reference.wav');
+    formData.append('reference', new Blob([new Uint8Array(referenceAudio)]), 'reference.wav');
 
     const response = await fetch(`${modalUrl}/dub`, {
       method: 'POST',
