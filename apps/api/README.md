@@ -120,7 +120,7 @@ All queues stream progress to the client via SSE.
 | Service | Purpose |
 |---------|---------|
 | Supabase | Database, auth, storage |
-| Google Gemini AI | Script generation, ideation, training, transcription |
+| Google Gemini (Vertex AI) | Script generation, ideation, training, transcription |
 | Murf.ai | Audio/video dubbing |
 | Stripe | Subscriptions, checkout, billing portal |
 | BullMQ + Redis | Job queue for async AI operations |

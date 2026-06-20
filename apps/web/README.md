@@ -45,7 +45,7 @@ Next.js 15 frontend for Creator AI. App Router, React 19, TypeScript, Tailwind C
 | Service | Purpose |
 |---------|---------|
 | Supabase | Auth, database, storage |
-| Google Gemini AI | Scripts, ideation, training transcription |
+| Google Gemini (Vertex AI) | Scripts, ideation, training transcription |
 | OpenAI GPT-4o | Subtitles, thumbnails |
 | YouTube Data API | Channel connection, video metadata |
 | Resend | Transactional emails |

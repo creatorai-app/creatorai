@@ -34,7 +34,7 @@
 | Backend | NestJS, TypeScript, Zod validation |
 | Database | Supabase (PostgreSQL), Row-Level Security |
 | Auth | Supabase Auth (JWT), Google OAuth |
-| AI | Google Gemini 2.5 Flash, OpenAI GPT-4o |
+| AI | Google Gemini 3.5 Flash on Vertex AI, OpenAI GPT-4o |
 | Payments | Stripe (Checkout, Billing Portal, Webhooks) |
 | Dubbing | Murf.ai |
 | Jobs | BullMQ + Redis (train-ai, script, ideation, story-builder queues) |
@@ -141,7 +141,7 @@ Edit each `.env` file with your credentials. See the `.env.example` files for re
 | Service | Key | Required | Purpose |
 |---------|-----|----------|---------|
 | Supabase | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` | Yes | Database, auth, storage |
-| Google AI | `GOOGLE_GENERATIVE_AI_API_KEY` | Yes | Script generation, ideation, training |
+| Google Vertex AI (Gemini) | `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, ADC (`GOOGLE_APPLICATION_CREDENTIALS`) | Yes | Script generation, ideation, training, transcription, thumbnails |
 | Redis | `REDIS_URL` | Yes | BullMQ job queues (api + worker) |
 | OpenAI | `OPENAI_API_KEY` | Optional | Subtitle generation |
 | Resend | `RESEND_API_KEY` | Optional | Transactional emails |
