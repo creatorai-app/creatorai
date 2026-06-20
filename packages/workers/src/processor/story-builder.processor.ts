@@ -16,6 +16,7 @@ import {
   TOKENS_PER_CREDIT,
 } from '@repo/validation';
 import { GoogleGenAI } from '@google/genai';
+import { getGenAI, GEMINI_TEXT_MODEL } from './utils/genai';
 
 interface StoryBuilderJobData {
   userId: string;
@@ -265,7 +266,7 @@ export class StoryBuilderProcessor extends WorkerHost {
     super();
     const { url, key } = getSupabaseServiceEnv();
     this.supabase = createSupabaseClient(url, key);
-    this.genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
+    this.genAI = getGenAI();
   }
 
   async process(job: Job<StoryBuilderJobData>): Promise<{ result: any }> {
@@ -326,7 +327,7 @@ export class StoryBuilderProcessor extends WorkerHost {
         : 'Generating story blueprint with AI...');
 
       const response: any = await this.genAI.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: GEMINI_TEXT_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',

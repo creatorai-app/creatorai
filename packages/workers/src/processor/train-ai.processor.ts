@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { createSupabaseClient, getSupabaseServiceEnv, SupabaseClient } from '@repo/supabase';
 import { Thumbnail, Transcript, VideoData } from "@repo/validation";
 import { GoogleGenAI } from '@google/genai';
+import { getGenAI, GEMINI_TEXT_MODEL } from './utils/genai';
 import {
   validateInputs,
   validateEnvironment,
@@ -48,7 +49,7 @@ export class TrainAiProcessor extends WorkerHost {
     const { url, key } = getSupabaseServiceEnv();
     this.supabase = createSupabaseClient(url, key);
 
-    this.genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
+    this.genAI = getGenAI();
   }
 
   private async throwIfCancelled(jobId: string): Promise<void> {
@@ -193,7 +194,7 @@ export class TrainAiProcessor extends WorkerHost {
         required: ["videoId", "transcriptText", "segments"],
       };
 
-      const model = 'gemini-2.5-flash';
+      const model = GEMINI_TEXT_MODEL;
 
       const result: any = await this.genAI.models.generateContent({
         model,
