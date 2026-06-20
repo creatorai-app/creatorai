@@ -39,13 +39,13 @@ const values = [
   },
   {
     title: "Small Team, Big Impact",
-    description: "Every person here shapes the product. No bureaucracy, no red tape — just talented people building great things.",
+    description: "Every person here shapes the product. No bureaucracy, no red tape, just talented people building great things.",
     icon: Users,
   },
 ]
 
 const perks = [
-  "Fully remote — work from anywhere",
+  "Fully remote, work from anywhere",
   "Flexible working hours",
   "Competitive salary + equity",
   "Health & wellness budget",
@@ -254,7 +254,7 @@ export default function CareersPage() {
               )}
               {!loading && openings.length === 0 && (
                 <div className="text-center py-12 text-slate-500">
-                  No openings right now — but we're always meeting great people.
+                  No openings right now, but we're always meeting great people.
                 </div>
               )}
             </div>

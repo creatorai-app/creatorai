@@ -1,4 +1,4 @@
-# Creator AI — Web App
+# Creator AI Web App
 
 Next.js 15 frontend for Creator AI. App Router, React 19, TypeScript, Tailwind CSS, shadcn/ui.
 

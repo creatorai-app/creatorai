@@ -23,7 +23,7 @@ import "lenis/dist/lenis.css"
 const benefits = [
   {
     title: "Truly Personalized Output",
-    description: "Unlike generic AI, Creator AI trains on your past videos — every output reflects your unique voice, tone, and style.",
+    description: "Unlike generic AI, Creator AI trains on your past videos. Every output reflects your unique voice, tone, and style.",
     icon: Sparkles,
     gradient: "from-purple-500 to-indigo-500",
   },
@@ -35,19 +35,19 @@ const benefits = [
   },
   {
     title: "Boost Creative Confidence",
-    description: "Eliminates blank-page syndrome with brainstorming, generation, and enhancement — all personalized to your channel.",
+    description: "Eliminates blank-page syndrome with brainstorming, generation, and enhancement, all personalized to your channel.",
     icon: Lightbulb,
     gradient: "from-cyan-500 to-blue-500",
   },
   {
     title: "Your AI Creative Team",
-    description: "Functions as a copywriter, researcher, scriptwriter, thumbnail assistant, and title generator — trained on you.",
+    description: "Functions as a copywriter, researcher, scriptwriter, thumbnail assistant, and title generator, trained on you.",
     icon: Users,
     gradient: "from-emerald-500 to-green-500",
   },
   {
     title: "Authentic Engagement",
-    description: "Because every script sounds like you, your audience stays connected — no generic feel, just real content.",
+    description: "Because every script sounds like you, your audience stays connected, with no generic feel, just real content.",
     icon: TrendingUp,
     gradient: "from-amber-500 to-orange-500",
   },
@@ -136,7 +136,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Entity Profile — factual summary for search & AI crawlers */}
+        {/* Entity Profile, factual summary for search & AI crawlers */}
         <section className="py-16 bg-white border-b border-slate-100">
           <div className="container max-w-3xl mx-auto px-6">
             <motion.div
@@ -162,7 +162,7 @@ export default function AboutPage() {
                 </p>
                 <p>
                   Unlike general-purpose chatbots such as ChatGPT, Creator AI is built exclusively
-                  for the YouTube creator pipeline — from topic research and story planning through
+                  for the YouTube creator pipeline, from topic research and story planning through
                   voice-matched script generation, CTR-optimized thumbnails, SRT/VTT subtitle export,
                   and AI dubbing in 24+ languages.
                 </p>
@@ -170,7 +170,7 @@ export default function AboutPage() {
               <dl className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Product</dt>
-                  <dd className="text-slate-600">Creator AI — AI assistant for YouTube creators</dd>
+                  <dd className="text-slate-600">Creator AI, AI assistant for YouTube creators</dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Website</dt>
@@ -182,7 +182,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Target users</dt>
-                  <dd className="text-slate-600">YouTube UGC creators — solo and small teams</dd>
+                  <dd className="text-slate-600">YouTube UGC creators, solo and small teams</dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Key features</dt>
@@ -190,13 +190,13 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Differentiator</dt>
-                  <dd className="text-slate-600">Learns your voice from videos — not prompt-based tone guessing</dd>
+                  <dd className="text-slate-600">Learns your voice from videos, not prompt-based tone guessing</dd>
                 </div>
               </dl>
               <blockquote className="mt-8 border-l-4 border-purple-400 pl-6 italic text-slate-700">
                 &ldquo;Every creator has a voice their audience trusts. Generic AI flattens that voice.
                 Creator AI exists so creators can publish faster without sounding like everyone
-                else.&rdquo; — Creator AI Team
+                else.&rdquo;, Creator AI Team
               </blockquote>
             </motion.div>
           </div>
@@ -216,7 +216,7 @@ export default function AboutPage() {
                 Personalization Is Our Core
               </h2>
               <p className="text-lg text-slate-600 leading-relaxed">
-                Every creator has a unique voice. Generic AI tools ignore that — Creator AI trains a custom AI
+                Every creator has a unique voice. Generic AI tools ignore that, Creator AI trains a custom AI
                 on your past videos, learning your tone, vocabulary, pacing, and style. Every output is built from{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 font-bold">
                   your
@@ -228,11 +228,11 @@ export default function AboutPage() {
 
           <InfiniteMovingCards
             items={[
-              { quote: "Generic AI gives everyone the same script. Creator AI gives you YOUR script — in your voice, your style, your words.", name: "Personalized Scripts", title: "Trained on your past videos" },
+              { quote: "Generic AI gives everyone the same script. Creator AI gives you YOUR script, in your voice, your style, your words.", name: "Personalized Scripts", title: "Trained on your past videos" },
               { quote: "Upload 3–5 videos and the AI learns your tone, pacing, and vocabulary. Every output sounds authentically you.", name: "AI That Learns You", title: "Custom model per creator" },
               { quote: "Thumbnails that match your visual identity, not a one-size-fits-all template from a generic tool.", name: "Your Thumbnail Style", title: "Consistent brand identity" },
-              { quote: "Subtitles and dubbed audio in multiple languages — all preserving your natural voice through generative cloning.", name: "Your Voice, Any Language", title: "Global reach, personal touch" },
-              { quote: "From topic research to final script — every step is personalized to your channel's niche, audience, and history.", name: "End-to-End Personalization", title: "Not just output — the entire workflow" },
+              { quote: "Subtitles and dubbed audio in multiple languages, all preserving your natural voice through generative cloning.", name: "Your Voice, Any Language", title: "Global reach, personal touch" },
+              { quote: "From topic research to final script, every step is personalized to your channel's niche, audience, and history.", name: "End-to-End Personalization", title: "Not just output, the entire workflow" },
             ]}
             direction="left"
             speed="slow"
@@ -242,10 +242,10 @@ export default function AboutPage() {
           <div className="mt-6">
             <InfiniteMovingCards
               items={[
-                { quote: "Other tools treat every creator the same. Creator AI evolves with your channel — the more you use it, the better it gets.", name: "Adaptive Intelligence", title: "AI that grows with you" },
+                { quote: "Other tools treat every creator the same. Creator AI evolves with your channel, the more you use it, the better it gets.", name: "Adaptive Intelligence", title: "AI that grows with you" },
                 { quote: "Course modules structured to your teaching style. Playlists organized the way your audience expects.", name: "Educator-Friendly", title: "Personalized course creation" },
-                { quote: "2–5 hours of scripting reduced to minutes — without losing the authentic voice your audience subscribed for.", name: "Hours Saved, Voice Kept", title: "Speed without compromise" },
-                { quote: "Your referral credits, your workflow, your creative fingerprint — everything in Creator AI revolves around you.", name: "Built Around You", title: "Every feature, personalized" },
+                { quote: "2–5 hours of scripting reduced to minutes, without losing the authentic voice your audience subscribed for.", name: "Hours Saved, Voice Kept", title: "Speed without compromise" },
+                { quote: "Your referral credits, your workflow, your creative fingerprint, everything in Creator AI revolves around you.", name: "Built Around You", title: "Every feature, personalized" },
               ]}
               direction="right"
               speed="slow"
@@ -309,7 +309,7 @@ export default function AboutPage() {
                 Built For Creators Like You
               </h2>
               <p className="text-lg text-slate-600">
-                YouTube UGC content creators — solo or part of small to mid-sized teams.
+                YouTube UGC content creators, solo or part of small to mid-sized teams.
               </p>
             </motion.div>
 
@@ -346,7 +346,7 @@ export default function AboutPage() {
                 Every Feature, Personalized
               </h2>
               <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-                Scripts, thumbnails, subtitles, dubbing — each powered by an AI model trained on your content, not generic templates.
+                Scripts, thumbnails, subtitles, dubbing, each powered by an AI model trained on your content, not generic templates.
               </p>
             </motion.div>
 

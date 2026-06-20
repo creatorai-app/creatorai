@@ -15,7 +15,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Gaming · 420K subs",
     img: "https://avatar.vercel.sh/jordan-m",
     quote:
-      "Full script days are gone. I get a YouTube-ready first pass in minutes — hooks and pacing baked in — and it still sounds like me.",
+      "I started a second channel without burning out. Scripting used to eat my whole weekend, now I get a draft that sounds like me in minutes and spend that time actually playing and filming.",
   },
   {
     id: "r2",
@@ -24,7 +24,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Education · 180K subs",
     img: "https://avatar.vercel.sh/priya-s",
     quote:
-      "The thumbnail generator alone paid for itself. More variants each week, no designer burnout, and more people actually click.",
+      "I wanted more clicks without hiring a designer. Now I test a handful of thumbnails before every upload and pick the winner, my CTR went up and I never touch Photoshop.",
   },
   {
     id: "r3",
@@ -33,7 +33,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Tech · 95K subs",
     img: "https://avatar.vercel.sh/alex-r",
     quote:
-      "AI subtitles and SRT export just work. I stopped duct-taping ChatGPT with three other tabs for every upload.",
+      "I wanted my whole workflow in one place instead of five tabs. Script, subtitles, thumbnail, it's all here, so I publish faster and finally stay consistent.",
   },
   {
     id: "r4",
@@ -42,7 +42,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Lifestyle vlog · 310K subs",
     img: "https://avatar.vercel.sh/sam-k",
     quote:
-      "I was skeptical about voice matching, but my scripts sound human now — not that flat AI tone. Fewer rewrites before I record.",
+      "The reason I stayed: it actually sounds like me. I record straight from the draft with barely any edits, so I shoot more and stress less about the blank page.",
   },
   {
     id: "r5",
@@ -51,7 +51,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Finance · 75K subs",
     img: "https://avatar.vercel.sh/taylor-l",
     quote:
-      "Retention-focused structure helped me tighten intros. Average view duration is up since I stopped winging the first 30 seconds.",
+      "I needed people to stop clicking away in the first 30 seconds. The retention-focused structure tightened my intros and my average view duration is up, that's real growth for me.",
   },
   {
     id: "r6",
@@ -60,7 +60,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Fitness · 220K subs",
     img: "https://avatar.vercel.sh/morgan-d",
     quote:
-      "Scripts, thumbnails, and trending topic ideas in one dashboard — I plan a month ahead instead of scrambling on Sunday night.",
+      "I wanted to stop scrambling every Sunday night. Now I plan a month of videos in one sitting, ideas, scripts and thumbnails together, and my uploads are finally predictable.",
   },
   {
     id: "r7",
@@ -69,7 +69,7 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "Music · 140K subs",
     img: "https://avatar.vercel.sh/casey-v",
     quote:
-      "AI dubbing for non-English audiences used to be a whole project. Upload, generate, export — friction is basically gone.",
+      "I always wanted to reach fans who don't speak English. AI dubbing made that a 10-minute step instead of a whole project, my international views are climbing.",
   },
   {
     id: "r8",
@@ -78,6 +78,6 @@ export const LANDING_DUMMY_REVIEWS: readonly LandingDummyReview[] = [
     subscriberLine: "DIY · 60K subs",
     img: "https://avatar.vercel.sh/riley-n",
     quote:
-      "Snappy UI, and drafts don't read like generic chatbot output. It's part of my weekly upload ritual now.",
+      "As a smaller channel I needed pro output without a team. This gives me scripts and thumbnails that don't look AI-generated, it's the upgrade that made my videos look serious.",
   },
 ] as const

@@ -607,7 +607,7 @@ function formatFullBlueprint(result: StoryBuilderResult): string {
 
   text += "## RETENTION BEATS\n"
   result.retentionBeats?.forEach((b, i) => {
-    text += `${i + 1}. [${b.timestamp}] ${b.type.replace(/_/g, ' ')} — ${b.description}\n`
+    text += `${i + 1}. [${b.timestamp}] ${b.type.replace(/_/g, ' ')}, ${b.description}\n`
   })
   text += "\n"
 
@@ -620,7 +620,7 @@ function formatFullBlueprint(result: StoryBuilderResult): string {
   text += "## EMOTIONAL ARC\n"
   text += `Structure: ${result.emotionalArc?.structure}\n`
   result.emotionalArc?.beats?.forEach((b, i) => {
-    text += `${i + 1}. [${b.timestamp}] ${b.phase} (${b.emotion}) — ${b.description}\n`
+    text += `${i + 1}. [${b.timestamp}] ${b.phase} (${b.emotion}), ${b.description}\n`
   })
   text += "\n"
 

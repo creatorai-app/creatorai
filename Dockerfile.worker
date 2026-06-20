@@ -12,8 +12,8 @@ COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile
 
-RUN pnpm exec turbo run build --filter=@repo/train-ai-worker
+RUN pnpm exec turbo run build --filter=@repo/workers
 
 ENV NODE_ENV=production
 
-CMD ["node", "packages/train-ai-worker/dist/src/main.js"]
+CMD ["node", "packages/workers/dist/src/main.js"]

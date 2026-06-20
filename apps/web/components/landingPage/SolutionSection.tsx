@@ -7,26 +7,26 @@ import { Video, Zap, CheckCircle, Target } from "lucide-react";
 export default function SolutionCard() {
     const solutions = [
         {
-            title: "AI That Learns Your Style",
-            description: "Connect your YouTube channel and let our AI study your videos. It picks up your tone, vocabulary, and pacing so everything it creates sounds like you.",
+            title: "Sound Like You, Every Time",
+            description: "Connect your channel and the AI learns your tone, vocabulary, and pacing. You get content that's unmistakably yours, so you can publish without rewriting every line to sound human.",
             icon: <Video className="h-6 w-6 text-slate-600" />,
             background: "bg-white",
         },
         {
-            title: "Scripts in Minutes, Not Hours",
-            description: "Tell the AI what your video is about, pick a tone, and get a full script that matches your voice. What used to take hours now takes minutes.",
+            title: "Get Your Weekends Back",
+            description: "Describe your video, pick a tone, and get a finished script in minutes instead of hours. That's time back for filming, editing, or simply living your life.",
             icon: <Zap className="h-6 w-6 text-slate-600" />,
             background: "bg-slate-50",
         },
         {
-            title: "Stay Consistent, Every Video",
-            description: "No more quality dips. Every script, thumbnail, and idea keeps your brand voice intact so your audience always gets the best version of you.",
+            title: "Never Have a Bad Upload",
+            description: "Every script, thumbnail, and idea stays on-brand, so your audience gets your best work on every video, and consistency is what grows a channel.",
             icon: <CheckCircle className="h-6 w-6 text-slate-600" />,
             background: "bg-white",
         },
         {
-            title: "Everything in One Place",
-            description: "Ideas, scripts, thumbnails, subtitles, story outlines — all your content creation tools in a single dashboard. No more juggling 5 different apps.",
+            title: "One Tool Instead of Five",
+            description: "Ideas, scripts, thumbnails, subtitles, and story outlines live in a single dashboard. Stop paying for and juggling five different apps to ship one video.",
             icon: <Target className="h-6 w-6 text-slate-600" />,
             background: "bg-slate-50",
         },

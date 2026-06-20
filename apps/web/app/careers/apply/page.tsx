@@ -336,7 +336,7 @@ function ApplyPageContent() {
                     onChange={handleChange}
                     required
                     rows={5}
-                    placeholder="Tell us about a challenging problem you encountered — what was the situation, what did you do, and what was the outcome?"
+                    placeholder="Tell us about a challenging problem you encountered, what was the situation, what did you do, and what was the outcome?"
                     className={inputClass}
                   />
                 </div>

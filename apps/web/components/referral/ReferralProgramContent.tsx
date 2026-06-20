@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { motion, type Variants } from "motion/react";
-import { Repeat, CheckCircle2, ArrowRight } from "lucide-react";
-import Lenis from "lenis";
-import "lenis/dist/lenis.css";
+import { Gift, CheckCircle2, ArrowRight } from "lucide-react";
 
-import { FAQ, STEPS, HIGHLIGHTS } from "./affiliate-program-data";
+import { FAQ, STEPS, HIGHLIGHTS } from "./referral-program-data";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -21,19 +18,14 @@ const stagger: Variants = {
 
 const viewport = { once: true, margin: "-80px" } as const;
 
-const EARNINGS_POINTS = [
-  "20% of every payment, automatically attributed to you",
-  "Recurring for up to 12 monthly renewals per customer",
-  "Refund-protected with a 30-day maturity window",
-  "Withdraw from $50 via PayPal, Wise, or bank transfer",
+const REWARD_POINTS = [
+  "1,000 credits for you on every successful referral",
+  "1,000 bonus credits for your friend on their first purchase",
+  "Rewards unlock on a real purchase. No empty sign-up bonuses",
+  "No cap. Invite as many fellow creators as you want",
 ];
 
-export default function AffiliateProgramContent() {
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true });
-    return () => lenis.destroy();
-  }, []);
-
+export default function ReferralProgramContent() {
   return (
     <main className="bg-white dark:bg-slate-950">
       {/* Hero */}
@@ -58,13 +50,13 @@ export default function AffiliateProgramContent() {
             variants={fadeUp}
             className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 px-3 py-1 text-xs font-medium text-purple-700 dark:text-purple-300"
           >
-            <Repeat className="h-3.5 w-3.5" /> 20% recurring commission
+            <Gift className="h-3.5 w-3.5" /> Give 1,000, get 1,000
           </motion.span>
           <motion.h1
             variants={fadeUp}
             className="mx-auto mt-5 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-5xl"
           >
-            Earn recurring income by sharing{" "}
+            Invite creator friends to{" "}
             <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent dark:from-purple-400 dark:to-indigo-400">
               Creator AI
             </span>
@@ -73,9 +65,9 @@ export default function AffiliateProgramContent() {
             variants={fadeUp}
             className="mx-auto mt-5 max-w-2xl text-lg text-slate-600 dark:text-slate-400"
           >
-            Refer creators to Creator AI and earn <strong>20% recurring commission</strong> on
-            every subscription, for up to 12 months per customer. It&apos;s free to join and
-            takes less than a minute to start.
+            When a friend you referred makes their first purchase, you{" "}
+            <strong>both get 1,000 credits</strong>. No sign-up bonuses, no limits,
+            just real rewards for sharing a tool you love.
           </motion.p>
           <motion.div
             variants={fadeUp}
@@ -86,15 +78,15 @@ export default function AffiliateProgramContent() {
                 href="/signup"
                 className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-purple-600/20 transition-colors hover:bg-purple-700"
               >
-                Start earning, it&apos;s free <ArrowRight className="h-4 w-4" />
+                Start referring, it&apos;s free <ArrowRight className="h-4 w-4" />
               </Link>
             </motion.div>
             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
               <Link
-                href="/dashboard/affiliate"
+                href="/dashboard/referrals"
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 px-6 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900"
               >
-                Open Affiliate Hub
+                Open Referrals
               </Link>
             </motion.div>
           </motion.div>
@@ -130,6 +122,27 @@ export default function AffiliateProgramContent() {
         </motion.div>
       </section>
 
+      {/* Why refer */}
+      <section className="mx-auto max-w-5xl px-6 pb-4 pt-8">
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-8 text-center"
+        >
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Why share Creator AI?
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-slate-400">
+            Every creator you bring on board gets a head start with bonus credits and
+            you get rewarded for growing the community around a tool that already saves you
+            hours every week. The more creators you help, the more credits you stack up to
+            fuel your own scripts, thumbnails, and ideas.
+          </p>
+        </motion.div>
+      </section>
+
       {/* How it works */}
       <section className="border-y border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
         <div className="mx-auto max-w-5xl px-6 py-16">
@@ -143,7 +156,7 @@ export default function AffiliateProgramContent() {
               How it works
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-center text-slate-600 dark:text-slate-400">
-              Three steps from sign-up to your first payout.
+              Three steps from sharing your link to stacking credits.
             </p>
           </motion.div>
           <motion.div
@@ -176,7 +189,7 @@ export default function AffiliateProgramContent() {
         </div>
       </section>
 
-      {/* Earnings example */}
+      {/* What you get */}
       <section className="mx-auto max-w-5xl px-6 py-16">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <motion.div
@@ -186,11 +199,11 @@ export default function AffiliateProgramContent() {
             transition={{ duration: 0.55, ease: "easeOut" }}
           >
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              What you actually earn
+              What you both get
             </h2>
             <p className="mt-4 text-slate-600 dark:text-slate-400">
-              Commission is paid on every successful payment, not just the first one. Because
-              Creator AI is a subscription, your earnings compound as your referrals stay.
+              The referral program is built to be fair: rewards land only when your friend
+              becomes a real customer, and when they do, you&apos;re both better off.
             </p>
             <motion.ul
               variants={stagger}
@@ -199,7 +212,7 @@ export default function AffiliateProgramContent() {
               viewport={viewport}
               className="mt-6 space-y-3"
             >
-              {EARNINGS_POINTS.map((line) => (
+              {REWARD_POINTS.map((line) => (
                 <motion.li
                   key={line}
                   variants={fadeUp}
@@ -220,24 +233,47 @@ export default function AffiliateProgramContent() {
           >
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Example</p>
             <p className="mt-1 text-slate-700 dark:text-slate-300">
-              Refer <strong>10 creators</strong> to the Creator plan ($24/mo):
+              Refer <strong>5 creators</strong> who each make a purchase:
             </p>
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Per customer / month</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">$4.80</span>
+                <span className="text-slate-600 dark:text-slate-400">Credits per referral</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">1,000</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-600 dark:text-slate-400">10 customers / month</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">$48.00</span>
+                <span className="text-slate-600 dark:text-slate-400">5 referrals</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">5,000</span>
               </div>
               <div className="flex items-center justify-between border-t border-purple-200 dark:border-purple-900/50 pt-3">
-                <span className="text-slate-600 dark:text-slate-400">Over 12 months</span>
-                <span className="text-lg font-bold text-purple-700 dark:text-purple-300">$576.00</span>
+                <span className="text-slate-600 dark:text-slate-400">You earn</span>
+                <span className="text-lg font-bold text-purple-700 dark:text-purple-300">5,000 credits</span>
               </div>
             </div>
             <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Illustrative figures based on the $24/month Creator plan and a 20% recurring rate.
+              Plus your 5 friends collect 1,000 bonus credits each, 5,000 credits shared with
+              the community on top.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Referral vs Affiliate */}
+      <section className="border-t border-slate-200 dark:border-slate-800">
+        <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport}>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Referral or affiliate?
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-slate-400">
+              Want credits to power your own content? Use the <strong>referral program</strong>.
+              Want real cash for driving subscriptions? Join the{" "}
+              <Link
+                href="/affiliate-program"
+                className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400"
+              >
+                affiliate program
+              </Link>{" "}
+              and earn 20% recurring commission. You&apos;re welcome to do both.
             </p>
           </motion.div>
         </div>
@@ -285,17 +321,13 @@ export default function AffiliateProgramContent() {
 
       {/* Final CTA */}
       <section className="mx-auto max-w-5xl px-6 py-20 text-center">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={viewport}
-        >
+        <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport}>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Ready to start earning?
+            Ready to start referring?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-slate-600 dark:text-slate-400">
-            Create your free account and grab your affiliate link in under a minute.
+            Grab your referral link and start sharing Creator AI with your community in under a
+            minute.
           </p>
           <div className="mt-8 flex justify-center">
             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
@@ -303,7 +335,7 @@ export default function AffiliateProgramContent() {
                 href="/signup"
                 className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-7 py-3 text-sm font-semibold text-white shadow-sm shadow-purple-600/20 transition-colors hover:bg-purple-700"
               >
-                Join the affiliate program <ArrowRight className="h-4 w-4" />
+                Get my referral link <ArrowRight className="h-4 w-4" />
               </Link>
             </motion.div>
           </div>

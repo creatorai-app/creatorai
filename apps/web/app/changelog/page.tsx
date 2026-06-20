@@ -85,7 +85,7 @@ export default function ChangelogPage() {
                 </span>
               </h1>
               <p className="text-lg md:text-xl text-slate-600 max-w-xl mx-auto">
-                Every release, feature launch, improvement, and fix — in one place. We ship weekly.
+                Every release, feature launch, improvement, and fix, in one place. We ship weekly.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
                 <a

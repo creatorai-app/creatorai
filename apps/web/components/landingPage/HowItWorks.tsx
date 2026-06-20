@@ -5,7 +5,7 @@ export default function HowItWorks() {
 
     const chapters = [
         { title: "Connect & Train", description: "Link your YouTube channel and pick a few of your best videos. The AI watches them and learns your unique style, tone, and way of speaking." },
-        { title: "Create Content", description: "Tell the AI what you want — a script, video ideas, thumbnails, or subtitles. It creates everything in your voice, ready to use." },
+        { title: "Create Content", description: "Tell the AI what you want, a script, video ideas, thumbnails, or subtitles. It creates everything in your voice, ready to use." },
         { title: "Publish & Grow", description: "Review the output, make any tweaks, and use it for your next video. The more you use it, the better it understands you." },
     ]
 

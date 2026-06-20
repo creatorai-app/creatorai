@@ -201,7 +201,7 @@ export default function Home() {
                 Ready to Create Better Content, Faster?
               </h2>
               <p className="max-w-[700px] text-slate-300 md:text-lg">
-                Join creators who are spending less time writing and more time doing what they love — making videos.
+                Join creators who are spending less time writing and more time doing what they love, making videos.
               </p>
               <Link href="/signup" className="z-50">
                 <MButton

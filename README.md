@@ -85,7 +85,7 @@ creatorai/
 ├── packages/
 │   ├── validations/                  # Shared Zod schemas, types & credit utils
 │   ├── supabase/                     # Supabase migrations & client utilities
-│   ├── train-ai-worker/              # BullMQ workers (train-ai, script, ideation, story-builder)
+│   ├── workers/                      # BullMQ workers (train-ai, script, ideation, story-builder)
 │   ├── email-templates/              # Email templates (OTP, welcome)
 │   ├── config/                       # Shared constants
 │   ├── ui/                           # Shared UI components
@@ -130,7 +130,7 @@ pnpx supabase db push --db-url <your-supabase-db-url>
 cp .env.example .env
 cp apps/web/.env.example apps/web/.env
 cp apps/api/.env.example apps/api/.env
-cp packages/train-ai-worker/.env.example packages/train-ai-worker/.env
+cp packages/workers/.env.example packages/workers/.env
 ```
 
 Edit each `.env` file with your credentials. See the `.env.example` files for required keys.

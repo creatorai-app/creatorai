@@ -7,7 +7,7 @@ export const siteConfig = {
   name: "Creator AI",
   url: SITE_URL,
   description:
-    "AI-powered assistant for YouTube creators. Generate personalized scripts, thumbnails, subtitles, and more — in your unique voice.",
+    "AI-powered assistant for YouTube creators. Generate personalized scripts, thumbnails, subtitles, and more, in your unique voice.",
   keywords: [
     "AI script writer",
     "YouTube AI tool",
@@ -37,7 +37,7 @@ export const noIndexRobots: NonNullable<Metadata["robots"]> = {
 
 export function createMetadata(overrides: Metadata = {}): Metadata {
   const title =
-    overrides.title ?? `${siteConfig.name} — AI Assistant for YouTube Creators`;
+    overrides.title ?? `${siteConfig.name} | AI Assistant for YouTube Creators`;
   const description = (overrides.description ??
     siteConfig.description) as string;
 
