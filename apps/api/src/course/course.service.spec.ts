@@ -28,9 +28,11 @@ describe('CourseService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string) =>
-              key === 'GOOGLE_GENERATIVE_AI_API_KEY' ? 'test-key' : undefined,
-            ),
+            get: jest.fn((key: string) => {
+              if (key === 'GOOGLE_CLOUD_PROJECT') return 'test-project';
+              if (key === 'GOOGLE_CLOUD_LOCATION') return 'global';
+              return undefined;
+            }),
           },
         },
       ],

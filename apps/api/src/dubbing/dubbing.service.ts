@@ -10,13 +10,15 @@ import { Observable, interval, switchMap, map, from, takeWhile } from 'rxjs';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { CreateDubInput, DubResponse, DubbingProgress } from '@repo/validation';
 import { calculateDubbingCredits, hasEnoughCredits } from '@repo/validation';
-import { createGoogleAI, fetchVideoAsBuffer, configureFFmpeg } from '../utils';
+import { createGoogleAI, GEMINI_TEXT_MODEL, fetchVideoAsBuffer, configureFFmpeg } from '../utils';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs/promises';
 
 const MIN_DUBBING_CREDITS = 10;
+// Vertex AI takes media bytes inline (no Files API). base64 inflates size ~33%.
+const MAX_INLINE_BYTES = 50 * 1024 * 1024; // 50MB raw → ~67MB base64
 
 @Injectable()
 export class DubbingService {
@@ -207,39 +209,27 @@ export class DubbingService {
 
   private async transcribeAndTranslate(mediaBuffer: Buffer, isVideo: boolean, targetLanguage: string): Promise<string> {
     const ai = await createGoogleAI(this.configService);
-    const ext = isVideo ? 'mp4' : 'mp3';
-    const tmpPath = path.join(os.tmpdir(), `dub_${Date.now()}_${crypto.randomUUID()}.${ext}`);
-    await fs.writeFile(tmpPath, mediaBuffer);
+    const mimeType = isVideo ? 'video/mp4' : 'audio/mpeg';
 
-    try {
-      const mimeType = isVideo ? 'video/mp4' : 'audio/mpeg';
-      const file = await ai.files.upload({ file: tmpPath, config: { mimeType } });
-
-      let state = (await ai.files.get({ name: file.name })).state;
-      while (state !== 'ACTIVE') {
-        await new Promise((r) => setTimeout(r, 2000));
-        const f = await ai.files.get({ name: file.name });
-        if (f.state === 'FAILED') throw new Error('Gemini file processing failed');
-        state = f.state;
-      }
-
-      const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: `Transcribe the spoken audio from this file, then translate the full transcript into ${targetLanguage}. Return ONLY the translated text as a single continuous paragraph. No timestamps, no formatting, no labels — just the translated text.` },
-            { fileData: { fileUri: file.uri, mimeType: file.mimeType } },
-          ],
-        }],
-      });
-
-      const text = result.text?.trim();
-      if (!text) throw new Error('Empty transcription/translation result from Gemini');
-      return text;
-    } finally {
-      await fs.unlink(tmpPath).catch(() => {});
+    if (mediaBuffer.length > MAX_INLINE_BYTES) {
+      throw new BadRequestException('Media file is too large to process. Please use a shorter or smaller file.');
     }
+
+    // Vertex AI: send media bytes inline (the Files API is not available on Vertex).
+    const result = await ai.models.generateContent({
+      model: GEMINI_TEXT_MODEL,
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: `Transcribe the spoken audio from this file, then translate the full transcript into ${targetLanguage}. Return ONLY the translated text as a single continuous paragraph. No timestamps, no formatting, no labels — just the translated text.` },
+          { inlineData: { data: mediaBuffer.toString('base64'), mimeType } },
+        ],
+      }],
+    });
+
+    const text = result.text?.trim();
+    if (!text) throw new Error('Empty transcription/translation result from Gemini');
+    return text;
   }
 
   // --- Audio extraction (video → audio via ffmpeg) ---

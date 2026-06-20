@@ -15,9 +15,8 @@ import {
 } from '@repo/validation';
 import {
   createGoogleAI,
-  type GoogleAIInstance,
+  GEMINI_TEXT_MODEL,
   fetchVideoAsBuffer,
-  getFileNameFromUrl,
   getMimeTypeFromUrl,
   convertJsonToSrt,
   configureFFmpeg,
@@ -26,28 +25,10 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs/promises';
 
-const FILE_POLL_INTERVAL = 3000;
-const FILE_MAX_WAIT_TIME = 120000;
-
-async function waitForFileActive(ai: GoogleAIInstance, fileName: string, maxWaitTime = FILE_MAX_WAIT_TIME) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < maxWaitTime) {
-    const file = await ai.files.get({ name: fileName });
-
-    if (file.state === 'ACTIVE') {
-      return file;
-    }
-    if (file.state === 'FAILED') {
-      throw new Error(`File processing failed: ${(file as Record<string, unknown>).stateDescription || file.state}`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, FILE_POLL_INTERVAL));
-  }
-  throw new Error(`File processing timeout for ${fileName} after ${maxWaitTime / 1000}s`);
-}
-
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+// Vertex AI accepts media bytes inline in the request (no Files API). Keep well under the
+// per-request payload ceiling; base64 encoding inflates size by ~33%.
+const MAX_INLINE_BYTES = 50 * 1024 * 1024; // 50MB raw → ~67MB base64
 const MAX_VIDEO_DURATION = 10 * 60; // 10 minutes in seconds
 type StorageErrorLike = {
   message?: string;
@@ -118,7 +99,6 @@ export class SubtitleService {
 
   async create(input: CreateSubtitleInput, userId: string) {
     const { subtitleId, language, targetLanguage, duration } = input;
-    let tempFilePath: string | null = null;
 
     try {
       const { data: profileData, error: profileError } = await this.supabaseService.getClient()
@@ -207,43 +187,34 @@ Your task is to transcribe the provided audio file and generate precise, time-st
 `;
 
       const audioBuffer = await fetchVideoAsBuffer(video_url);
-      const fileName = getFileNameFromUrl(video_url);
-
-      tempFilePath = path.join(os.tmpdir(), `${Date.now()}_${fileName}`);
-      await fs.writeFile(tempFilePath, audioBuffer);
-
       const fileType = getMimeTypeFromUrl(video_url);
-      const myFile = await ai.files.upload({
-        file: tempFilePath,
-        config: { mimeType: fileType },
-      });
 
-      await waitForFileActive(ai, myFile.name!);
+      if (audioBuffer.length > MAX_INLINE_BYTES) {
+        await this.logErrorToDB('Media file too large for inline processing', subtitleId);
+        throw new PayloadTooLargeException('Media file is too large to process. Please use a shorter or smaller file.');
+      }
 
+      // Vertex AI: send media bytes inline (the Files API is not available on Vertex).
       const parts = [
         { text: prompt },
         {
-          fileData: {
-            fileUri: myFile.uri,
-            mimeType: myFile.mimeType
-          }
-        }
+          inlineData: {
+            data: audioBuffer.toString('base64'),
+            mimeType: fileType,
+          },
+        },
       ];
 
       let result: any;
       try {
         result = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: GEMINI_TEXT_MODEL,
           contents: [{ role: "user", parts }],
         });
       } catch (geminiError) {
         this.logger.error('Gemini API error', geminiError);
         await this.logErrorToDB(`Gemini API error: ${geminiError}`, subtitleId);
         throw new InternalServerErrorException('Failed to generate subtitles from Gemini API');
-      }
-
-      if (tempFilePath) {
-        await fs.unlink(tempFilePath).catch(() => {});
       }
 
       let subtitlesData;
@@ -324,9 +295,6 @@ Your task is to transcribe the provided audio file and generate precise, time-st
         totalTokens,
       };
     } catch (error) {
-      if (tempFilePath) {
-        fs.unlink(tempFilePath).catch(() => {});
-      }
       throw error;
     }
   }
