@@ -13,23 +13,7 @@ import { SparklesCore } from "@repo/ui/sparkles"
 import { MButton } from "@repo/ui/moving-border"
 import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react"
 import { useSupabase } from "@/components/supabase-provider"
-
-const comparisons = [
-  { feature: "AI Model Training", starter: true, creator: true, enterprise: true },
-  { feature: "Script Generation", starter: true, creator: true, enterprise: true },
-  { feature: "Video Ideas (Ideation)", starter: true, creator: true, enterprise: true },
-  { feature: "Thumbnail Generation", starter: true, creator: true, enterprise: true },
-  { feature: "Subtitle Generation", starter: true, creator: true, enterprise: true },
-  { feature: "Story Builder", starter: true, creator: true, enterprise: true },
-  { feature: "Referral Program", starter: true, creator: true, enterprise: true },
-  { feature: "Monthly Credits", starter: "500", creator: "5,000", enterprise: "100,000" },
-  { feature: "Audio Dubbing", starter: false, creator: true, enterprise: true },
-  { feature: "Video Generation", starter: false, creator: true, enterprise: true },
-  { feature: "Community Access", starter: false, creator: true, enterprise: true },
-  { feature: "Advanced Analytics", starter: false, creator: false, enterprise: true },
-  { feature: "Team Collaboration", starter: false, creator: false, enterprise: true },
-  { feature: "Priority Support", starter: false, creator: false, enterprise: true },
-]
+import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans"
 
 export default function PricingPage() {
   const { user } = useSupabase()
@@ -85,7 +69,7 @@ export default function PricingPage() {
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
                 {[
-                  { icon: Zap, text: "500 free credits/month" },
+                  { icon: Zap, text: "200 free credits/month" },
                   { icon: CreditCard, text: "No credit card required" },
                   { icon: Shield, text: "Cancel anytime" },
                 ].map(({ icon: Icon, text }) => (
@@ -117,9 +101,6 @@ export default function PricingPage() {
               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
                 Compare Plans
               </h2>
-              <p className="text-slate-600 text-lg">
-                See exactly what you get with each plan.
-              </p>
             </motion.div>
 
             <motion.div
@@ -129,28 +110,59 @@ export default function PricingPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="overflow-x-auto"
             >
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse min-w-[640px]">
                 <thead>
                   <tr className="border-b-2 border-slate-200">
-                    <th className="text-left py-4 px-4 text-slate-600 font-medium">Feature</th>
-                    <th className="text-center py-4 px-4 text-slate-800 font-semibold">Starter</th>
-                    <th className="text-center py-4 px-4 text-purple-600 font-semibold">Creator+</th>
-                    <th className="text-center py-4 px-4 text-slate-800 font-semibold">Enterprise</th>
+                    <th className="text-left py-4 px-4 text-slate-600 font-medium"> </th>
+                    {MARKETING_PLANS.map((p) => (
+                      <th
+                        key={p.id}
+                        className={`text-center py-4 px-4 font-semibold ${p.popular ? "text-purple-600" : "text-slate-800"}`}
+                      >
+                        {p.name}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {comparisons.map((row, i) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-4 text-sm text-slate-700">{row.feature}</td>
-                      {[row.starter, row.creator, row.enterprise].map((val, j) => (
-                        <td key={j} className="text-center py-3.5 px-4">
-                          {val === true ? (
-                            <Check className="w-5 h-5 text-green-500 mx-auto" />
-                          ) : val === false ? (
-                            <span className="text-slate-300">—</span>
-                          ) : (
-                            <span className="text-sm font-medium text-slate-700">{val}</span>
-                          )}
+                  <tr className="border-b border-slate-100">
+                    <td className="py-3.5 px-4 text-sm text-slate-700">Monthly price</td>
+                    {MARKETING_PLANS.map((p) => (
+                      <td key={p.id} className="text-center py-3.5 px-4 text-sm font-semibold text-slate-800">
+                        {p.priceMonthly === 0 ? "Free" : `$${p.priceMonthly}/mo`}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-slate-100 bg-slate-50/40">
+                    <td className="py-3.5 px-4 text-sm text-slate-700">Annual price</td>
+                    {MARKETING_PLANS.map((p) => (
+                      <td key={p.id} className="text-center py-3.5 px-4 text-sm text-slate-700">
+                        {p.priceAnnualMonthly != null && p.priceMonthly > 0 ? `$${p.priceAnnualMonthly}/mo` : "-"}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="py-3.5 px-4 text-sm text-slate-700">Monthly credits</td>
+                    {MARKETING_PLANS.map((p) => (
+                      <td key={p.id} className="text-center py-3.5 px-4 text-sm font-medium text-slate-800">
+                        {p.credits.toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-slate-100 bg-slate-50/40">
+                    <td className="py-3.5 px-4 text-sm text-slate-700">Best for</td>
+                    {MARKETING_PLANS.map((p) => (
+                      <td key={p.id} className="text-center py-3.5 px-4 text-xs text-slate-600">
+                        {p.tagline.replace(/^Best for /, "").replace(/\.$/, "")}
+                      </td>
+                    ))}
+                  </tr>
+                  {ALL_FEATURES.map((feature) => (
+                    <tr key={feature} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3.5 px-4 text-sm text-slate-700">{feature}</td>
+                      {MARKETING_PLANS.map((p) => (
+                        <td key={p.id} className="text-center py-3.5 px-4">
+                          <Check className="w-5 h-5 text-green-500 mx-auto" />
                         </td>
                       ))}
                     </tr>
@@ -176,7 +188,7 @@ export default function PricingPage() {
               Start Free, Upgrade Anytime
             </h2>
             <p className="max-w-[600px] mx-auto text-slate-300 md:text-lg mb-8">
-              No credit card required. Get 500 free credits every month and access to all core features.
+              No credit card required. Get 200 free credits every month and full access to every feature.
             </p>
             <Link href={billingHref("starter")}>
               <MButton
