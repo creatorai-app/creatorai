@@ -67,6 +67,11 @@ export class BillingController {
       properties: {
         planId: { type: 'string' },
         affiliateCode: { type: 'string' },
+        interval: {
+          type: 'string',
+          enum: ['monthly', 'annual'],
+          description: 'Billing interval. Defaults to monthly.',
+        },
         origin: {
           type: 'string',
           description:
@@ -77,7 +82,13 @@ export class BillingController {
   })
   createCheckoutSession(
     @Req() req: AuthRequest,
-    @Body() body: { planId: string; affiliateCode?: string; origin?: string },
+    @Body()
+    body: {
+      planId: string;
+      affiliateCode?: string;
+      origin?: string;
+      interval?: 'monthly' | 'annual';
+    },
   ) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
@@ -86,6 +97,7 @@ export class BillingController {
       body.planId,
       body.affiliateCode,
       body.origin,
+      body.interval === 'annual' ? 'annual' : 'monthly',
     );
   }
 
