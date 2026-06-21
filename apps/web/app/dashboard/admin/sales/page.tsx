@@ -92,9 +92,9 @@ export default function AdminSalesPage() {
                 data.data.map((sale) => (
                   <tr key={sale.id} className="hover:bg-slate-900/30">
                     <td className="px-4 py-3 text-slate-300 font-mono text-xs">
-                      {sale.affiliate_links?.code || "—"}
+                      {sale.affiliate_links?.code || "-"}
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{sale.customer_email || "—"}</td>
+                    <td className="px-4 py-3 text-slate-400">{sale.customer_email || "-"}</td>
                     <td className="px-4 py-3 text-slate-200 font-medium">${Number(sale.amount).toFixed(2)}</td>
                     <td className="px-4 py-3 text-emerald-400">${Number(sale.commission).toFixed(2)}</td>
                     <td className="px-4 py-3">

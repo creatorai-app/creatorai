@@ -199,7 +199,7 @@ export default function ChannelStatsPage() {
                 <div>
                   <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">Cooldown Active</p>
                   <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-0.5">
-                    {channel.cooldown_remaining}m cooldown remaining — try again later.
+                    {channel.cooldown_remaining}m cooldown remaining, try again later.
                   </p>
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default function ChannelStatsPage() {
         {/* ── RIGHT CONTENT ── */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Stat metric cards — exact Quick Actions hover style */}
+          {/* Stat metric cards, exact Quick Actions hover style */}
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: "Subscribers", value: channel.subscriberCount, icon: Users, color: "text-purple-600 dark:text-purple-400", bg: "bg-slate-100/80 dark:bg-slate-800" },
@@ -234,7 +234,7 @@ export default function ChannelStatsPage() {
             ))}
           </motion.div>
 
-          {/* Top Performing Videos — visual card grid */}
+          {/* Top Performing Videos, visual card grid */}
           {channel.topVideos?.length > 0 && (
             <motion.div variants={itemVariants} className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-5">

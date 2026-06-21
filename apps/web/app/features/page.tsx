@@ -30,7 +30,7 @@ const coreFeatures = [
     title: "AI Studio",
     tagline: "Train the AI to sound like you",
     description:
-      "Connect your YouTube channel and pick a few of your best videos. The AI watches them and learns your tone, vocabulary, pacing, and style. Once trained, everything it creates is personalized to you — not generic.",
+      "Connect your YouTube channel and pick a few of your best videos. The AI watches them and learns your tone, vocabulary, pacing, and style. Once trained, everything it creates is personalized to you, not generic.",
     highlights: [
       "Connect your YouTube channel in one click",
       "Select 3-5 videos to train your personal AI model",
@@ -138,7 +138,7 @@ const comingSoonFeatures = [
 const extraFeatures = [
   {
     title: "Channel Stats",
-    description: "See your YouTube channel overview — subscribers, views, video count, and more — right in your dashboard.",
+    description: "See your YouTube channel overview, subscribers, views, video count, and more, right in your dashboard.",
     icon: BarChart3,
   },
   {
@@ -184,7 +184,7 @@ export default function FeaturesPage() {
                 </span>
               </h1>
               <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
-                From brainstorming ideas to publishing your video — Creator AI helps you at every step of the content creation process.
+                From brainstorming ideas to publishing your video, Creator AI helps you at every step of the content creation process.
               </p>
             </motion.div>
           </div>

@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { GEMINI_TEXT_MODEL, GEMINI_EMBEDDING_MODEL } from "./genai";
 import { manageAccessToken, validateOAuthEnvironment } from "./token-manager";
 import {
   ChannelData,
@@ -27,7 +28,7 @@ export async function validateEnvironment(): Promise<void> {
   const envValidation = validateOAuthEnvironment();
   if (
     !envValidation.isValid ||
-    !process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+    !process.env.GOOGLE_CLOUD_PROJECT ||
     !process.env.ELEVENLABS_API_KEY
   ) {
     throw new Error('Missing environment variables');
@@ -249,7 +250,7 @@ Video ${i + 1}:
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const model = 'gemini-2.5-flash';
+      const model = GEMINI_TEXT_MODEL;
 
       const result = await genAI.models.generateContent({
         model,
@@ -294,7 +295,7 @@ export async function generateEmbedding(
   while (retryCount < maxRetries) {
     try {
       const response = await genAI.models.embedContent({
-        model: 'gemini-embedding-001',
+        model: GEMINI_EMBEDDING_MODEL,
         contents: styleText,
         config: {
           outputDimensionality: 1536,
@@ -340,7 +341,7 @@ export async function generateTopicEmbedding(
   while (retryCount < maxRetries) {
     try {
       const response = await genAI.models.embedContent({
-        model: 'gemini-embedding-001',
+        model: GEMINI_EMBEDDING_MODEL,
         contents: topicText,
         config: { outputDimensionality: 1536, taskType: 'RETRIEVAL_DOCUMENT' },
       });

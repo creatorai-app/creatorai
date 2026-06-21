@@ -200,7 +200,7 @@ export default function DubbingList() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Coming Soon Overlay — identical style to Thumbnail page */}
+      {/* Coming Soon Overlay, identical style to Thumbnail page */}
       {isComingSoon && (
         <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="text-center space-y-4 px-4 max-w-md">

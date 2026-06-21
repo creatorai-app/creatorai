@@ -9,10 +9,13 @@ interface Plan {
   id: string;
   name: string;
   price_monthly: number;
+  price_annual_monthly: number | null;
   credits_monthly: number;
   features: string[];
   is_active: boolean;
+  tagline: string | null;
   ls_variant_id: string | null;
+  ls_variant_id_annual: string | null;
 }
 
 interface SubscriptionInfo {
@@ -67,7 +70,7 @@ export function useBilling() {
     loadAll();
   }, [loadAll]);
 
-  const subscribe = useCallback(async (planId: string) => {
+  const subscribe = useCallback(async (planId: string, interval: "monthly" | "annual" = "monthly") => {
     setCheckoutLoading(planId);
     try {
       let affiliateCode: string | undefined;
@@ -87,6 +90,7 @@ export function useBilling() {
         {
           planId,
           affiliateCode,
+          interval,
           origin:
             typeof window !== "undefined" ? window.location.origin : undefined,
         },

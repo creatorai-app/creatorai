@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
               ) : (
                 data?.map((user: Record<string, unknown>) => (
                   <tr key={user.user_id as string} className="hover:bg-slate-900/30">
-                    <td className="px-4 py-3 text-slate-200">{(user.full_name || user.name || "—") as string}</td>
+                    <td className="px-4 py-3 text-slate-200">{(user.full_name || user.name || "-") as string}</td>
                     <td className="px-4 py-3 text-slate-400">{user.email as string}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${

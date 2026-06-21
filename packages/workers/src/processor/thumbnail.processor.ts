@@ -9,9 +9,10 @@ import {
   type ThumbnailRatio,
 } from '@repo/validation';
 import { GoogleGenAI } from '@google/genai';
+import { getGenAI, GEMINI_IMAGE_MODEL } from './utils/genai';
 
 const BUCKET = 'thumbnails';
-const MODEL = 'gemini-2.5-flash-image';
+const MODEL = GEMINI_IMAGE_MODEL;
 
 interface ThumbnailJobData {
   userId: string;
@@ -46,7 +47,7 @@ export class ThumbnailProcessor extends WorkerHost {
     super();
     const { url, key } = getSupabaseServiceEnv();
     this.supabase = createSupabaseClient(url, key);
-    this.genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
+    this.genAI = getGenAI();
   }
 
   async process(job: Job<ThumbnailJobData>): Promise<{ imageUrls: string[] }> {

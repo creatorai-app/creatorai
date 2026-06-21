@@ -11,21 +11,21 @@ import {
 
 export const PAGE_PATH = "/affiliate-program";
 
-export const PAGE_TITLE = "Affiliate Program — Earn 20% Recurring Commission";
+export const PAGE_TITLE = "Affiliate Program | Earn 20% Recurring Commission";
 
 export const PAGE_DESCRIPTION =
-  "Join the Creator AI affiliate program and earn 20% recurring commission on every subscription you refer — for up to 12 months per customer. Free to join, $50 minimum payout, paid via PayPal, Wise, or bank transfer.";
+  "Join the Creator AI affiliate program and earn 20% recurring commission on every subscription you refer, for up to 12 months per customer. Free to join, $50 minimum payout, paid via PayPal, Wise, or bank transfer.";
 
 export const FAQ: { question: string; answer: string }[] = [
   {
     question: "How much can I earn with the Creator AI affiliate program?",
     answer:
-      "You earn 20% recurring commission on every payment made by customers you refer. For example, a customer on the $20/month Creator+ plan earns you $4 every month they stay subscribed, for up to 12 billing cycles.",
+      "You earn 20% recurring commission on every payment made by customers you refer. For example, a customer on the $24/month Creator plan earns you $4.80 every month they stay subscribed, for up to 12 billing cycles.",
   },
   {
     question: "Is the commission recurring?",
     answer:
-      "Yes. As long as a referred customer keeps their subscription active, you earn commission on each successful monthly renewal — up to a maximum of 12 payments per customer.",
+      "Yes. As long as a referred customer keeps their subscription active, you earn commission on each successful monthly renewal, up to a maximum of 12 payments per customer.",
   },
   {
     question: "How and when do I get paid?",
@@ -53,7 +53,7 @@ export const STEPS: { icon: LucideIcon; title: string; text: string }[] = [
   {
     icon: UserPlus,
     title: "Create a free account",
-    text: "Sign up for Creator AI — no cost, no approval wait. Your Affiliate Hub is available the moment you log in.",
+    text: "Sign up for Creator AI, no cost, no approval wait. Your Affiliate Hub is available the moment you log in.",
   },
   {
     icon: Share2,

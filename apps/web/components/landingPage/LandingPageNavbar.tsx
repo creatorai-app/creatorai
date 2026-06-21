@@ -197,7 +197,7 @@ const LandingPageNavbar = () => {
               className="hidden xl:flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-200/50 dark:border-amber-600/40 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50 cursor-pointer shadow-xl transition duration-200 hover:shadow-xl hover:border-amber-400"
             >
               <Gift className="h-3.5 w-3.5" />
-              Refer &amp; Earn 250 Free Credits
+              Refer &amp; Earn 1,000 Credits
             </Button> */}
             {/* <ShimmerButton className="text-sm h-9" onClick={() => router.push("/signup")}>
               Sign Up

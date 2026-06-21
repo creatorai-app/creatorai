@@ -9,7 +9,10 @@ import {
 import { SupabaseService } from '../supabase/supabase.service';
 import type { TrackReferralInput } from '@repo/validation';
 
-const CREDITS_PER_REFERRAL = 250;
+// Reward is granted on the referred user's first *purchase*, not at sign-up.
+// The award itself happens in the billing webhook (billing.service.ts) and the
+// award_referral_credits DB trigger. Referrals stay 'pending' until then.
+const CREDITS_PER_REFERRAL = 1000;
 
 @Injectable()
 export class ReferralService {
@@ -185,20 +188,25 @@ export class ReferralService {
       throw new InternalServerErrorException('Failed to create referral');
     }
 
+    // Link the referred profile if it already exists, but keep the referral
+    // 'pending'. No credits are awarded at sign-up — the reward is only granted
+    // when the referred user makes their first purchase (see billing webhook).
     if (referredUserId) {
-      const { error: completionError } = await supabase
-        .from('referrals')
-        .update({
-          status: 'completed',
-          referred_user_id: referredUserId,
-          credits_awarded: CREDITS_PER_REFERRAL,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', createdReferral.id);
+      const { data: referredProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', referredUserId)
+        .maybeSingle();
 
-      if (completionError) {
-        this.logger.error('Failed to complete referral:', completionError);
-        throw new InternalServerErrorException('Failed to complete referral');
+      if (referredProfile?.id) {
+        const { error: linkError } = await supabase
+          .from('referrals')
+          .update({ referred_user_id: referredProfile.id })
+          .eq('id', createdReferral.id);
+
+        if (linkError) {
+          this.logger.error('Failed to link referral:', linkError);
+        }
       }
     }
 

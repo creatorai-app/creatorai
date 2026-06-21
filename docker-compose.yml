@@ -13,13 +13,13 @@ services:
       timeout: 5s
       retries: 5
 
-  train-ai-worker:
+  workers:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: train-ai-worker
+    container_name: workers
     env_file:
-      - packages/train-ai-worker/.env
+      - packages/workers/.env
 
   yt-dlp:
     build:

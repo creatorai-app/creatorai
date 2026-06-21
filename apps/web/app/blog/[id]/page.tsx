@@ -413,7 +413,7 @@ export default function BlogDetailPage() {
               </h2>
               <p className="text-purple-100 mb-6 max-w-xl mx-auto">
                 Stop using generic AI tools. Creator AI learns your unique voice
-                and generates scripts, thumbnails, subtitles, and more — all in
+                and generates scripts, thumbnails, subtitles, and more, all in
                 one place.
               </p>
               <Link

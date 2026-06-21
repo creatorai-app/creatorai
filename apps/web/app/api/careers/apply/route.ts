@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       </ul>
     </div>
     <p style="line-height:1.6;">In the meantime, feel free to reply to this email if you have any questions.</p>
-    <p style="margin-top:24px;color:#64748b;font-size:14px;">— The Creator AI Team</p>
+    <p style="margin-top:24px;color:#64748b;font-size:14px;">, The Creator AI Team</p>
   </div>
 </div>`;
 
@@ -166,14 +166,14 @@ export async function POST(req: NextRequest) {
           from: FROM_EMAIL,
           to: ADMIN_EMAIL,
           replyTo: email,
-          subject: `New Job Application: ${position} — ${full_name}`,
+          subject: `New Job Application: ${position}, ${full_name}`,
           html: adminHtml,
         }),
         resend.emails.send({
           from: FROM_EMAIL,
           to: email,
           replyTo: ADMIN_EMAIL,
-          subject: `Application received — ${position} at Creator AI`,
+          subject: `Application received, ${position} at Creator AI`,
           html: applicantHtml,
         }),
       ]);

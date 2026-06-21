@@ -9,10 +9,9 @@ import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
 import { Switch } from "@repo/ui/switch";
 import { Skeleton } from "@repo/ui/skeleton";
-import { Sparkles, Loader2, ArrowLeft, Lock } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
 import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired";
 import IdeationProgress from "@/components/dashboard/research/IdeationProgress";
-import PremiumGateModal from "@/components/dashboard/research/PremiumGateModal";
 import { useIdeation } from "@/hooks/useIdeation";
 import { useCurrentPlan } from "@/hooks/useCurrentPlan";
 import Link from "next/link";
@@ -31,13 +30,13 @@ const HOW_IT_WORKS_STEPS = [
 
 export default function NewIdeationPage() {
   const router = useRouter();
-  const { isStarter, isEnterprise, maxIdeas, loading: planLoading } = useCurrentPlan();
-  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  // Every plan has the same idea capabilities, usage is bounded only by credits.
+  const { maxIdeas, loading: planLoading } = useCurrentPlan();
   const [customCount, setCustomCount] = useState("3");
   const {
     context, setContext,
     nicheFocus, setNicheFocus,
-    ideaCount, setIdeaCount,
+    setIdeaCount,
     autoMode, setAutoMode,
     isGenerating,
     progress,
@@ -50,11 +49,10 @@ export default function NewIdeationPage() {
 
   useEffect(() => {
     if (planLoading) return;
-    setIdeaCount(maxIdeas);
-    if (isEnterprise) {
-      setCustomCount(String(maxIdeas));
-    }
-  }, [planLoading, isEnterprise, maxIdeas, setIdeaCount, setCustomCount]);
+    const def = Math.min(3, maxIdeas);
+    setIdeaCount(def);
+    setCustomCount(String(def));
+  }, [planLoading, maxIdeas, setIdeaCount, setCustomCount]);
 
   useEffect(() => {
     if (generatedResult && activeJobDbId) {
@@ -71,30 +69,16 @@ export default function NewIdeationPage() {
   };
 
   const handleGenerateClick = () => {
-    if (isEnterprise) {
-      const parsed = parseInt(customCount, 10);
-      const count = Number.isNaN(parsed)
-        ? 1
-        : Math.min(maxIdeas, Math.max(1, parsed));
-      setIdeaCount(count);
-      setCustomCount(String(count));
-      handleGenerate(count);
-      return;
-    }
-    handleGenerate();
+    const parsed = parseInt(customCount, 10);
+    const count = Number.isNaN(parsed)
+      ? 1
+      : Math.min(maxIdeas, Math.max(1, parsed));
+    setIdeaCount(count);
+    setCustomCount(String(count));
+    handleGenerate(count);
   };
 
-  const creatorOptions = Array.from({ length: maxIdeas }, (_, i) => i + 1);
-  const starterPreviewOptions = [1, 2, 3];
   const showHowItWorks = !isLoadingProfile && !planLoading && aiTrained;
-
-  const handleIdeaCountClick = (n: number) => {
-    if (isStarter && n > 1) {
-      setPremiumModalOpen(true);
-      return;
-    }
-    setIdeaCount(n);
-  };
 
   let content: React.ReactNode;
 
@@ -211,50 +195,17 @@ export default function NewIdeationPage() {
 
             <motion.div className="space-y-2">
               <Label>Number of ideas</Label>
-
-              {isEnterprise ? (
-                <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={maxIdeas}
-                    value={customCount}
-                    onChange={(e) => handleCustomCountChange(e.target.value)}
-                    className="w-24"
-                  />
-                  <span className="text-sm text-slate-500">of {maxIdeas} max</span>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  {(isStarter ? starterPreviewOptions : creatorOptions).map((n) => {
-                    const locked = isStarter && n > 1;
-                    const selected = ideaCount === n && !locked;
-                    return (
-                      <motion.button
-                        key={n}
-                        type="button"
-                        whileHover={{ scale: locked ? 1 : 1.03 }}
-                        whileTap={{ scale: locked ? 1 : 0.97 }}
-                        onClick={() => handleIdeaCountClick(n)}
-                        className={`relative flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          selected
-                            ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                            : locked
-                              ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-pointer"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                        }`}
-                      >
-                        {n}
-                        {locked && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-sm">
-                            <Lock className="h-2 w-2 text-white" />
-                          </span>
-                        )}
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={1}
+                  max={maxIdeas}
+                  value={customCount}
+                  onChange={(e) => handleCustomCountChange(e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-sm text-slate-500">of {maxIdeas} max</span>
+              </div>
             </motion.div>
 
             <motion.div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
@@ -329,12 +280,6 @@ export default function NewIdeationPage() {
           {content}
         </div>
       </motion.div>
-
-      <PremiumGateModal
-        open={premiumModalOpen}
-        onClose={() => setPremiumModalOpen(false)}
-        featureLabel="Generating more ideas"
-      />
     </motion.div>
   );
 }

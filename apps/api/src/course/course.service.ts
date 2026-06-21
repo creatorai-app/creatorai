@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
+import { createGoogleAI, GEMINI_TEXT_MODEL } from '../utils/genai';
 
 const COURSE_MODULE_SCHEMA = {
   type: 'object',
@@ -45,13 +46,6 @@ export class CourseService {
     return this.supabaseService.getClient();
   }
 
-  private async getGoogleAI(): Promise<any> {
-    const apiKey = this.configService.get<string>('GOOGLE_GENERATIVE_AI_API_KEY');
-    if (!apiKey) throw new InternalServerErrorException('API key is not configured');
-    const { GoogleGenAI } = await (Function('return import("@google/genai")')() as Promise<any>);
-    return new GoogleGenAI({ apiKey });
-  }
-
   async generate(userId: string, body: {
     topic: string;
     description?: string;
@@ -88,12 +82,12 @@ For each video in the course, include:
 4. A complete script outline with sections for intro, main content, key points, and conclusion
 `;
 
-    const ai = await this.getGoogleAI();
+    const ai = await createGoogleAI(this.configService);
 
     let result: any;
     try {
       result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: GEMINI_TEXT_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',

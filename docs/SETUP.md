@@ -92,10 +92,15 @@ nano apps/api/.env
 
 ### 5. AI Services Setup
 
-#### Google AI Studio
-1. Go to [Google AI Studio](https://aistudio.google.com/)
-2. Create an API key
-3. Add it to your backend environment variables
+#### Google Vertex AI (Gemini)
+Gemini runs on **Vertex AI** (production), authenticated via Application Default Credentials (ADC) — no API key.
+1. In your GCP project, enable the **Vertex AI API**: `gcloud services enable aiplatform.googleapis.com`
+2. Create a service account and grant it **Vertex AI User** (`roles/aiplatform.user`).
+3. Authenticate:
+   - **Local dev:** `gcloud auth application-default login`
+   - **Server/VPS:** create a JSON key and set `GOOGLE_APPLICATION_CREDENTIALS` to its path
+   - **Cloud Run/GKE:** attach the service account (no key file needed)
+4. Set `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION` (e.g. `global`) in your backend + worker env.
 
 #### Optional Services
 - **OpenAI**: For additional AI features

@@ -40,7 +40,7 @@ const comparisons = [
   {
     feature: "Subtitle Generation & Export",
     description:
-      "AI-powered subtitles with SRT/VTT export and burn-in support — boosting views by up to 40%.",
+      "AI-powered subtitles with SRT/VTT export and burn-in support, boosting views by up to 40%.",
     icon: Subtitles,
     creatorAI: true,
     genericAI: false,
@@ -56,7 +56,7 @@ const comparisons = [
   {
     feature: "All-in-One Dashboard",
     description:
-      "Scripts, thumbnails, subtitles, dubbing, ideas, and story blueprints — one tool, zero context-switching.",
+      "Scripts, thumbnails, subtitles, dubbing, ideas, and story blueprints, one tool, zero context-switching.",
     icon: LayoutDashboard,
     creatorAI: true,
     genericAI: false,
@@ -80,7 +80,7 @@ export default function WhyCreatorAI() {
           Why Generic AI Falls Short for Creators
         </h2>
         <p className="max-w-[700px] text-slate-600 dark:text-slate-400 md:text-lg">
-          ChatGPT, Gemini, and Claude are great for general tasks — but YouTube
+          ChatGPT, Gemini, and Claude are great for general tasks, but YouTube
           content creation needs a specialized tool built for how creators
           actually work.
         </p>
@@ -160,7 +160,7 @@ export default function WhyCreatorAI() {
         <p className="text-purple-100 max-w-2xl mx-auto mb-6">
           Generic AI tools cost $80–180/month when you piece together scripts,
           thumbnails, subtitles, and dubbing from different apps. Creator AI
-          gives you everything in one subscription — purpose-built for YouTube
+          gives you everything in one subscription, purpose-built for YouTube
           creators.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

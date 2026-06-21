@@ -4,7 +4,7 @@
 
 ## What is Creator AI?
 
-Creator AI is a dedicated YouTube AI tool — not a general-purpose chatbot. It connects to your YouTube channel, analyzes 3–5 of your videos, and builds a persistent voice profile (vocabulary, pacing, humor, structure). Every script it generates is optimized for YouTube retention: hooks in the first 10 seconds, open loops, pattern interrupts, and natural CTAs.
+Creator AI is a dedicated YouTube AI tool, not a general-purpose chatbot. It connects to your YouTube channel, analyzes 3–5 of your videos, and builds a persistent voice profile (vocabulary, pacing, humor, structure). Every script it generates is optimized for YouTube retention: hooks in the first 10 seconds, open loops, pattern interrupts, and natural CTAs.
 
 Website: https://tryscriptai.com
 Product name: Creator AI

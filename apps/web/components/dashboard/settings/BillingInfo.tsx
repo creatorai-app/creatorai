@@ -60,6 +60,7 @@ export function BillingInfo() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [showSuccess, setShowSuccess] = useState(false);
+  const [annual, setAnnual] = useState(false);
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -209,16 +210,46 @@ export function BillingInfo() {
             {hasActiveSubscription ? "Change Plan" : "Upgrade Plan"}
           </CardTitle>
           <CardDescription>
-            Choose the plan that fits your content creation needs
+            Pick the credit allowance that fits you
           </CardDescription>
+          <div className="flex items-center gap-3 pt-3">
+            <span className={cn("text-sm font-medium", !annual ? "text-slate-900 dark:text-slate-100" : "text-slate-500")}>
+              Monthly
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={annual}
+              onClick={() => setAnnual((v) => !v)}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                annual ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  annual ? "translate-x-6" : "translate-x-1",
+                )}
+              />
+            </button>
+            <span className={cn("text-sm font-medium", annual ? "text-slate-900 dark:text-slate-100" : "text-slate-500")}>
+              Annual
+            </span>
+            <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">
+              Save 20%
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => {
               const isCurrent = plan.name === currentPlanName;
-              const isPopular = plan.name === "Creator+";
-              const isEnterprise = plan.name === "Enterprise";
+              const isPopular = plan.name === "Creator";
+              const isStudio = plan.name === "Business" || plan.name === "Scale";
               const isFree = plan.price_monthly === 0;
+              const showAnnual = annual && plan.price_annual_monthly != null && plan.price_monthly > 0;
+              const displayPrice = showAnnual ? plan.price_annual_monthly! : plan.price_monthly;
               let features: string[] = [];
               try {
                 features =
@@ -253,15 +284,23 @@ export function BillingInfo() {
                     </h3>
                     <div className="mt-1 flex items-baseline gap-1">
                       <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                        ${plan.price_monthly}
+                        ${displayPrice}
                       </span>
                       <span className="text-sm text-slate-500 dark:text-slate-400">
                         /mo
                       </span>
                     </div>
+                    <p className="mt-0.5 h-4 text-xs text-slate-400 dark:text-slate-500">
+                      {showAnnual ? `Billed annually ($${plan.price_annual_monthly! * 12}/yr)` : ""}
+                    </p>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                       {plan.credits_monthly.toLocaleString()} credits/month
                     </p>
+                    {plan.tagline && (
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        {plan.tagline}
+                      </p>
+                    )}
                   </div>
 
                   <Separator className="mb-4" />
@@ -331,16 +370,16 @@ export function BillingInfo() {
                         "w-full",
                         isPopular &&
                         "bg-purple-600 hover:bg-purple-700 text-white",
-                        isEnterprise &&
+                        isStudio &&
                         "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-0",
                       )}
-                      variant={isPopular || isEnterprise ? "default" : "outline"}
-                      onClick={() => subscribe(plan.id)}
+                      variant={isPopular || isStudio ? "default" : "outline"}
+                      onClick={() => subscribe(plan.id, showAnnual ? "annual" : "monthly")}
                       disabled={!!checkoutLoading}
                     >
                       {checkoutLoading === plan.id ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : isEnterprise ? (
+                      ) : isStudio ? (
                         <Crown className="mr-2 h-4 w-4" />
                       ) : (
                         <Zap className="mr-2 h-4 w-4" />

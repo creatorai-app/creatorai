@@ -69,10 +69,17 @@ export const Navbar = ({ children, className }: NavbarProps) => {
         <motion.div
             ref={ref}
             className={cn(
-                "fixed inset-x-0 top-0 z-50 w-full left-0 right-0",
-                "border-b border-white/10 dark:border-white/5 bg-white/50 dark:bg-neutral-950/50 backdrop-blur-md saturate-150",
-                className
+                "fixed inset-x-0 top-0 z-50 w-full",
+                "border-b border-black/[0.06] dark:border-white/10",
+                "backdrop-blur-[12px] backdrop-saturate-[180%]",
+                "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)]",
+                "transition-[background-color,box-shadow] duration-300 ease-out",
+                visible
+                    ? "bg-white/85 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95),0_4px_24px_-8px_rgba(0,0,0,0.08)] dark:bg-neutral-950/85"
+                    : "bg-white/70 dark:bg-neutral-950/70",
+                className,
             )}
+            style={{ WebkitBackdropFilter: "blur(12px) saturate(180%)" }}
         >
             <div className="relative w-full">
                 {React.Children.map(children, (child) =>
@@ -88,15 +95,10 @@ export const Navbar = ({ children, className }: NavbarProps) => {
     );
 };
 
-export const NavBody = ({ children, className, visible }: NavBodyProps) => {
+export const NavBody = ({ children, className }: NavBodyProps) => {
     return (
         <motion.div
             animate={{
-                backdropFilter: visible ? "blur(12px) saturate(180%)" : "blur(8px) saturate(150%)",
-                boxShadow: visible
-                    ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
-                    : "0 0 0 1px rgba(255, 255, 255, 0.05) inset",
-                width: "100%",
                 y: 0,
             }}
             transition={{
@@ -105,8 +107,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
                 damping: 50,
             }}
             className={cn(
-                "relative z-[60] mx-auto hidden w-full max-w-7xl flex-row items-center justify-between self-start px-4 py-2 lg:flex",
-                "bg-white/70 dark:bg-neutral-950/70 border border-white/20 dark:border-white/5",
+                "relative z-[60] mx-auto hidden w-full max-w-none flex-row items-center justify-between px-6 py-3 lg:flex lg:px-10",
                 className,
             )}
         >
@@ -147,18 +148,10 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
     );
 };
 
-export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
+export const MobileNav = ({ children, className }: MobileNavProps) => {
     return (
         <motion.div
             animate={{
-                backdropFilter: visible ? "blur(12px) saturate(180%)" : "blur(8px) saturate(150%)",
-                boxShadow: visible
-                    ? "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(34, 42, 53, 0.04), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset"
-                    : "0 0 0 1px rgba(255, 255, 255, 0.05) inset",
-                width: "100%",
-                paddingRight: "0px",
-                paddingLeft: "0px",
-                borderRadius: "2rem",
                 y: 0,
             }}
             transition={{
@@ -167,8 +160,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
                 damping: 50,
             }}
             className={cn(
-                "relative z-50 mx-auto flex w-full max-w-[100vw] flex-col items-center justify-between px-0 py-2 lg:hidden",
-                "bg-white/70 dark:bg-neutral-950/70 border border-white/20 dark:border-white/5",
+                "relative z-50 mx-auto flex w-full max-w-none flex-col items-center justify-between px-6 py-3 lg:hidden",
                 className,
             )}
         >
@@ -207,9 +199,10 @@ export const MobileNavMenu = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className={cn(
-                        "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 rounded-lg bg-white px-4 py-8 shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] dark:bg-neutral-950",
+                        "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 border-t border-black/[0.06] bg-white/85 px-6 py-8 backdrop-blur-[12px] backdrop-saturate-[180%] dark:border-white/10 dark:bg-neutral-950/85",
                         className,
                     )}
+                    style={{ WebkitBackdropFilter: "blur(12px) saturate(180%)" }}
                 >
                     {children}
                 </motion.div>

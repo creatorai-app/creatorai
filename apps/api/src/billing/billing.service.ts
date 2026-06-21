@@ -19,14 +19,22 @@ import * as crypto from 'crypto';
 const COMMISSION_MATURITY_DAYS = 30;
 const MAX_COMMISSIONED_PAYMENTS = 12;
 
+// Credits granted to the *buyer* (on top of their plan allowance) when they
+// make their first purchase via someone's referral link. The referrer earns
+// the same amount via the award_referral_credits DB trigger.
+const REFERRAL_PURCHASE_BONUS = 1000;
+
 export interface PlanRecord {
   id: string;
   name: string;
   price_monthly: number;
+  price_annual_monthly?: number | null;
   credits_monthly: number;
   features: unknown;
   is_active: boolean;
+  tagline?: string | null;
   ls_variant_id?: string;
+  ls_variant_id_annual?: string | null;
 }
 
 interface SubscriptionRecord {
@@ -138,6 +146,7 @@ export class BillingService {
     planId: string,
     affiliateCode?: string,
     origin?: string,
+    interval: 'monthly' | 'annual' = 'monthly',
   ) {
     this.initLemonSqueezy();
     const supabase = this.supabaseService.getClient();
@@ -152,7 +161,15 @@ export class BillingService {
     if (planError || !plan) throw new NotFoundException('Plan not found');
     if (plan.price_monthly === 0)
       throw new BadRequestException('Cannot purchase the free plan');
-    if (!plan.ls_variant_id)
+
+    // Pick the annual variant when the caller asked for annual billing and the
+    // plan has one configured; otherwise fall back to the monthly variant.
+    const variantId =
+      interval === 'annual' && plan.ls_variant_id_annual
+        ? plan.ls_variant_id_annual
+        : plan.ls_variant_id;
+
+    if (!variantId)
       throw new BadRequestException('Plan is not configured for payments');
 
     const { data: profile } = await supabase
@@ -185,7 +202,7 @@ export class BillingService {
 
     const { data, error } = await createCheckout(
       storeId,
-      plan.ls_variant_id,
+      variantId,
       checkoutData,
     );
 
@@ -401,6 +418,18 @@ export class BillingService {
       .eq('user_id', userId)
       .in('status', ['active', 'on_trial', 'past_due']);
 
+    const { data: plan } = await supabase
+      .from('plans')
+      .select('credits_monthly, ls_variant_id_annual')
+      .eq('id', planId)
+      .single();
+
+    const lsVariantId = String(attrs.variant_id ?? '');
+    const billingInterval =
+      plan?.ls_variant_id_annual && lsVariantId === plan.ls_variant_id_annual
+        ? 'annual'
+        : 'monthly';
+
     const { data: insertedSub } = await supabase
       .from('subscriptions')
       .insert({
@@ -410,6 +439,8 @@ export class BillingService {
         ls_customer_id: String(attrs.customer_id ?? ''),
         ls_order_id: String(attrs.order_id ?? ''),
         status: this.mapLsStatus(String(attrs.status ?? 'active')),
+        billing_interval: billingInterval,
+        credits_last_refreshed_at: new Date().toISOString(),
         current_period_start: attrs.created_at
           ? new Date(attrs.created_at as string).toISOString()
           : null,
@@ -423,16 +454,19 @@ export class BillingService {
     const subscriptionId = insertedSub?.id ?? null;
     const customerEmail = (attrs.user_email as string | undefined) ?? null;
 
-    const { data: plan } = await supabase
-      .from('plans')
-      .select('credits_monthly')
-      .eq('id', planId)
-      .single();
-
     if (plan) {
+      // If this purchase is the buyer's first conversion via a referral link,
+      // complete the referral (awards the referrer 1,000 via DB trigger) and
+      // grant the buyer a matching 1,000-credit bonus on top of their plan.
+      const referralBonus = await this.completeReferralOnPurchase(
+        userId,
+        customerEmail,
+        supabase,
+      );
+
       await supabase
         .from('profiles')
-        .update({ credits: plan.credits_monthly })
+        .update({ credits: plan.credits_monthly + referralBonus })
         .eq('user_id', userId);
     }
 
@@ -534,6 +568,11 @@ export class BillingService {
         .from('profiles')
         .update({ credits: plan.credits_monthly })
         .eq('user_id', sub.user_id);
+
+      await supabase
+        .from('subscriptions')
+        .update({ credits_last_refreshed_at: new Date().toISOString() })
+        .eq('id', sub.id);
     }
 
     // The first ("initial") invoice fires alongside subscription_created, which
@@ -676,6 +715,78 @@ export class BillingService {
 
   private maturityDate(): string {
     return new Date(Date.now() + COMMISSION_MATURITY_DAYS * 86400000).toISOString();
+  }
+
+  /**
+   * Complete a pending referral when the referred user makes their first
+   * purchase. Marks the referral 'completed' (the award_referral_credits
+   * trigger then credits the referrer 1,000) and returns the bonus the buyer
+   * should additionally receive (1,000), or 0 when the buyer was not referred.
+   *
+   * Idempotent: the status guard means only the first qualifying purchase
+   * completes the referral and pays out the bonus.
+   */
+  private async completeReferralOnPurchase(
+    buyerUserId: string,
+    buyerEmail: string | null,
+    supabase: ReturnType<typeof this.supabaseService.getClient>,
+  ): Promise<number> {
+    const { data: buyerProfile } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('user_id', buyerUserId)
+      .maybeSingle();
+
+    const email = (buyerEmail ?? buyerProfile?.email ?? '').toLowerCase();
+
+    // Find a still-pending referral for this buyer — matched by the email
+    // captured when the link was used, or by the linked profile id.
+    let referral: { id: string } | null = null;
+    if (email) {
+      const { data } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('referred_email', email)
+        .eq('status', 'pending')
+        .maybeSingle();
+      referral = data ?? null;
+    }
+    if (!referral && buyerProfile?.id) {
+      const { data } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('referred_user_id', buyerProfile.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+      referral = data ?? null;
+    }
+
+    if (!referral) return 0;
+
+    const { error, data: updated } = await supabase
+      .from('referrals')
+      .update({
+        status: 'completed',
+        referred_user_id: buyerProfile?.id ?? null,
+        credits_awarded: REFERRAL_PURCHASE_BONUS,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', referral.id)
+      .eq('status', 'pending') // guard against concurrent double-processing
+      .select('id');
+
+    if (error || !updated?.length) {
+      if (error)
+        this.logger.error(
+          `Failed to complete referral ${referral.id}: ${JSON.stringify(error)}`,
+        );
+      return 0;
+    }
+
+    this.logger.log(
+      `Referral ${referral.id} completed on purchase by ${buyerUserId}; buyer +${REFERRAL_PURCHASE_BONUS} bonus`,
+    );
+    return REFERRAL_PURCHASE_BONUS;
   }
 
   private async trackAffiliateConversion(

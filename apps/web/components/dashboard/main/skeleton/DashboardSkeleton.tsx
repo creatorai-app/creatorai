@@ -18,7 +18,7 @@ export function DashboardSkeleton() {
         <Skeleton className="h-5 w-80" />
       </header>
 
-      {/* Quick Actions — 6 columns to match real grid */}
+      {/* Quick Actions, 6 columns to match real grid */}
       <section aria-label="Quick Actions skeleton">
         <Skeleton className="h-5 w-28 mb-4" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -37,7 +37,7 @@ export function DashboardSkeleton() {
       {/* Main 2-col grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 
-        {/* Left — col-span-2 */}
+        {/* Left, col-span-2 */}
         <div className="lg:col-span-2 flex flex-col gap-6 lg:gap-8">
 
           {/* Activity Chart */}

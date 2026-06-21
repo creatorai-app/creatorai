@@ -154,9 +154,22 @@ export default function Referrals() {
 
   return (
     <div className="container py-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Referral Program</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">Invite friends and earn credits for premium features</p>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">Invite friends and earn credits when they upgrade</p>
+      </div>
+
+      {/* How the reward works */}
+      <div className="mb-8 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+        <Gift className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div className="text-sm text-amber-900 dark:text-amber-200">
+          <p className="font-semibold">Earn 1,000 credits per paid referral</p>
+          <p className="mt-1 text-amber-800/90 dark:text-amber-200/80">
+            When someone subscribes to a paid plan using your referral link, you
+            get <strong>1,000 credits</strong>, and they get <strong>1,000 bonus credits</strong> too.
+            Rewards are granted on their first purchase only. There is no sign-up bonus.
+          </p>
+        </div>
       </div>
 
       {/* User Profile Section */}
@@ -206,7 +219,7 @@ export default function Referrals() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{referralData?.referralCredits || 0}</div>
-            <p className="text-xs text-muted-foreground">Credits earned from referrals</p>
+            <p className="text-xs text-muted-foreground">Credits earned from paid referrals</p>
           </CardContent>
         </Card>
 
@@ -227,7 +240,7 @@ export default function Referrals() {
         <CardHeader>
           <CardTitle>Your Referral Code</CardTitle>
           <CardDescription>
-            Share this code with friends to earn credits when they sign up
+            Share your link, you earn 1,000 credits when a friend subscribes to a paid plan
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -303,10 +316,10 @@ export default function Referrals() {
                     </div>
                     <div className="text-right">
                       <Badge variant="secondary" className="mb-2">
-                        Awaiting Verification
+                        Awaiting Purchase
                       </Badge>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Email not verified yet
+                        Earns 1,000 credits when they upgrade
                       </p>
                     </div>
                   </div>
@@ -354,10 +367,10 @@ export default function Referrals() {
                     </div>
                     <div className="text-right">
                       <Badge variant="default" className="mb-2 bg-green-600 hover:bg-green-700">
-                        +{referral.credits_awarded || 250} Credits
+                        +{referral.credits_awarded || 1000} Credits
                       </Badge>
                       <p className="text-xs text-green-600 dark:text-green-400 font-medium">
-                        Successfully Completed
+                        Upgraded to a paid plan
                       </p>
                     </div>
                   </div>

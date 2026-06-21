@@ -19,7 +19,7 @@ const inter = Inter({
 
 export const metadata: Metadata = createMetadata({
   title: {
-    default: `${siteConfig.name} — AI Assistant for YouTube Creators`,
+    default: `${siteConfig.name} | AI Assistant for YouTube Creators`,
     template: `%s | ${siteConfig.name}`,
   },
 })

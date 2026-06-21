@@ -5,6 +5,8 @@ node_modules
 .pnp
 .pnp.js
 
+gcp_service_acc.json
+
 # Local env files
 .env
 .env.local

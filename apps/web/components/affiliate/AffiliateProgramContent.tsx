@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { motion, type Variants } from "motion/react";
 import { Repeat, CheckCircle2, ArrowRight } from "lucide-react";
+import Lenis from "lenis";
+import "lenis/dist/lenis.css";
 
 import { FAQ, STEPS, HIGHLIGHTS } from "./affiliate-program-data";
 
@@ -26,6 +29,11 @@ const EARNINGS_POINTS = [
 ];
 
 export default function AffiliateProgramContent() {
+  useEffect(() => {
+    const lenis = new Lenis({ autoRaf: true });
+    return () => lenis.destroy();
+  }, []);
+
   return (
     <main className="bg-white dark:bg-slate-950">
       {/* Hero */}
@@ -66,7 +74,7 @@ export default function AffiliateProgramContent() {
             className="mx-auto mt-5 max-w-2xl text-lg text-slate-600 dark:text-slate-400"
           >
             Refer creators to Creator AI and earn <strong>20% recurring commission</strong> on
-            every subscription — for up to 12 months per customer. It&apos;s free to join and
+            every subscription, for up to 12 months per customer. It&apos;s free to join and
             takes less than a minute to start.
           </motion.p>
           <motion.div
@@ -78,7 +86,7 @@ export default function AffiliateProgramContent() {
                 href="/signup"
                 className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-purple-600/20 transition-colors hover:bg-purple-700"
               >
-                Start earning — it&apos;s free <ArrowRight className="h-4 w-4" />
+                Start earning, it&apos;s free <ArrowRight className="h-4 w-4" />
               </Link>
             </motion.div>
             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
@@ -212,24 +220,24 @@ export default function AffiliateProgramContent() {
           >
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Example</p>
             <p className="mt-1 text-slate-700 dark:text-slate-300">
-              Refer <strong>10 creators</strong> to the Creator+ plan ($20/mo):
+              Refer <strong>10 creators</strong> to the Creator plan ($24/mo):
             </p>
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Per customer / month</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">$4.00</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">$4.80</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600 dark:text-slate-400">10 customers / month</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">$40.00</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">$48.00</span>
               </div>
               <div className="flex items-center justify-between border-t border-purple-200 dark:border-purple-900/50 pt-3">
                 <span className="text-slate-600 dark:text-slate-400">Over 12 months</span>
-                <span className="text-lg font-bold text-purple-700 dark:text-purple-300">$480.00</span>
+                <span className="text-lg font-bold text-purple-700 dark:text-purple-300">$576.00</span>
               </div>
             </div>
             <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Illustrative figures based on the $20/month Creator+ plan and a 20% recurring rate.
+              Illustrative figures based on the $24/month Creator plan and a 20% recurring rate.
             </p>
           </motion.div>
         </div>

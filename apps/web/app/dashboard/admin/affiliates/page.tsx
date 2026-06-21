@@ -222,13 +222,13 @@ function LinksTab() {
                         {link.code}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-300">{link.label || "—"}</td>
+                    <td className="px-4 py-3 text-slate-300">{link.label || "-"}</td>
                     <td className="px-4 py-3 text-slate-400">
-                      {link.profiles?.full_name || link.profiles?.email || "—"}
+                      {link.profiles?.full_name || link.profiles?.email || "-"}
                     </td>
                     <td className="px-4 py-3 text-slate-300">{link.commission_rate}%</td>
                     <td className="px-4 py-3 text-slate-300">{link.click_count}</td>
-                    <td className="px-4 py-3 text-slate-500 text-xs font-mono">{link.ls_affiliate_id || "—"}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs font-mono">{link.ls_affiliate_id || "-"}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         link.is_active ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"
@@ -347,7 +347,7 @@ function LinksTab() {
       <Dialog open={!!editLink} onOpenChange={() => setEditLink(null)}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <DialogHeader>
-            <DialogTitle>Edit Affiliate Link — <span className="font-mono text-purple-400">{editLink?.code}</span></DialogTitle>
+            <DialogTitle>Edit Affiliate Link | <span className="font-mono text-purple-400">{editLink?.code}</span></DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4 py-4">
             <div>
@@ -491,8 +491,8 @@ function RequestsTab() {
                     <tr key={req.id} onClick={() => openDetails(req)} className="hover:bg-slate-900/40 cursor-pointer transition-colors">
                       <td className="px-4 py-3 text-slate-200 font-medium">{req.full_name}</td>
                       <td className="px-4 py-3 text-slate-400">{req.email}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{req.website || "—"}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs max-w-[180px] truncate">{req.promotion_method || "—"}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{req.website || "-"}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs max-w-[180px] truncate">{req.promotion_method || "-"}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}>
                           <StatusIcon className={`h-3.5 w-3.5 ${meta.iconClass}`} />
@@ -700,11 +700,11 @@ function SalesTab() {
                   <tr key={sale.id} className="hover:bg-slate-900/30">
                     <td className="px-4 py-3">
                       <span className="font-mono text-xs text-purple-400 bg-purple-900/20 px-2 py-0.5 rounded">
-                        {sale.affiliate_links?.code || "—"}
+                        {sale.affiliate_links?.code || "-"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{sale.profiles?.full_name || sale.profiles?.email || "—"}</td>
-                    <td className="px-4 py-3 text-slate-400">{sale.customer_email || "—"}</td>
+                    <td className="px-4 py-3 text-slate-400">{sale.profiles?.full_name || sale.profiles?.email || "-"}</td>
+                    <td className="px-4 py-3 text-slate-400">{sale.customer_email || "-"}</td>
                     <td className="px-4 py-3 text-slate-200 font-medium">${Number(sale.amount).toFixed(2)}</td>
                     <td className="px-4 py-3 text-emerald-400 font-medium">${Number(sale.commission).toFixed(2)}</td>
                     <td className="px-4 py-3">
@@ -802,7 +802,7 @@ function LsAffiliatesTab() {
                     <td className="px-4 py-3 font-mono text-xs text-purple-400">{aff.id}</td>
                     <td className="px-4 py-3 text-slate-200">{aff.user_name}</td>
                     <td className="px-4 py-3 text-slate-400">{aff.user_email}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{aff.share_domain || "—"}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">{aff.share_domain || "-"}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         aff.status === "active" ? "bg-green-900/40 text-green-400" :
@@ -946,7 +946,7 @@ function PromoCodesTab() {
                     <td className="px-4 py-3">
                       <span className="font-mono text-xs text-pink-400 bg-pink-900/20 px-2 py-0.5 rounded">{promo.code}</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{promo.profiles?.full_name || promo.profiles?.email || "—"}</td>
+                    <td className="px-4 py-3 text-slate-400">{promo.profiles?.full_name || promo.profiles?.email || "-"}</td>
                     <td className="px-4 py-3 text-slate-300">
                       {promo.amount_type === "percent" ? `${promo.amount}%` : `$${promo.amount}`}
                     </td>
@@ -1035,7 +1035,7 @@ function PromoCodesTab() {
       <Dialog open={!!edit} onOpenChange={() => setEdit(null)}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <DialogHeader>
-            <DialogTitle>Edit Promo Code — <span className="font-mono text-pink-400">{edit?.code}</span></DialogTitle>
+            <DialogTitle>Edit Promo Code | <span className="font-mono text-pink-400">{edit?.code}</span></DialogTitle>
           </DialogHeader>
           {edit && (
             <form onSubmit={handleSaveEdit} className="space-y-4 py-4">
@@ -1143,7 +1143,7 @@ function WithdrawalsTab() {
               ) : (
                 data.map((w) => (
                   <tr key={w.id} className="hover:bg-slate-900/30">
-                    <td className="px-4 py-3 text-slate-400">{w.profiles?.full_name || w.profiles?.email || "—"}</td>
+                    <td className="px-4 py-3 text-slate-400">{w.profiles?.full_name || w.profiles?.email || "-"}</td>
                     <td className="px-4 py-3 text-slate-100 font-semibold">${Number(w.amount).toFixed(2)}</td>
                     <td className="px-4 py-3 text-slate-300 capitalize">{w.method}</td>
                     <td className="px-4 py-3">
@@ -1175,7 +1175,7 @@ function WithdrawalsTab() {
       <Dialog open={!!selected} onOpenChange={() => { setSelected(null); setNotes("") }}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <DialogHeader>
-            <DialogTitle>Withdrawal — ${selected ? Number(selected.amount).toFixed(2) : ""}</DialogTitle>
+            <DialogTitle>Withdrawal | ${selected ? Number(selected.amount).toFixed(2) : ""}</DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-4 py-4">

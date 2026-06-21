@@ -6,8 +6,6 @@ import { creatorAiFetch } from '@/lib/creator-ai-http';
 import { Resend } from 'resend';
 import { BACKEND_URL } from '@/lib/constants';
 
-const CREDITS_PER_REFERRAL = 250;
-
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -125,16 +123,21 @@ async function processReferral(
 }
 
 
-async function completePendingReferral(
+/**
+ * Link a pending referral to the newly-signed-up user WITHOUT awarding any
+ * credits. There is no sign-up bonus, the referral stays 'pending' and is only
+ * completed (1,000 credits to the referrer + 1,000 bonus to the buyer) when the
+ * referred user makes their first purchase, handled in the billing webhook.
+ */
+async function linkPendingReferral(
   supabase: any,
   userEmail: string,
   userId: string
 ) {
   try {
-    // Fetch the first pending referral (should only be one)
     const { data: pendingReferral, error: fetchError } = await supabase
       .from('referrals')
-      .select('id, referrer_id')
+      .select('id, referrer_id, referred_user_id')
       .eq('status', 'pending')
       .eq('referred_email', userEmail.toLowerCase())
       .maybeSingle();
@@ -149,39 +152,22 @@ async function completePendingReferral(
       return;
     }
 
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', userId)
-      .single();
+    if (pendingReferral.referred_user_id) return; // already linked
 
-    if (profileData) {
-      await supabase
-        .from('profiles')
-        .update({ credits: profileData.credits + CREDITS_PER_REFERRAL })
-        .eq('id', userId)
-    }
-
-
-    // Update the referral to completed
-    const { error: updateError } = await supabase
+    // profiles.id === auth user id (see handle_new_user trigger).
+    const { error: linkError } = await supabase
       .from('referrals')
-      .update({
-        referred_user_id: userId,
-        status: 'completed',
-        credits_awarded: CREDITS_PER_REFERRAL,
-        completed_at: new Date().toISOString(),
-      })
+      .update({ referred_user_id: userId })
       .eq('id', pendingReferral.id);
 
-    if (updateError) {
-      console.error(' Error completing referral:', updateError.message);
+    if (linkError) {
+      console.error(' Error linking referral:', linkError.message);
       return;
     }
 
-    console.log(` Completed referral for: ${userEmail} (referrer: ${pendingReferral.referrer_id})`);
+    console.log(` Linked pending referral for: ${userEmail} (referrer: ${pendingReferral.referrer_id})`);
   } catch (error) {
-    console.error(' Error processing pending referral:', error);
+    console.error(' Error linking pending referral:', error);
   }
 }
 
@@ -287,9 +273,9 @@ export async function GET(request: NextRequest) {
         await processReferral(referralCode, user.email!);
       }
 
-      // Complete any pending referral for this email
+      // Link any pending referral for this email (no credits until they purchase)
       if (user.email) {
-        await completePendingReferral(supabase, user.email, user.id);
+        await linkPendingReferral(supabase, user.email, user.id);
       }
 
       await sendWelcomeEmailsIfNeeded(
@@ -333,9 +319,9 @@ export async function GET(request: NextRequest) {
       // Update profile
       await updateUserProfile(supabase, user.id, full_name, avatar_url);
 
-      // Complete any pending referral for this email
+      // Link any pending referral for this email (no credits until they purchase)
       if (user.email) {
-        await completePendingReferral(supabase, user.email, user.id);
+        await linkPendingReferral(supabase, user.email, user.id);
       }
 
       // Send welcome emails only for new signups (type === 'signup')

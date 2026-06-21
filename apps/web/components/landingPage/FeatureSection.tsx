@@ -63,7 +63,7 @@ const features = [
     title: "Referral Program",
     icon: Gift,
     description:
-      "Invite other creators and earn free credits. The more friends you bring, the more you can create.",
+      "Invite creator friends and you both win: when a friend you referred makes their first purchase, you each get 1,000 credits.",
   },
   {
     title: "Video Generation",

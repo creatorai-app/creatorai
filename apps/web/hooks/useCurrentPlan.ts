@@ -40,9 +40,9 @@ export function useCurrentPlan() {
     planName,
     loading,
     isStarter: !loading && planName === "Starter",
-    isCreatorPlus: !loading && planName === "Creator+",
-    isEnterprise: !loading && planName === "Enterprise",
     maxIdeas: ideationLimits.maxIdeas,
+    // Every feature is available on every plan, always true now, kept so the
+    // metrics link in the research view renders for everyone.
     hasComparisonMetrics: !loading && hasIdeationComparisonMetrics(planName),
     ideationLimits,
     planTier: (planName ?? "Starter") as IdeationPlanName,
