@@ -7,10 +7,8 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "@repo/ui/button";
 import { Skeleton } from "@repo/ui/skeleton";
-import { ArrowLeft, BarChart3, Lock } from "lucide-react";
+import { ArrowLeft, BarChart3 } from "lucide-react";
 import ComparisonMetricsView from "@/components/dashboard/research/ComparisonMetricsView";
-import PremiumGateModal from "@/components/dashboard/research/PremiumGateModal";
-import { useCurrentPlan } from "@/hooks/useCurrentPlan";
 import { api } from "@/lib/api-client";
 import type { IdeationJob } from "@repo/validation";
 
@@ -18,10 +16,8 @@ export default function IdeationMetricsPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { hasComparisonMetrics, loading: planLoading } = useCurrentPlan();
   const [job, setJob] = useState<IdeationJob | null>(null);
   const [loading, setLoading] = useState(true);
-  const [premiumOpen, setPremiumOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -39,43 +35,12 @@ export default function IdeationMetricsPage() {
     })();
   }, [id, router]);
 
-  useEffect(() => {
-    if (!planLoading && !hasComparisonMetrics) {
-      setPremiumOpen(true);
-    }
-  }, [planLoading, hasComparisonMetrics]);
-
-  if (loading || planLoading) {
+  if (loading) {
     return (
       <div className="container max-w-5xl py-8 space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 rounded-lg" />
         <Skeleton className="h-64 rounded-lg" />
-      </div>
-    );
-  }
-
-  if (!hasComparisonMetrics) {
-    return (
-      <div className="container max-w-5xl py-8">
-        <Link
-          href={`/dashboard/research/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to results
-        </Link>
-        <div className="text-center py-16 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-          <Lock className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-600 dark:text-slate-300 font-medium">Comparison metrics require Creator+ or Enterprise</p>
-          <Button variant="outline" className="mt-4" onClick={() => setPremiumOpen(true)}>
-            View plans
-          </Button>
-        </div>
-        <PremiumGateModal
-          open={premiumOpen}
-          onClose={() => router.push(`/dashboard/research/${id}`)}
-          featureLabel="Comparison metrics"
-        />
       </div>
     );
   }

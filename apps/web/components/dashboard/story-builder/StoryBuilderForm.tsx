@@ -17,7 +17,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Badge } from "@repo/ui/badge"
 import {
   Loader2, Sparkles, BookOpen, Users, Clock, Film, Palette, Wand2,
-  ArrowRight, Lightbulb, Clapperboard, GraduationCap, Lock,
+  ArrowRight, Lightbulb, Clapperboard, GraduationCap,
 } from "lucide-react"
 import {
   VIDEO_DURATIONS,
@@ -34,8 +34,6 @@ import {
   type AudienceLevel,
 } from "@repo/validation"
 import type { IdeationJob } from "@repo/validation"
-
-const STARTER_STORY_MODES: StoryMode[] = ["conversational", "minimal"]
 
 interface StoryBuilderFormProps {
   videoTopic: string
@@ -64,8 +62,6 @@ interface StoryBuilderFormProps {
   onSelectIdea: (ideationId: string, ideaIndex: number, ideaTitle: string) => void
   selectedIdeationId?: string
   selectedIdeaIndex?: number
-  isStarter?: boolean
-  onPremiumClick?: () => void
 }
 
 const STORY_MODE_DESCRIPTIONS: Record<StoryMode, string> = {
@@ -90,7 +86,6 @@ export function StoryBuilderForm({
   aiTrained, isGenerating, onGenerate,
   ideationJobs, isLoadingIdeations, onSelectIdea,
   selectedIdeationId, selectedIdeaIndex,
-  isStarter, onPremiumClick,
 }: StoryBuilderFormProps) {
   const allIdeas = ideationJobs.flatMap(job =>
     (job.result?.ideas || []).map((idea, idx) => ({
@@ -241,41 +236,29 @@ export function StoryBuilderForm({
               Story Mode
             </Label>
             <div className="grid grid-cols-2 gap-2">
-              {STORY_MODES.map((sm) => {
-                const locked = isStarter && !STARTER_STORY_MODES.includes(sm)
-                return (
-                  <button
-                    key={sm}
-                    type="button"
-                    onClick={() => locked ? onPremiumClick?.() : setStoryMode(sm)}
-                    disabled={isGenerating}
-                    className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left ${
-                      storyMode === sm && !locked
-                        ? "bg-purple-600 text-white shadow-sm"
-                        : locked
-                          ? "bg-slate-50 dark:bg-slate-800/60 text-slate-300 dark:text-slate-600 cursor-pointer ring-1 ring-slate-200 dark:ring-slate-700"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    <span className={locked ? "opacity-50" : ""}>{STORY_MODE_LABELS[sm]}</span>
-                    {locked && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 shadow-sm">
-                        <Lock className="h-2 w-2 text-white" />
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+              {STORY_MODES.map((sm) => (
+                <button
+                  key={sm}
+                  type="button"
+                  onClick={() => setStoryMode(sm)}
+                  disabled={isGenerating}
+                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left ${
+                    storyMode === sm
+                      ? "bg-purple-600 text-white shadow-sm"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <span>{STORY_MODE_LABELS[sm]}</span>
+                </button>
+              ))}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {STORY_MODE_DESCRIPTIONS[storyMode]}
             </p>
-            {isStarter && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-purple-500" />
-                Upgrade to Creator+ to unlock all story modes
-              </p>
-            )}
+            <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-purple-500" />
+              Every story mode is unlocked on all plans.
+            </p>
           </div>
         </div>
 

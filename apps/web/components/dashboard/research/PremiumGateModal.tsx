@@ -64,7 +64,7 @@ export default function PremiumGateModal({ open, onClose, featureLabel }: Premiu
           </div>
 
           <p className="text-xs text-center text-slate-400 dark:text-slate-500">
-            Available on <span className="font-semibold text-purple-600 dark:text-purple-400">Creator+</span> and <span className="font-semibold text-purple-600 dark:text-purple-400">Enterprise</span> plans
+            Upgrade only when you need more monthly credits.
           </p>
 
           <div className="flex gap-3">
@@ -73,7 +73,7 @@ export default function PremiumGateModal({ open, onClose, featureLabel }: Premiu
             </Button>
             <Button asChild className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-purple-500/20">
               <Link href="/dashboard/settings?tab=billing" onClick={onClose}>
-                Upgrade Now
+                Get more credits
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
             </Button>
