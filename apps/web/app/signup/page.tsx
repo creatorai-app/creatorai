@@ -58,7 +58,7 @@ function SignupForm() {
     try {
       await api.post("/api/v1/referral/track", { referralCode, userEmail });
       toast.success("Referral applied!", {
-        description: "You'll both receive 250 free credits once you verify your email.",
+        description: "Subscribe to any paid plan and you'll both get 1,000 bonus credits.",
       });
       setShowReferralBanner(false);
     } catch (err: unknown) {
@@ -248,7 +248,7 @@ function SignupForm() {
                 {showReferralBanner && referralCode && (
                   <div className="px-6 py-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
                     <p className="text-sm text-center text-purple-700 dark:text-purple-300">
-                      🎉 You've been invited by a friend! <br /> Referral code: <span className="font-mono font-bold">{referralCode}</span> <br /> You'll both earn <strong>250 free credits</strong>.
+                      🎉 You've been invited by a friend! <br /> Referral code: <span className="font-mono font-bold">{referralCode}</span> <br /> Subscribe to any paid plan and you'll both earn <strong>1,000 bonus credits</strong>.
                     </p>
                   </div>
                 )}
