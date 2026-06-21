@@ -42,6 +42,7 @@ export const footerItems: FooterSection = {
   "Company": [
     { name: "About Us", href: "/about-us" },
     { name: "Affiliate Program", href: "/affiliate-program" },
+    { name: "Referral Program", href: "/referral-program" },
     { name: "Careers", href: "/careers" },
   ],
   "Account": [

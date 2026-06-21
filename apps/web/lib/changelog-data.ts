@@ -28,15 +28,31 @@ export interface ChangelogRelease {
  */
 export const releases: ChangelogRelease[] = [
   {
+    version: "1.1.0",
+    date: "2026-06-19",
+    tag: "minor",
+    title: "New pricing & a fairer referral program",
+    summary:
+      "Every feature is now available on every plan, including the free Starter plan. Plans differ only by monthly credits, with optional annual billing that saves 20%. The referral program now rewards real purchases instead of sign-ups.",
+    changes: [
+      { type: "added", description: "Five plans: Starter (free, 200 credits), Creator ($24/mo, 3,000), Pro ($49/mo, 8,000), Business ($299/mo, 50,000), and Scale ($599/mo, 150,000)." },
+      { type: "added", description: "Annual billing on Creator and Pro, save 20% ($19/mo and $39/mo billed yearly)." },
+      { type: "added", description: "Public Referral Program page explaining the give-1,000-get-1,000 model." },
+      { type: "changed", description: "Every feature is now unlocked on every plan, no feature is gated behind a higher tier." },
+      { type: "changed", description: "Referral rewards: earn 1,000 credits when a referred friend makes their first purchase (they get 1,000 too). No more sign-up bonuses." },
+      { type: "removed", description: "Premium feature gates on Story Builder modes and Ideation comparison metrics." },
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-04-23",
     tag: "major",
-    title: "Creator AI 1.0 — General Availability",
+    title: "Creator AI 1.0 | General Availability",
     summary:
       "First stable public release. Creator AI graduates from beta with a consolidated feature set, hardened infra, RBAC-backed admin tooling, and a complete monetization and affiliate stack.",
     changes: [
       { type: "added", description: "Affiliate program with sales-rep settings, approvals, and signup email notifications." },
-      { type: "added", description: "Careers module — job postings, applications, and admin CRUD." },
+      { type: "added", description: "Careers module, job postings, applications, and admin CRUD." },
       { type: "added", description: "Admin and Sales-Rep dashboards with role-based access control." },
       { type: "added", description: "Premium gating on Story Builder and Ideation." },
       { type: "added", description: "One-time 500 credits on signup; 250 credits per successful referral." },
