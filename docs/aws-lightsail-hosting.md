@@ -179,7 +179,7 @@ This is a monorepo with **three separate env files** — there is **no root `.en
 |------|---------|--------------|
 | `apps/web/.env`        | Next.js frontend | `NEXT_PUBLIC_*`, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY` |
 | `apps/api/.env`        | NestJS API       | `SUPABASE_*`, `REDIS_URL`, Vertex AI, Lemon Squeezy, CORS URLs |
-| `packages/workers/.env`| BullMQ worker    | `SUPABASE_*`, `REDIS_URL`, Vertex AI, ElevenLabs, Google OAuth |
+| `packages/workers/.env`| BullMQ worker    | `SUPABASE_*`, `REDIS_URL`, Vertex AI, Google OAuth |
 
 Create each from its example and fill in production values:
 
@@ -241,7 +241,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-abcd1234} --maxmemory 1gb --maxmemory-policy allkeys-lru --appendonly yes
+    command: redis-server --requirepass ${REDIS_PASSWORD:-abcd1234} --maxmemory 1gb --maxmemory-policy noeviction --appendonly yes
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
