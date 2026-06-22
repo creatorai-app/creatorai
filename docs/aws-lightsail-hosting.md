@@ -483,6 +483,59 @@ docker compose -f docker-compose.prod.yml build api
 docker compose -f docker-compose.prod.yml up -d api
 ```
 
+Or just run the bundled deploy script, which does pull + build + restart + cleanup:
+
+```bash
+bash ~/creatorai/scripts/deploy.sh
+```
+
+---
+
+## Part 12b — Automatic Deploys (CI/CD, like Vercel)
+
+Instead of SSHing in manually, you can have **every push to `main` deploy itself**. The repo ships a GitHub Actions workflow at `.github/workflows/deploy.yml` that SSHes into your server and runs `scripts/deploy.sh`. You just need to give GitHub a key to log in with.
+
+### Step 1 — Make a deploy SSH key (on your local machine)
+
+```bash
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/lightsail_deploy
+```
+
+Press Enter twice (no passphrase — CI can't type one). This creates:
+- `~/.ssh/lightsail_deploy` — **private** key (goes into GitHub secrets)
+- `~/.ssh/lightsail_deploy.pub` — **public** key (goes onto the server)
+
+### Step 2 — Authorize the key on the server
+
+SSH into the instance (browser SSH is fine) and run, pasting the **public** key contents where shown:
+
+```bash
+echo "PASTE_THE_CONTENTS_OF_lightsail_deploy.pub_HERE" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+### Step 3 — Add GitHub repository secrets
+
+In the repo on GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Add three:
+
+| Secret name | Value |
+|-------------|-------|
+| `LIGHTSAIL_HOST` | your static IP, e.g. `98.90.176.169` |
+| `LIGHTSAIL_USER` | `ubuntu` |
+| `LIGHTSAIL_SSH_KEY` | the **entire** contents of the private key file `~/.ssh/lightsail_deploy` (including the `-----BEGIN...` / `-----END...` lines) |
+
+### Step 4 — That's it
+
+Push to `main` (or merge a PR into it) and watch the **Actions** tab — the deploy runs automatically. You can also trigger it by hand from **Actions → Deploy to Production → Run workflow**.
+
+> **How it works:** the workflow connects over SSH and runs `git reset --hard origin/main` + `docker compose build` + `up -d` on the box. The first deploy takes 5–10 min (full build); later deploys only rebuild changed layers.
+
+### Notes & gotchas
+
+- **Env files are NOT in git** (they're gitignored), so the deploy never touches `apps/web/.env`, `apps/api/.env`, `packages/workers/.env`, or `gcp_service_acc.json`. Those live only on the server — set them once (Part 6) and they persist across deploys.
+- **Changed an env var?** The Action won't know — SSH in and edit the file, then `docker compose -f docker-compose.prod.yml up -d` (or re-run the deploy).
+- **Building on the box** uses CPU; on the burstable 2-vCPU tier a deploy may briefly slow the live app. Fine for now. When you outgrow it, the cleaner pattern is to build images in GitHub Actions, push to a registry (GHCR), and have the server only `pull` — but that's an optimization for later, not needed at launch.
+
 ---
 
 ## Part 13 — Monitoring and Maintenance
