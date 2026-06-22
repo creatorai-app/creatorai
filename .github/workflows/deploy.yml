@@ -1,0 +1,36 @@
+name: Deploy to Production
+
+# Auto-deploys to the AWS Lightsail instance on every push to main,
+# similar to Vercel's git-push-to-deploy flow. Can also be run manually.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Never run two deploys at once; let an in-flight deploy finish.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & restart on Lightsail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          # Give the build room; first build is slow.
+          command_timeout: 30m
+          script: |
+            set -e
+            cd ~/creatorai
+            git fetch --all --prune
+            git reset --hard origin/main
+            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
+            docker compose -f docker-compose.prod.yml ps
