@@ -399,7 +399,7 @@ export function UsageInfo() {
                 Plan: {billingInfo?.currentPlan?.name ?? "Starter"}
               </span>
               <span className="text-sm font-medium">
-                {billingInfo?.currentPlan?.credits_monthly?.toLocaleString() ?? 500} credits/mo
+                {billingInfo?.currentPlan?.credits_monthly?.toLocaleString() ?? 200} credits/mo
               </span>
             </div>
 

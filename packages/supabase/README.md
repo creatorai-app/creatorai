@@ -54,7 +54,7 @@ User profile data and credits system.
 | `full_name` | text | User's full name |
 | `email` | text | User's email |
 | `bio` | text | User biography |
-| `credits` | integer | Available credits (default: 500) |
+| `credits` | integer | Available credits (default: 200) |
 | `referral_code` | varchar(10) | Unique referral code |
 | `referred_by` | varchar(10) | Referral code of referrer |
 | `total_referrals` | integer | Count of successful referrals |
@@ -619,7 +619,7 @@ auth.users
 ## Development Notes
 
 ### Credit System
-- New users start with 500 credits
+- New users start with 200 credits
 - Referrals award 5 credits (to both `credits` and `referral_credits`)
 - Credits consumed tracked per feature in respective tables
 

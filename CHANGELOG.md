@@ -41,7 +41,7 @@ First stable public release. Creator AI graduates from beta to 1.0 with a consol
 - **Careers module** — application/job schema, admin CRUD for managing job postings, public apply flow.
 - **Admin & Sales-Rep dashboards** with role-based access control (RBAC).
 - **Premium gating** on Story Builder and Ideation features.
-- **One-time 500 credits** granted on signup; 250 credits awarded per successful referral.
+- **One-time 200 credits** granted on signup; 250 credits awarded per successful referral.
 - **Audio dubbing** backed by VoxCPM model.
 - **SEO**: metadata, sitemap, robots, Open Graph/Twitter cards across public pages.
 - **Resend webhook** integration for transactional email lifecycle events.
