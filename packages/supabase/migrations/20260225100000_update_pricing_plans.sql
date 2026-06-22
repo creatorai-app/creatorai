@@ -1,6 +1,6 @@
 -- Update pricing plans: Pro -> Creator+, new feature lists
 UPDATE public.plans SET
-  features = '["No credit card required","Monthly 500 free credits","AI model training","Ideation","Script Gen","Subtitle gen","Story Builder","Thumbnail gen","Course Builder"]'
+  features = '["No credit card required","Monthly 200 free credits","AI model training","Ideation","Script Gen","Subtitle gen","Story Builder","Thumbnail gen","Course Builder"]'
 WHERE name = 'Starter';
 
 UPDATE public.plans SET

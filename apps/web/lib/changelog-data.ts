@@ -55,7 +55,7 @@ export const releases: ChangelogRelease[] = [
       { type: "added", description: "Careers module, job postings, applications, and admin CRUD." },
       { type: "added", description: "Admin and Sales-Rep dashboards with role-based access control." },
       { type: "added", description: "Premium gating on Story Builder and Ideation." },
-      { type: "added", description: "One-time 500 credits on signup; 250 credits per successful referral." },
+      { type: "added", description: "One-time 200 credits on signup; 250 credits per successful referral." },
       { type: "added", description: "Audio dubbing powered by the VoxCPM model." },
       { type: "added", description: "SEO metadata, sitemap, robots, and Open Graph across public pages." },
       { type: "added", description: "Resend webhook integration for transactional email lifecycle events." },
