@@ -16,7 +16,7 @@ export interface TokenRefreshResult {
 /**
  * Validates an OAuth access token by calling Google's tokeninfo endpoint
  */
-export async function validateAccessToken(accessToken: string): Promise<TokenValidationResult> {
+async function validateAccessToken(accessToken: string): Promise<TokenValidationResult> {
   try {
     await axios.get('https://oauth2.googleapis.com/tokeninfo', {
       params: { access_token: accessToken },
@@ -52,7 +52,7 @@ export async function validateAccessToken(accessToken: string): Promise<TokenVal
 /**
  * Refreshes an OAuth access token using a refresh token
  */
-export async function refreshAccessToken(
+async function refreshAccessToken(
   refreshToken: string,
   clientId: string,
   clientSecret: string

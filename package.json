@@ -28,7 +28,6 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@google/genai": "^1.13.0",
-    "@repo/config": "workspace:*",
     "@repo/email-templates": "workspace:*",
     "@repo/supabase": "workspace:*",
     "@repo/workers": "workspace:*",

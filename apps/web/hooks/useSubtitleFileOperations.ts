@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { SubtitleLine } from "@repo/validation";
 import { parseSRT } from '@/utils/srtUtils';
-import { convertJsonToSrt } from '@/utils/convertJsonToSrt';
+import { convertJsonToSrt } from '@repo/validation';
 import { api, getApiErrorMessage } from '@/lib/api-client';
 import { downloadFile, downloadBlob } from '@/lib/download';
 

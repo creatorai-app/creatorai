@@ -23,7 +23,6 @@
     "lint": "echo 'No source JavaScript files to lint'"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "^9.0.0",

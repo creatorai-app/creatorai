@@ -54,9 +54,6 @@ importers:
       '@google/genai':
         specifier: ^1.13.0
         version: 1.13.0
-      '@repo/config':
-        specifier: workspace:*
-        version: link:packages/config
       '@repo/email-templates':
         specifier: workspace:*
         version: link:packages/email-templates
@@ -123,12 +120,6 @@ importers:
       '@nestjs/swagger':
         specifier: ^7.4.2
         version: 7.4.2(@nestjs/common@10.4.20(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-validator@0.14.2)(reflect-metadata@0.2.2)
-      '@repo/api':
-        specifier: workspace:*
-        version: link:../../packages/api
-      '@repo/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@repo/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
@@ -364,12 +355,6 @@ importers:
       '@react-three/fiber':
         specifier: ^9.5.0
         version: 9.5.0(@types/react@19.1.9)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(three@0.181.2)
-      '@repo/api':
-        specifier: workspace:*
-        version: link:../../packages/api
-      '@repo/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@repo/supabase':
         specifier: workspace:*
         version: link:../../packages/supabase
@@ -579,40 +564,6 @@ importers:
         specifier: ^5
         version: 5.5.4
 
-  packages/api:
-    dependencies:
-      '@nestjs/mapped-types':
-        specifier: '*'
-        version: 2.1.0(@nestjs/common@10.4.20(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-validator@0.14.2)(reflect-metadata@0.2.2)
-    devDependencies:
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^20.3.1
-        version: 20.19.9
-      ts-loader:
-        specifier: ^9.4.3
-        version: 9.5.2(typescript@5.5.4)(webpack@5.101.0(esbuild@0.25.11))
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@20.19.9)(typescript@5.5.4)
-      typescript:
-        specifier: 5.5.4
-        version: 5.5.4
-
-  packages/config:
-    devDependencies:
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      eslint:
-        specifier: ^9.0.0
-        version: 9.34.0(jiti@1.21.7)
-      typescript:
-        specifier: ^5.5.3
-        version: 5.5.4
-
   packages/email-templates:
     devDependencies:
       '@repo/typescript-config':
@@ -688,9 +639,6 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
     devDependencies:
-      '@repo/config':
-        specifier: workspace:*
-        version: link:../config
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -731,9 +679,6 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
-      '@repo/config':
-        specifier: workspace:*
-        version: link:../config
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -776,12 +721,6 @@ importers:
       '@nestjs/swagger':
         specifier: ^7.0.0
         version: 7.4.2(@nestjs/common@10.4.20(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-validator@0.14.2)(reflect-metadata@0.2.2)
-      '@repo/api':
-        specifier: workspace:*
-        version: link:../api
-      '@repo/config':
-        specifier: workspace:*
-        version: link:../config
       '@repo/supabase':
         specifier: workspace:*
         version: link:../supabase

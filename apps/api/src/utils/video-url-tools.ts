@@ -23,21 +23,15 @@ export function getFileNameFromUrl(url: string): string {
     }
 }
 
-export function getMimeTypeFromUrl(url: string): string {
-    const extension = url.split(".").pop()?.toLowerCase();
+const VIDEO_MIME_TYPES: Record<string, string> = {
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    webm: "video/webm",
+    mkv: "video/x-matroska",
+    avi: "video/x-msvideo",
+};
 
-    switch (extension) {
-        case "mp4":
-            return "video/mp4";
-        case "mov":
-            return "video/quicktime";
-        case "webm":
-            return "video/webm";
-        case "mkv":
-            return "video/x-matroska";
-        case "avi":
-            return "video/x-msvideo";
-        default:
-            return "application/octet-stream";
-    }
+export function getMimeTypeFromUrl(url: string): string {
+    const extension = url.split(".").pop()?.toLowerCase() ?? "";
+    return VIDEO_MIME_TYPES[extension] ?? "application/octet-stream";
 }

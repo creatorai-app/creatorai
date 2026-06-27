@@ -12,13 +12,13 @@ import {
   getMinimumCreditsForSubtitleRequest,
   SUBTITLE_CREDIT_MULTIPLIER,
   TOKENS_PER_CREDIT,
+  convertJsonToSrt,
 } from '@repo/validation';
 import {
   createGoogleAI,
   GEMINI_TEXT_MODEL,
   fetchVideoAsBuffer,
   getMimeTypeFromUrl,
-  convertJsonToSrt,
   configureFFmpeg,
 } from '../utils';
 import * as path from 'path';

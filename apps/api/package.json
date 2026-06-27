@@ -29,8 +29,6 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.4.2",
-    "@repo/api": "workspace:*",
-    "@repo/config": "workspace:*",
     "@repo/email-templates": "workspace:*",
     "@repo/supabase": "workspace:*",
     "@repo/validation": "workspace:*",

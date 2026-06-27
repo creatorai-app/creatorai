@@ -27,8 +27,6 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^10.0.0",
     "@nestjs/swagger": "^7.0.0",
-    "@repo/api": "workspace:*",
-    "@repo/config": "workspace:*",
     "@repo/supabase": "workspace:*",
     "@repo/validation": "workspace:*",
     "@upstash/redis": "^1.37.0",
