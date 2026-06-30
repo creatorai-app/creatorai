@@ -19,8 +19,8 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsup",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsup --watch",
     "supabase:dev": "pnpx supabase start",
     "supabase:init": "pnpx supabase init",
     "supabase:link": "pnpx supabase link --project-ref <your-project-ID>",
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "cross-env": "catalog:",
     "typescript": "catalog:",
     "tsup": "catalog:"
   }
