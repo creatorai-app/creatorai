@@ -4,3 +4,4 @@ export * from './ideation';
 export * from './http';
 export * from './gemini';
 export * from './languages';
+export * from './upload';
