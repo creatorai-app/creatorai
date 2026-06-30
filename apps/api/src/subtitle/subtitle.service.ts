@@ -392,7 +392,7 @@ Your task is to transcribe the provided audio file and generate precise, time-st
    * The active plan is the most-recent active subscription (same source as getBillingInfo /
    * the billing UI) — NOT profiles.plan_id, which is not kept in sync on upgrade.
    */
-  private async getUploadLimits(userId: string): Promise<{ maxBytes: number; maxDurationSeconds: number | null }> {
+  private async getUploadLimits(userId: string): Promise<{ maxBytes: number; maxDurationSeconds: number; isPaid: boolean }> {
     const { data: subscription } = await this.supabaseService.getClient()
       .from('subscriptions')
       .select('plans(price_monthly)')
@@ -408,6 +408,7 @@ Your task is to transcribe the provided audio file and generate precise, time-st
     return {
       maxBytes: subtitleUploadLimitBytes(isPaid),
       maxDurationSeconds: subtitleMaxDurationSeconds(isPaid),
+      isPaid,
     };
   }
 
@@ -417,17 +418,30 @@ Your task is to transcribe the provided audio file and generate precise, time-st
     return { success: true, maxBytes, maxDurationSeconds };
   }
 
-  private parseDuration(duration: string, maxDurationSeconds: number | null): number {
+  // isUpgradeable: free plans can lift the cap by upgrading; paid plans are at the
+  // Gemini ceiling, so phrase the rejection as a hard maximum, not an upsell.
+  private parseDuration(duration: string, maxDurationSeconds: number, isUpgradeable: boolean): number {
     const parsed = parseFloat(duration);
     if (isNaN(parsed)) {
       throw new BadRequestException('Invalid duration format');
     }
-    if (maxDurationSeconds !== null && parsed > maxDurationSeconds) {
+    if (parsed > maxDurationSeconds) {
+      const mins = Math.round(maxDurationSeconds / 60);
       throw new BadRequestException(
-        `Video duration exceeds ${Math.round(maxDurationSeconds / 60)} minutes on your current plan. Please upgrade to upload longer videos.`,
+        isUpgradeable
+          ? `Video duration exceeds ${mins} minutes on your current plan. Please upgrade to upload longer videos.`
+          : `Video duration exceeds the maximum supported length of ${mins} minutes.`,
       );
     }
     return parsed;
+  }
+
+  private uploadSizeError(maxBytes: number, isUpgradeable: boolean): PayloadTooLargeException {
+    return new PayloadTooLargeException(
+      isUpgradeable
+        ? `This video exceeds your plan's ${formatUploadLimit(maxBytes)} upload limit. Please upgrade to upload larger videos.`
+        : `This video exceeds the maximum ${formatUploadLimit(maxBytes)} upload size.`,
+    );
   }
 
   /**
@@ -442,12 +456,10 @@ Your task is to transcribe the provided audio file and generate precise, time-st
     }
 
     // Reject oversize / over-length BEFORE issuing the URL, so a throttled plan wastes no upload.
-    const { maxBytes, maxDurationSeconds } = await this.getUploadLimits(userId);
-    this.parseDuration(duration, maxDurationSeconds);
+    const { maxBytes, maxDurationSeconds, isPaid } = await this.getUploadLimits(userId);
+    this.parseDuration(duration, maxDurationSeconds, !isPaid);
     if (fileSize > maxBytes) {
-      throw new PayloadTooLargeException(
-        `This video exceeds your plan's ${formatUploadLimit(maxBytes)} upload limit. Please upgrade to upload larger videos.`,
-      );
+      throw this.uploadSizeError(maxBytes, !isPaid);
     }
 
     const safeOriginalName = this.sanitizeFileName(filename);
@@ -469,8 +481,8 @@ Your task is to transcribe the provided audio file and generate precise, time-st
       throw new ForbiddenException('Object does not belong to user');
     }
 
-    const { maxBytes, maxDurationSeconds } = await this.getUploadLimits(userId);
-    const parsedDuration = this.parseDuration(duration, maxDurationSeconds);
+    const { maxBytes, maxDurationSeconds, isPaid } = await this.getUploadLimits(userId);
+    const parsedDuration = this.parseDuration(duration, maxDurationSeconds, !isPaid);
 
     let size: number;
     try {
@@ -483,9 +495,7 @@ Your task is to transcribe the provided audio file and generate precise, time-st
     // and the size sent at sign time was unverified.
     if (size > maxBytes) {
       await deleteGcsObject(this.configService, objectName).catch(() => null);
-      throw new PayloadTooLargeException(
-        `This video exceeds your plan's ${formatUploadLimit(maxBytes)} upload limit. Please upgrade to upload larger videos.`,
-      );
+      throw this.uploadSizeError(maxBytes, !isPaid);
     }
 
     const publicUrl = gcsPublicUrl(this.configService, objectName);

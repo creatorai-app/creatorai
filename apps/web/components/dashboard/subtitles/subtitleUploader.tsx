@@ -15,7 +15,7 @@ import { Label } from "@repo/ui/label";
 
 // Hooks & Utils
 import { api, getApiErrorMessage } from "@/lib/api-client";
-import { formatUploadLimit, SUBTITLE_PAID_UPLOAD_BYTES } from "@repo/validation";
+import { formatUploadLimit, SUBTITLE_PAID_UPLOAD_BYTES, SUBTITLE_PAID_MAX_DURATION_SECONDS } from "@repo/validation";
 
 type SubtitleUploaderProps = {
     onUploadSuccess: () => void;
@@ -30,11 +30,11 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
     const [progress, setProgress] = useState(0);
     // Plan-based limits; assume the highest tier until the API confirms the user's limit.
     const [maxSize, setMaxSize] = useState(SUBTITLE_PAID_UPLOAD_BYTES);
-    const [maxDuration, setMaxDuration] = useState<number | null>(null); // null = no duration cap
+    const [maxDuration, setMaxDuration] = useState(SUBTITLE_PAID_MAX_DURATION_SECONDS);
     const router = useRouter();
 
     useEffect(() => {
-        api.get<{ maxBytes: number; maxDurationSeconds: number | null }>("/api/v1/subtitle/upload/limit", { requireAuth: true })
+        api.get<{ maxBytes: number; maxDurationSeconds: number }>("/api/v1/subtitle/upload/limit", { requireAuth: true })
             .then((res) => { setMaxSize(res.maxBytes); setMaxDuration(res.maxDurationSeconds); })
             .catch(() => { /* keep defaults; the sign step enforces the real limit anyway */ });
     }, []);
@@ -59,7 +59,7 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
         video.onloadedmetadata = () => {
             URL.revokeObjectURL(video.src);
             const videoDuration = video.duration;
-            if (maxDuration !== null && videoDuration > maxDuration) {
+            if (videoDuration > maxDuration) {
                 toast.error("Duration limit reached", {
                     description: `Your current plan allows videos up to ${Math.round(maxDuration / 60)} minutes for subtitle generation. Please upgrade for longer videos.`,
                 });
@@ -190,7 +190,7 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
                         <div className="flex items-center space-x-4 text-xs text-slate-400 uppercase tracking-widest font-bold">
                             <span>Max {formatUploadLimit(maxSize)}</span>
                             <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
-                            <span>{maxDuration !== null ? `${Math.round(maxDuration / 60)} Min Limit` : "Any Length"}</span>
+                            <span>{Math.round(maxDuration / 60)} Min Limit</span>
                         </div>
                     </Label>
                     <Input
