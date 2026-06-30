@@ -16,7 +16,7 @@ import {
 import { ImageDropzone } from "@repo/ui/image-dropzone";
 import { useEffect, useState } from "react";
 import { useSupabase } from "../../supabase-provider";
-import { supportedLanguages } from "@repo/config"; //
+import { profileLanguages } from "@repo/validation";
 import ProfileSettingSkeleton from "./loadingSkeleton/ProfileSettingSkeleton";
 
 interface formDataState {
@@ -146,7 +146,7 @@ export function ProfileSettingsForm() {
                                     <SelectValue placeholder="Select a language" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {supportedLanguages.map((lang) => (
+                                    {profileLanguages.map((lang) => (
                                         <SelectItem key={lang.code} value={lang.code}>
                                             {lang.name}
                                         </SelectItem>

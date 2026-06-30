@@ -4,4 +4,5 @@ export * from './types/trainAI';
 export * from './types/ideationTypes';
 export * from './consts';
 export * from './types/youtubeStatsTypes';
+export * from './srt';
 

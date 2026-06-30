@@ -1,12 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-/**
- * Gemini model ids used by the worker. Centralized so a model swap is a one-line change.
- * Override per-environment via env vars if needed.
- */
-export const GEMINI_TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash';
-export const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
-export const GEMINI_EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
+export { GEMINI_TEXT_MODEL, GEMINI_IMAGE_MODEL, GEMINI_EMBEDDING_MODEL } from '@repo/validation';
 
 let cached: GoogleGenAI | null = null;
 

@@ -45,8 +45,6 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
-    "@repo/api": "workspace:*",
-    "@repo/config": "workspace:*",
     "@repo/supabase": "workspace:*",
     "@repo/ui": "workspace:*",
     "@repo/validation": "workspace:*",
@@ -101,7 +99,6 @@
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@playwright/test": "^1.58.2",
-    "@repo/config": "workspace:*",
     "@repo/jest-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@repo/validation": "workspace:*",

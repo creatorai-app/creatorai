@@ -1,4 +1,4 @@
-import { convertJsonToSrt } from './convertJsonToSrt';
+import { convertJsonToSrt } from '@repo/validation';
 
 describe('convertJsonToSrt', () => {
   it('should convert subtitle array to SRT format', () => {

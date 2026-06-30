@@ -26,7 +26,6 @@
     "sonner": "^1.7.1"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@turbo/gen": "^1.12.4",
     "@types/eslint": "^8.56.5",

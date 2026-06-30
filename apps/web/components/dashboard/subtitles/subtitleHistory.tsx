@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@repo/ui/dropdown-menu";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@repo/ui/alert-dialog";
 import { SubtitleHistorySkeleton } from "./skeleton/SubtitleHistorySkeleton";
-import { convertJsonToSrt } from "@/utils/convertJsonToSrt";
+import { convertJsonToSrt } from "@repo/validation";
 import { convertJsonToVTT } from "@/utils/vttHelper";
 import { downloadBlob } from "@/lib/download";
 
