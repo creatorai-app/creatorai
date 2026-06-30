@@ -245,7 +245,7 @@ Your task is to transcribe the provided audio file and generate precise, time-st
 
       await this.supabaseService.getClient()
         .from('subtitle_jobs')
-        .update({ credits_consumed: creditsConsumed })
+        .update({ credits_consumed: creditsConsumed, total_tokens: totalTokens })
         .eq('id', subtitleId);
 
       return {

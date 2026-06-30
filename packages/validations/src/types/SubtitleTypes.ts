@@ -16,4 +16,6 @@ export type SubtitleResponse = {
     updated_at: string;
     filename: string;
     title: string | null;
+    credits_consumed: number;
+    total_tokens: number;
 };
