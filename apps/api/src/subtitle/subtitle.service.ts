@@ -1,11 +1,12 @@
-import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException, PayloadTooLargeException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException, PayloadTooLargeException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   type CreateSubtitleInput,
   type UpdateSubtitleInput,
   type UpdateSubtitleByIdInput,
-  type UploadVideoInput,
+  type SignUploadInput,
+  type FinalizeUploadInput,
   type BurnSubtitleInput,
   calculateSubtitleCredits,
   hasEnoughCredits,
@@ -13,29 +14,25 @@ import {
   SUBTITLE_CREDIT_MULTIPLIER,
   TOKENS_PER_CREDIT,
   convertJsonToSrt,
+  subtitleUploadLimitBytes,
+  subtitleMaxDurationSeconds,
+  formatUploadLimit,
 } from '@repo/validation';
 import {
   createGoogleAI,
   GEMINI_TEXT_MODEL,
-  fetchVideoAsBuffer,
   getMimeTypeFromUrl,
   configureFFmpeg,
+  streamVideoToFile,
+  getSignedUploadUrl,
+  gcsPublicUrl,
+  gcsUri,
+  gcsObjectMetadata,
+  deleteGcsObject,
 } from '../utils';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs/promises';
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-// Vertex AI accepts media bytes inline in the request (no Files API). Keep well under the
-// per-request payload ceiling; base64 encoding inflates size by ~33%.
-const MAX_INLINE_BYTES = 50 * 1024 * 1024; // 50MB raw → ~67MB base64
-const MAX_VIDEO_DURATION = 10 * 60; // 10 minutes in seconds
-type StorageErrorLike = {
-  message?: string;
-  statusCode?: string | number;
-  code?: string | number;
-  error?: string;
-};
 
 @Injectable()
 export class SubtitleService {
@@ -63,38 +60,6 @@ export class SubtitleService {
 
   private sanitizeFileName(value: string): string {
     return value.replace(/[^\w.\-]/g, '_');
-  }
-
-  private getStorageErrorContext(error: unknown): StorageErrorLike {
-    if (error && typeof error === 'object') {
-      return error as StorageErrorLike;
-    }
-    return { message: String(error) };
-  }
-
-  private mapUploadErrorToHttpException(error: unknown): Error {
-    const ctx = this.getStorageErrorContext(error);
-    const status = Number(ctx.statusCode);
-    const code = String(ctx.code ?? '').toLowerCase();
-    const message = String(ctx.message ?? '').toLowerCase();
-
-    if (status === 401 || status === 403 || code.includes('unauthorized') || code.includes('permission') || message.includes('permission') || message.includes('not authorized')) {
-      return new ForbiddenException('Upload permission denied. Please check storage policies.');
-    }
-
-    if (status === 413 || code.includes('entity_too_large') || message.includes('too large')) {
-      return new PayloadTooLargeException('Video upload limit is 50MB on your current plan. Please upgrade to upload larger videos.');
-    }
-
-    if (status === 415 || code.includes('invalid_mime') || message.includes('mime') || message.includes('content type')) {
-      return new BadRequestException('Unsupported video format. Please upload a valid video file.');
-    }
-
-    if (status >= 500 || code.includes('timeout') || code.includes('network') || message.includes('timeout') || message.includes('network')) {
-      return new ServiceUnavailableException('Storage service is currently unavailable. Please try again.');
-    }
-
-    return new InternalServerErrorException('Failed to upload video');
   }
 
   async create(input: CreateSubtitleInput, userId: string) {
@@ -130,17 +95,18 @@ export class SubtitleService {
 
       const { data: subtitle, error: subtitleError } = await this.supabaseService.getClient()
         .from('subtitle_jobs')
-        .select('video_url')
+        .select('video_url, video_gs_uri')
         .eq('user_id', userId)
         .eq('id', subtitleId)
         .single();
 
-      if ((subtitleError && subtitleError.code !== 'PGRST116') || !subtitle?.video_url) {
-        await this.logErrorToDB('Subtitle lookup failed or video_url missing', subtitleId);
+      if ((subtitleError && subtitleError.code !== 'PGRST116') || !subtitle?.video_gs_uri) {
+        await this.logErrorToDB('Subtitle lookup failed or video_gs_uri missing', subtitleId);
         throw new NotFoundException('Subtitle lookup error');
       }
 
       const video_url = subtitle.video_url;
+      const video_gs_uri = subtitle.video_gs_uri;
       const ai = await createGoogleAI(this.configService);
 
       const isAutoDetect = !language || language.toLowerCase() === 'auto detect' || language.toLowerCase() === 'auto';
@@ -186,20 +152,15 @@ Your task is to transcribe the provided audio file and generate precise, time-st
 }
 `;
 
-      const audioBuffer = await fetchVideoAsBuffer(video_url);
       const fileType = getMimeTypeFromUrl(video_url);
 
-      if (audioBuffer.length > MAX_INLINE_BYTES) {
-        await this.logErrorToDB('Media file too large for inline processing', subtitleId);
-        throw new PayloadTooLargeException('Media file is too large to process. Please use a shorter or smaller file.');
-      }
-
-      // Vertex AI: send media bytes inline (the Files API is not available on Vertex).
+      // Vertex AI reads the media directly from GCS via its gs:// URI (no inline bytes,
+      // no Files API). This lifts the old ~50MB inline ceiling to GCS's 2GB object limit.
       const parts = [
         { text: prompt },
         {
-          inlineData: {
-            data: audioBuffer.toString('base64'),
+          fileData: {
+            fileUri: video_gs_uri,
             mimeType: fileType,
           },
         },
@@ -372,6 +333,7 @@ Your task is to transcribe the provided audio file and generate precise, time-st
         .delete()
         .eq("id", id)
         .eq("user_id", userId)
+        .select('video_gs_uri')
         .single();
 
       if (subtitleError && subtitleError.code !== 'PGRST116') {
@@ -379,13 +341,13 @@ Your task is to transcribe the provided audio file and generate precise, time-st
         throw new NotFoundException('Subtitle lookup error');
       }
 
-      if (subtitleData?.video_url) {
-        const bucketName = 'video_subtitles';
-        const filePath = subtitleData.video_url.substring(
-          subtitleData.video_url.indexOf(bucketName) + bucketName.length + 1
-        );
-        if (filePath) {
-          await this.supabaseService.getClient().storage.from(bucketName).remove([filePath]);
+      if (subtitleData?.video_gs_uri) {
+        // gs://bucket/<objectName> → <objectName>
+        const objectName = subtitleData.video_gs_uri.split('/').slice(3).join('/');
+        if (objectName) {
+          await deleteGcsObject(this.configService, objectName).catch((e) =>
+            this.logger.error(`Failed to delete GCS object ${objectName}`, e),
+          );
         }
       }
 
@@ -423,109 +385,145 @@ Your task is to transcribe the provided audio file and generate precise, time-st
     };
   }
 
-  async upload(
-    file: Express.Multer.File,
-    input: UploadVideoInput,
-    userId: string,
-    filename: string,
-  ) {
-    const { duration, scriptId } = input;
+  /**
+   * Plan-based upload limits. Starter (free) is throttled on BOTH size (100MB) and
+   * duration (10 min). Paid plans get 2GB and no duration cap (maxDurationSeconds = null).
+   *
+   * The active plan is the most-recent active subscription (same source as getBillingInfo /
+   * the billing UI) — NOT profiles.plan_id, which is not kept in sync on upgrade.
+   */
+  private async getUploadLimits(userId: string): Promise<{ maxBytes: number; maxDurationSeconds: number | null }> {
+    const { data: subscription } = await this.supabaseService.getClient()
+      .from('subscriptions')
+      .select('plans(price_monthly)')
+      .eq('user_id', userId)
+      .in('status', ['active', 'on_trial', 'past_due'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (!file) {
-      throw new BadRequestException('No file provided');
-    }
-
-    if (!duration) {
-      throw new BadRequestException('No duration provided');
-    }
-
-    const parsedDuration =
-      typeof duration === 'string' ? parseFloat(duration) : duration;
-
-    if (isNaN(parsedDuration)) {
-      throw new BadRequestException('Invalid duration format');
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      throw new PayloadTooLargeException('Video upload limit is 50MB on your current plan. Please upgrade to upload larger videos.');
-    }
-
-    if (parsedDuration > MAX_VIDEO_DURATION) {
-      throw new BadRequestException('Video duration exceeds 10 minutes on your current plan. Please upgrade to upload longer videos.');
-    }
-
-    const safeOriginalName = this.sanitizeFileName(file.originalname);
-    const newFileName = `${userId}/${Date.now()}_${safeOriginalName}`;
-
-    this.logger.log(`Subtitle upload started: userId=${userId}, filename=${safeOriginalName}, mimeType=${file.mimetype}, size=${file.size}, duration=${parsedDuration}`);
-
-    try {
-      const { error: uploadError } = await this.supabaseService
-        .getClient()
-        .storage
-        .from('video_subtitles')
-        .upload(newFileName, file.buffer, {
-          contentType: file.mimetype,
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-    } catch (err) {
-      const ctx = this.getStorageErrorContext(err);
-      this.logger.error(
-        `Subtitle upload failed: userId=${userId}, filename=${safeOriginalName}, statusCode=${ctx.statusCode ?? 'n/a'}, code=${ctx.code ?? 'n/a'}, message=${ctx.message ?? 'n/a'}`,
-      );
-      throw this.mapUploadErrorToHttpException(err);
-    } finally {
-      if (file.path) {
-        await fs.unlink(file.path).catch(() => null);
-      }
-    }
-
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = this.supabaseService
-      .getClient()
-      .storage
-      .from('video_subtitles')
-      .getPublicUrl(newFileName);
-
-    // Create subtitle job
-    const { data, error: subtitleInsertError } =
-      await this.supabaseService
-        .getClient()
-        .from('subtitle_jobs')
-        .insert({
-          user_id: userId,
-          video_path: publicUrl,
-          video_url: publicUrl,
-          duration: parsedDuration,
-          filename: filename,
-          script_id: scriptId || null,
-        })
-        .select()
-        .single();
-
-    if (subtitleInsertError) {
-      this.logger.error(
-        `Subtitle job creation failed after upload: userId=${userId}, filename=${safeOriginalName}, message=${subtitleInsertError.message}, code=${subtitleInsertError.code ?? 'n/a'}`,
-      );
-      throw new InternalServerErrorException(
-        'Failed to create subtitle job',
-      );
-    }
+    const priceMonthly = Number((subscription?.plans as { price_monthly?: number } | null)?.price_monthly ?? 0);
+    const isPaid = priceMonthly > 0;
 
     return {
-      success: true,
-      subtitleId: data.id,
+      maxBytes: subtitleUploadLimitBytes(isPaid),
+      maxDurationSeconds: subtitleMaxDurationSeconds(isPaid),
     };
   }
 
-  async burnSubtitle(input: BurnSubtitleInput): Promise<Buffer> {
+  /** Exposed so the uploader can show the correct limits and pre-validate before uploading. */
+  async getUploadLimit(userId: string) {
+    const { maxBytes, maxDurationSeconds } = await this.getUploadLimits(userId);
+    return { success: true, maxBytes, maxDurationSeconds };
+  }
+
+  private parseDuration(duration: string, maxDurationSeconds: number | null): number {
+    const parsed = parseFloat(duration);
+    if (isNaN(parsed)) {
+      throw new BadRequestException('Invalid duration format');
+    }
+    if (maxDurationSeconds !== null && parsed > maxDurationSeconds) {
+      throw new BadRequestException(
+        `Video duration exceeds ${Math.round(maxDurationSeconds / 60)} minutes on your current plan. Please upgrade to upload longer videos.`,
+      );
+    }
+    return parsed;
+  }
+
+  /**
+   * Step 1: issue a signed URL the browser PUTs the file straight to GCS with — the
+   * API server never touches the bytes, so multi-GB uploads don't blow up its memory.
+   */
+  async signUpload(input: SignUploadInput, userId: string) {
+    const { filename, contentType, fileSize, duration } = input;
+
+    if (!/^video\//.test(contentType)) {
+      throw new BadRequestException('Unsupported video format. Please upload a valid video file.');
+    }
+
+    // Reject oversize / over-length BEFORE issuing the URL, so a throttled plan wastes no upload.
+    const { maxBytes, maxDurationSeconds } = await this.getUploadLimits(userId);
+    this.parseDuration(duration, maxDurationSeconds);
+    if (fileSize > maxBytes) {
+      throw new PayloadTooLargeException(
+        `This video exceeds your plan's ${formatUploadLimit(maxBytes)} upload limit. Please upgrade to upload larger videos.`,
+      );
+    }
+
+    const safeOriginalName = this.sanitizeFileName(filename);
+    const objectName = `${userId}/${Date.now()}_${safeOriginalName}`;
+
+    const uploadUrl = await getSignedUploadUrl(this.configService, objectName, contentType);
+    return { success: true, uploadUrl, objectName, contentType };
+  }
+
+  /**
+   * Step 2: after the browser uploads, verify the object's REAL size server-side
+   * (the signed URL can't enforce it), then create the job. Rejects + deletes oversize.
+   */
+  async finalizeUpload(input: FinalizeUploadInput, userId: string) {
+    const { objectName, filename, duration, scriptId } = input;
+
+    // Prevent finalizing someone else's object — the signed URL was scoped to this prefix.
+    if (!objectName.startsWith(`${userId}/`)) {
+      throw new ForbiddenException('Object does not belong to user');
+    }
+
+    const { maxBytes, maxDurationSeconds } = await this.getUploadLimits(userId);
+    const parsedDuration = this.parseDuration(duration, maxDurationSeconds);
+
+    let size: number;
+    try {
+      ({ size } = await gcsObjectMetadata(this.configService, objectName));
+    } catch {
+      throw new BadRequestException('Uploaded file not found in storage');
+    }
+
+    // Re-check the REAL size against the plan limit — the signed URL can't enforce it,
+    // and the size sent at sign time was unverified.
+    if (size > maxBytes) {
+      await deleteGcsObject(this.configService, objectName).catch(() => null);
+      throw new PayloadTooLargeException(
+        `This video exceeds your plan's ${formatUploadLimit(maxBytes)} upload limit. Please upgrade to upload larger videos.`,
+      );
+    }
+
+    const publicUrl = gcsPublicUrl(this.configService, objectName);
+    const gsUri = gcsUri(this.configService, objectName);
+
+    const { data, error: subtitleInsertError } = await this.supabaseService
+      .getClient()
+      .from('subtitle_jobs')
+      .insert({
+        user_id: userId,
+        video_path: publicUrl,
+        video_url: publicUrl,
+        video_gs_uri: gsUri,
+        duration: parsedDuration,
+        filename: filename,
+        script_id: scriptId || null,
+      })
+      .select()
+      .single();
+
+    if (subtitleInsertError) {
+      await deleteGcsObject(this.configService, objectName).catch(() => null);
+      this.logger.error(
+        `Subtitle job creation failed after upload: userId=${userId}, message=${subtitleInsertError.message}, code=${subtitleInsertError.code ?? 'n/a'}`,
+      );
+      throw new InternalServerErrorException('Failed to create subtitle job');
+    }
+
+    return { success: true, subtitleId: data.id };
+  }
+
+  /**
+   * Burns subtitles into the video and returns the output file path plus a cleanup fn.
+   * Returns a path (not a Buffer) so the controller can STREAM a multi-GB result back
+   * instead of loading it all into RAM. Caller MUST call cleanup() when done streaming.
+   */
+  async burnSubtitle(input: BurnSubtitleInput): Promise<{ outputPath: string; cleanup: () => Promise<void> }> {
     const { videoUrl, subtitles } = input;
-    const videoBuffer = await fetchVideoAsBuffer(videoUrl);
 
     const tmpDir = path.join(os.tmpdir(), 'video_processing');
     await fs.mkdir(tmpDir, { recursive: true });
@@ -534,8 +532,18 @@ Your task is to transcribe the provided audio file and generate precise, time-st
     const srtPath = path.join(tmpDir, `subs_${Date.now()}.srt`);
     const outputPath = path.join(tmpDir, `output_${Date.now()}.mp4`);
 
+    const cleanupSources = () =>
+      Promise.allSettled([
+        fs.unlink(videoPath).catch(() => null),
+        fs.unlink(srtPath).catch(() => null),
+      ]);
+    const cleanup = async () => {
+      await Promise.allSettled([cleanupSources(), fs.unlink(outputPath).catch(() => null)]);
+    };
+
     try {
-      await fs.writeFile(videoPath, videoBuffer);
+      // Stream the source to disk instead of buffering it — a 2GB video would OOM the server.
+      await streamVideoToFile(videoUrl, videoPath);
       const srtContent = convertJsonToSrt(subtitles);
       await fs.writeFile(srtPath, srtContent, 'utf-8');
 
@@ -554,9 +562,10 @@ Your task is to transcribe the provided audio file and generate precise, time-st
           .save(outputPath);
       });
 
-      const outputBuffer = await fs.readFile(outputPath);
-      return outputBuffer;
+      await cleanupSources(); // output stays until the controller streams it
+      return { outputPath, cleanup };
     } catch (error) {
+      await cleanup();
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to burn subtitles: ${errorMessage}`);
       if (errorMessage.includes('ENOENT') || errorMessage.toLowerCase().includes('ffmpeg')) {
@@ -565,12 +574,6 @@ Your task is to transcribe the provided audio file and generate precise, time-st
         );
       }
       throw new InternalServerErrorException('Failed to process video with subtitles');
-    } finally {
-      await Promise.allSettled([
-        fs.unlink(videoPath).catch(() => null),
-        fs.unlink(srtPath).catch(() => null),
-        fs.unlink(outputPath).catch(() => null),
-      ]);
     }
   }
 

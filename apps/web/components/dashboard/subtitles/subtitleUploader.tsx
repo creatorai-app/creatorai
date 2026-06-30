@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import axios from "axios";
 import { UploadCloud, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,7 +15,7 @@ import { Label } from "@repo/ui/label";
 
 // Hooks & Utils
 import { api, getApiErrorMessage } from "@/lib/api-client";
-import { createClient } from "@/lib/supabase/client";
+import { formatUploadLimit, SUBTITLE_PAID_UPLOAD_BYTES } from "@repo/validation";
 
 type SubtitleUploaderProps = {
     onUploadSuccess: () => void;
@@ -26,9 +27,17 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
     const [title, setTitle] = useState("");
     const [duration, setDuration] = useState<number | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [progress, setProgress] = useState(0);
+    // Plan-based limits; assume the highest tier until the API confirms the user's limit.
+    const [maxSize, setMaxSize] = useState(SUBTITLE_PAID_UPLOAD_BYTES);
+    const [maxDuration, setMaxDuration] = useState<number | null>(null); // null = no duration cap
     const router = useRouter();
-    const maxSize = 50 * 1024 * 1024; // 50MB
-    const maxDuration = 10 * 60; // 10 minutes
+
+    useEffect(() => {
+        api.get<{ maxBytes: number; maxDurationSeconds: number | null }>("/api/v1/subtitle/upload/limit", { requireAuth: true })
+            .then((res) => { setMaxSize(res.maxBytes); setMaxDuration(res.maxDurationSeconds); })
+            .catch(() => { /* keep defaults; the sign step enforces the real limit anyway */ });
+    }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -39,7 +48,7 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
 
         if (selectedFile.size > maxSize) {
             toast.error("Upload limit reached", {
-                description: "Your current plan allows up to 50MB for subtitle uploads. Please upgrade to upload larger videos.",
+                description: `Your current plan allows up to ${formatUploadLimit(maxSize)} for subtitle uploads. Please upgrade to upload larger videos.`,
             });
             e.target.value = "";
             return;
@@ -50,9 +59,9 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
         video.onloadedmetadata = () => {
             URL.revokeObjectURL(video.src);
             const videoDuration = video.duration;
-            if (videoDuration > maxDuration) {
+            if (maxDuration !== null && videoDuration > maxDuration) {
                 toast.error("Duration limit reached", {
-                    description: "Your current plan allows videos up to 10 minutes for subtitle generation. Please upgrade for longer videos.",
+                    description: `Your current plan allows videos up to ${Math.round(maxDuration / 60)} minutes for subtitle generation. Please upgrade for longer videos.`,
                 });
                 e.target.value = "";
                 return;
@@ -73,31 +82,49 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
         if (!file || !duration) return toast.warning("Please select a valid file.");
 
         setIsUploading(true);
-        const formData = new FormData();
-        formData.append("video", file);
-        formData.append("duration", String(duration));
-        if (title.trim()) formData.append("title", title.trim());
-        if (scriptId) formData.append("scriptId", scriptId);
+        setProgress(0);
 
         try {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            // 1. Ask the API for a signed URL to upload straight to storage.
+            const { uploadUrl, objectName, contentType } = await api.post<{
+                uploadUrl: string;
+                objectName: string;
+                contentType: string;
+            }>(
+                "/api/v1/subtitle/upload/sign",
+                {
+                    filename: file.name,
+                    contentType: file.type || "video/mp4",
+                    fileSize: file.size,
+                    duration: String(duration),
+                    ...(scriptId ? { scriptId } : {}),
+                },
+                { requireAuth: true },
+            );
 
-            if (!token) throw new Error("Authentication required");
-
-            const response = await api.upload("/api/v1/subtitle/upload", formData, {
-                requireAuth: true,
+            // 2. Upload the file directly to storage (bypasses our API — no auth header on a signed URL).
+            await axios.put(uploadUrl, file, {
+                headers: { "Content-Type": contentType },
                 onUploadProgress: (progressEvent) => {
-                    const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-                    console.log(`Upload progress: ${percent}%`);
+                    setProgress(Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1)));
                 },
             });
 
-            const data = response as { subtitleId: string };
+            // 3. Create the subtitle job now that the file is in storage.
+            const { subtitleId } = await api.post<{ subtitleId: string }>(
+                "/api/v1/subtitle/upload/finalize",
+                {
+                    objectName,
+                    filename: title.trim() || file.name,
+                    duration: String(duration),
+                    ...(scriptId ? { scriptId } : {}),
+                },
+                { requireAuth: true },
+            );
+
             toast.success("Upload successful! Processing has started.");
             onUploadSuccess();
-            router.push(`/dashboard/subtitles/${data.subtitleId}`);
+            router.push(`/dashboard/subtitles/${subtitleId}`);
 
             setFile(null);
             setTitle("");
@@ -161,9 +188,9 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
                         </div>
 
                         <div className="flex items-center space-x-4 text-xs text-slate-400 uppercase tracking-widest font-bold">
-                            <span>Max 50MB</span>
+                            <span>Max {formatUploadLimit(maxSize)}</span>
                             <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
-                            <span>10 Min Limit</span>
+                            <span>{maxDuration !== null ? `${Math.round(maxDuration / 60)} Min Limit` : "Any Length"}</span>
                         </div>
                     </Label>
                     <Input
@@ -206,7 +233,7 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
                         {isUploading ? (
                             <>
                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                Processing...
+                                {progress > 0 && progress < 100 ? `Uploading ${progress}%` : "Processing..."}
                             </>
                         ) : "Generate Subtitles"}
                     </Button>
