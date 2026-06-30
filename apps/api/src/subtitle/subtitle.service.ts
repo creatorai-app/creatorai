@@ -387,10 +387,11 @@ Your task is to transcribe the provided audio file and generate precise, time-st
 
   /**
    * Plan-based upload limits. Starter (free) is throttled on BOTH size (100MB) and
-   * duration (10 min). Paid plans get 2GB and no duration cap (maxDurationSeconds = null).
+   * duration (10 min); paid plans get 2GB and the 45-min Gemini ceiling.
    *
    * The active plan is the most-recent active subscription (same source as getBillingInfo /
-   * the billing UI) — NOT profiles.plan_id, which is not kept in sync on upgrade.
+   * the billing UI). `subscriptions` is the single source of truth for the current plan —
+   * there is no plan column on `profiles`.
    */
   private async getUploadLimits(userId: string): Promise<{ maxBytes: number; maxDurationSeconds: number; isPaid: boolean }> {
     const { data: subscription } = await this.supabaseService.getClient()
