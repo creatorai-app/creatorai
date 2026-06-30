@@ -22,7 +22,17 @@ export const UpdateSubtitleByIdSchema = z.object({
   subtitle_json: z.array(SubtitleLineSchema),
 });
 
-export const UploadVideoSchema = z.object({
+export const SignUploadSchema = z.object({
+  filename: z.string().min(1),
+  contentType: z.string().min(1),
+  fileSize: z.number().int().positive(),
+  duration: z.string(),
+  scriptId: z.string().uuid().optional(),
+});
+
+export const FinalizeUploadSchema = z.object({
+  objectName: z.string().min(1),
+  filename: z.string().min(1),
   duration: z.string(),
   scriptId: z.string().uuid().optional(),
 });
@@ -36,5 +46,6 @@ export type SubtitleLine = z.infer<typeof SubtitleLineSchema>;
 export type CreateSubtitleInput = z.infer<typeof CreateSubtitleSchema>;
 export type UpdateSubtitleInput = z.infer<typeof UpdateSubtitleSchema>;
 export type UpdateSubtitleByIdInput = z.infer<typeof UpdateSubtitleByIdSchema>;
-export type UploadVideoInput = z.infer<typeof UploadVideoSchema>;
+export type SignUploadInput = z.infer<typeof SignUploadSchema>;
+export type FinalizeUploadInput = z.infer<typeof FinalizeUploadSchema>;
 export type BurnSubtitleInput = z.infer<typeof BurnSubtitleSchema>;

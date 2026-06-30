@@ -13,6 +13,22 @@ export async function fetchVideoAsBuffer(videoUrl: string): Promise<Buffer> {
     return buffer;
 }
 
+/** Streams a remote video straight to a local file — no full-buffer load (safe for multi-GB). */
+export async function streamVideoToFile(videoUrl: string, destPath: string): Promise<void> {
+    if (!videoUrl) throw new Error("Video URL is required");
+
+    const { createWriteStream } = await import("fs");
+    const { Readable } = await import("stream");
+    const { pipeline } = await import("stream/promises");
+
+    const response = await fetch(videoUrl);
+    if (!response.ok || !response.body) {
+        throw new Error(`Failed to fetch video: ${response.statusText}`);
+    }
+
+    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(destPath));
+}
+
 export function getFileNameFromUrl(url: string): string {
     try {
         const pathname = new URL(url).pathname;

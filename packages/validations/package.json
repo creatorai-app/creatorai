@@ -18,13 +18,14 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsup",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsup --watch",
     "lint": "echo 'No source JavaScript files to lint'"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "cross-env": "catalog:",
     "eslint": "^9.0.0",
     "tsup": "catalog:",
     "typescript": "catalog:"

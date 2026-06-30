@@ -3,9 +3,10 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { SubtitleUploader } from "@/components/dashboard/subtitles/subtitleUploader";
+import { UpgradePromoCard } from "@/components/dashboard/subtitles/UpgradePromoCard";
 import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
-import { Sparkles, Gem, ArrowUpRight, ArrowLeft, FileText } from "lucide-react";
+import { Sparkles, ArrowLeft, FileText } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@repo/ui/button";
 import { Badge } from "@repo/ui/badge";
@@ -80,23 +81,7 @@ function NewSubtitlePageInner() {
                             </CardContent>
                         </Card>
 
-                        <div className="group relative bg-slate-900 rounded-3xl p-8 text-white overflow-hidden shadow-xl shadow-slate-200">
-                            <div className="absolute -top-12 -right-12 w-40 h-40 bg-violet-600/30 rounded-full blur-3xl group-hover:bg-violet-500/40 transition-colors duration-500"></div>
-                            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl"></div>
-                            <div className="relative z-10">
-                                <div className="inline-flex p-3 rounded-2xl bg-white/10 backdrop-blur-md mb-6">
-                                    <Gem className="h-6 w-6 text-violet-300" />
-                                </div>
-                                <h3 className="text-2xl font-bold mb-3">Go Unlimited</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed mb-8">
-                                    Unlock 4K exports, custom brand fonts, and priority AI processing.
-                                </p>
-                                <button className="w-full flex items-center justify-center gap-2 bg-white text-slate-900 font-bold py-4 rounded-2xl hover:bg-slate-50 transition-all transform active:scale-[0.98]">
-                                    Upgrade Now
-                                    <ArrowUpRight className="h-4 w-4" />
-                                </button>
-                            </div>
-                        </div>
+                        <UpgradePromoCard />
                     </div>
                 </div>
             </div>

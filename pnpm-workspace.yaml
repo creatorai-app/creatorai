@@ -5,6 +5,7 @@ packages:
 catalog:
   typescript: ^5.9.3
   tsup: ^8.5.0
+  cross-env: ^7.0.3
   "@types/node": ^20
   "@types/eslint": ^8
   "supabase": ^2.54.10
