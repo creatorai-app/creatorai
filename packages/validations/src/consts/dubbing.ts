@@ -1,4 +1,18 @@
 
+// Dubbing is a paid feature — every paid plan gets it; only Starter (free) is
+// excluded. Gate by plan NAME: there is no tier column; the active plan is the
+// most-recent active `subscriptions` row joined to `plans` (mirror canGenerateVideo).
+export const DUBBING_PLANS = ['creator', 'pro', 'business', 'scale'] as const;
+
+export function canDub(planName?: string | null): boolean {
+  if (!planName) return false;
+  return DUBBING_PLANS.includes(planName.toLowerCase() as (typeof DUBBING_PLANS)[number]);
+}
+
+// Redis key prefix for mid-run cancellation (train-ai pattern). The API sets the
+// flag; the worker checks it between pipeline stages and aborts.
+export const DUBBING_CANCEL_PREFIX = 'dubbing:cancel:';
+
 export const supportedLanguages = [
   { value: 'en', label: 'English' },
   { value: 'zh', label: 'Chinese (Mandarin)' },

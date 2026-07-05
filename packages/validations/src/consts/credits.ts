@@ -5,6 +5,9 @@ export const SUBTITLE_CREDIT_MULTIPLIER = 2;
 export const IDEATION_CREDIT_MULTIPLIER = 1;
 export const STORY_BUILDER_CREDIT_MULTIPLIER = 1;
 export const TRAIN_AI_CREDIT_MULTIPLIER = 2;
+// Dubbing is billed per SECOND of source audio — GPU (clone) time scales with
+// length, so a flat cost loses money at scale. Tune via DUBBING_CREDIT_MULTIPLIER.
+export const DUBBING_CREDIT_MULTIPLIER = 15;
 
 export const FeatureType = {
   SCRIPT_GENERATION: 'script_generation',
@@ -47,9 +50,24 @@ export function calculateCreditsFromTokens(
   return Math.max(minimumCredits, baseCredits * multiplier);
 }
 
+/** @deprecated flat external-credit model — use calculateDubbingCreditsByDuration. */
 export function calculateDubbingCredits(params: ExternalCreditParams): number {
   const { externalCreditsUsed, multiplier = 10 } = params;
   return externalCreditsUsed * multiplier;
+}
+
+// Duration-based (mirrors calculateVideoGenerationCredits): cost = seconds ×
+// credits/sec, rounded up so a partial second still charges a full second.
+export function calculateDubbingCreditsByDuration(
+  durationSeconds: number,
+  multiplier = DUBBING_CREDIT_MULTIPLIER,
+): number {
+  return Math.max(multiplier, Math.ceil(durationSeconds) * multiplier);
+}
+
+// Precheck floor before enqueue: enough for one second at the given rate.
+export function getMinimumCreditsForDubbing(multiplier = DUBBING_CREDIT_MULTIPLIER): number {
+  return multiplier;
 }
 
 export function hasEnoughCredits(userCredits: number, requiredCredits: number): boolean {
