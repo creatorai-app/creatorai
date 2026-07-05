@@ -16,17 +16,12 @@ services:
   workers:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
     container_name: workers
     env_file:
       - packages/workers/.env
-
-  yt-dlp:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: yt-dlp
-   
+    depends_on:
+      - redis
 
 volumes:
   redis_data:
