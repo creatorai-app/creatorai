@@ -8,7 +8,7 @@ export interface DubbingProject {
   user_id: string
   original_media_url: string
   target_language: string
-  status: "dubbing" | "dubbed"
+  status: "queued" | "processing" | "cloning" | "completed" | "failed"
   is_video: boolean
   dubbedUrl?: string
   credits_consumed?: number
@@ -56,5 +56,17 @@ export async function deleteDubbing(
   } catch {
     return false
   }
+}
+
+/** Re-run a dub with the same source + target language (reuses the stored GCS object). */
+export async function regenerateDubbing(
+  projectId: string,
+  accessToken?: string
+): Promise<{ projectId: string; jobId: string }> {
+  return api.post<{ projectId: string; jobId: string }>(
+    `/api/v1/dubbing/${projectId}/regenerate`,
+    {},
+    { requireAuth: true, accessToken },
+  )
 }
 
