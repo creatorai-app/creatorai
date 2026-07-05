@@ -172,7 +172,7 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
     { label: "Subtitles", icon: <MessageSquareIcon className="h-4 w-4" />, variant: "ghost", href: "/dashboard/subtitles" },
     { label: "Video Generation", icon: <Video className="h-4 w-4" />, variant: "ghost", href: "/dashboard/video-generation", badge: "Soon", locked: true },
     { label: "Course Builder", icon: <BookOpenIcon className="h-4 w-4" />, variant: "ghost", href: "/dashboard/courses", badge: "Soon", locked: true },
-    { label: "Audio Dubbing", icon: <MicIcon className="h-4 w-4" />, variant: "ghost", href: "/dashboard/dubbing", badge: "Soon", locked: true },
+    { label: "Audio Dubbing", icon: <MicIcon className="h-4 w-4" />, variant: "ghost", href: "/dashboard/dubbing" },
   ]
 
   const links: ReadonlyArray<NavLink> = baseLinks

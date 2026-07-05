@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"           // ← added
 import { Button } from "@repo/ui/button"
 import { Input } from "@repo/ui/input"
 import { toast } from "sonner"
 import { useSupabase } from "@/components/supabase-provider"
-import { Plus, Search, Clock } from "lucide-react"    // ← added Clock
+import { Plus, Search } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { ContentCard } from "@/components/dashboard/common/ContentCard"
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton"
@@ -45,13 +44,10 @@ function formatTitle(project: DubbingProject): string {
 
 export default function DubbingList() {
   const { session } = useSupabase()
-  const router = useRouter()                                 // ← added
   const [dubbings, setDubbings] = useState<DubbingProject[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [dubbingToDelete, setDubbingToDelete] = useState<string | null>(null)
-
-  const isComingSoon = true
 
   useEffect(() => {
     const fetchDubbings = async () => {
@@ -101,7 +97,7 @@ export default function DubbingList() {
   })
 
   return (
-    <div className="container py-8 relative">           {/* ← added relative */}
+    <div className="container py-8">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -117,7 +113,6 @@ export default function DubbingList() {
           </div>
           <Button
             className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10"
-            disabled={isComingSoon}
             asChild
           >
             <Link href="/dashboard/dubbing/new">
@@ -136,7 +131,6 @@ export default function DubbingList() {
               className="pl-10 focus-visible:ring-2 focus-visible:ring-purple-500/80"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              disabled={isComingSoon}
             />
           </div>
         </div>
@@ -159,7 +153,6 @@ export default function DubbingList() {
                   onDelete={handleDeleteDubbing}
                   setToDelete={setDubbingToDelete}
                   type="dubbing"
-                // You can also pass disabled={isComingSoon} to ContentCard if it has interactive parts
                 />
               ))}
             </motion.div>
@@ -184,7 +177,6 @@ export default function DubbingList() {
                   {!searchQuery && (
                     <Button
                       className="bg-slate-900 hover:bg-slate-800 text-white transition-all"
-                      disabled={isComingSoon}
                       asChild
                     >
                       <Link href="/dashboard/dubbing/new">
@@ -199,29 +191,6 @@ export default function DubbingList() {
           )}
         </AnimatePresence>
       </motion.div>
-
-      {/* Coming Soon Overlay, identical style to Thumbnail page */}
-      {isComingSoon && (
-        <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="text-center space-y-4 px-4 max-w-md">
-            <Clock className="h-12 w-12 mx-auto text-slate-500 dark:text-slate-400" />
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Coming Soon
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400">
-              AI-powered audio & video dubbing is under preparation.<br />
-              Stay tuned, launching very soon!
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard")}
-              className="bg-slate-950 hover:bg-slate-900 text-white"
-            >
-              Back to Topics
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
