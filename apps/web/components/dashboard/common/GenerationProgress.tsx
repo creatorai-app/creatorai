@@ -21,6 +21,7 @@ interface GenerationProgressProps {
   hint?: string
   compact?: boolean
   onStop?: () => void
+  stopLabel?: string
 }
 
 const DEFAULT_STEPS: GenerationProgressStep[] = [
@@ -40,6 +41,7 @@ export function GenerationProgress({
   hint,
   compact = false,
   onStop,
+  stopLabel = "Stop Training",
 }: GenerationProgressProps) {
   const resolvedSteps = steps.length > 0 ? steps : DEFAULT_STEPS
 
@@ -132,7 +134,7 @@ export function GenerationProgress({
           className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:hover:bg-red-950/30"
         >
           <Square className="mr-1.5 h-3.5 w-3.5 fill-current" />
-          Stop Training
+          {stopLabel}
         </Button>
       )}
     </>
