@@ -9,6 +9,7 @@ import { ThumbnailProcessor } from './processor/thumbnail.processor';
 import { StoryBuilderProcessor } from './processor/story-builder.processor';
 import { IdeationProcessor } from './processor/ideation.processor';
 import { ScriptProcessor } from './processor/script.processor';
+import { DubbingProcessor } from './processor/dubbing.processor';
 
 @Module({
   controllers: [HealthController],
@@ -37,8 +38,9 @@ import { ScriptProcessor } from './processor/script.processor';
       { name: 'story-builder' },
       { name: 'ideation' },
       { name: 'script' },
+      { name: 'dubbing' },
     ),
   ],
-  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor],
+  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, DubbingProcessor],
 })
 export class WorkerModule {}

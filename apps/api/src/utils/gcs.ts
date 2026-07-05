@@ -34,12 +34,23 @@ function getBucketName(configService: ConfigService): string {
   return bucket;
 }
 
-export function gcsPublicUrl(configService: ConfigService, objectName: string): string {
-  return `https://storage.googleapis.com/${getBucketName(configService)}/${objectName}`;
+/** Dubbing keeps its own bucket so retention/cleanup can diverge from subtitles. */
+export function getDubbingBucketName(configService: ConfigService): string {
+  const bucket = configService.get<string>('GCS_DUBBING_BUCKET');
+  if (!bucket) {
+    throw new Error('GCS_DUBBING_BUCKET is not configured');
+  }
+  return bucket;
 }
 
-export function gcsUri(configService: ConfigService, objectName: string): string {
-  return `gs://${getBucketName(configService)}/${objectName}`;
+// The helpers below default to the subtitle bucket; pass `bucket` (e.g.
+// getDubbingBucketName(...)) to target another one.
+export function gcsPublicUrl(configService: ConfigService, objectName: string, bucket?: string): string {
+  return `https://storage.googleapis.com/${bucket ?? getBucketName(configService)}/${objectName}`;
+}
+
+export function gcsUri(configService: ConfigService, objectName: string, bucket?: string): string {
+  return `gs://${bucket ?? getBucketName(configService)}/${objectName}`;
 }
 
 /**
@@ -52,10 +63,11 @@ export async function getSignedUploadUrl(
   configService: ConfigService,
   objectName: string,
   contentType: string,
+  bucket?: string,
 ): Promise<string> {
   const storage = await getStorage(configService);
   const [url] = await storage
-    .bucket(getBucketName(configService))
+    .bucket(bucket ?? getBucketName(configService))
     .file(objectName)
     .getSignedUrl({
       version: 'v4',
@@ -70,19 +82,20 @@ export async function getSignedUploadUrl(
 export async function gcsObjectMetadata(
   configService: ConfigService,
   objectName: string,
+  bucket?: string,
 ): Promise<{ size: number; contentType: string }> {
   const storage = await getStorage(configService);
   const [meta] = await storage
-    .bucket(getBucketName(configService))
+    .bucket(bucket ?? getBucketName(configService))
     .file(objectName)
     .getMetadata();
   return { size: Number(meta.size ?? 0), contentType: meta.contentType ?? 'application/octet-stream' };
 }
 
-export async function deleteGcsObject(configService: ConfigService, objectName: string): Promise<void> {
+export async function deleteGcsObject(configService: ConfigService, objectName: string, bucket?: string): Promise<void> {
   const storage = await getStorage(configService);
   await storage
-    .bucket(getBucketName(configService))
+    .bucket(bucket ?? getBucketName(configService))
     .file(objectName)
     .delete({ ignoreNotFound: true });
 }

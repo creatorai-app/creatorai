@@ -3,22 +3,34 @@ import {
   Logger,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
   InternalServerErrorException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, interval, switchMap, map, from, takeWhile } from 'rxjs';
-import { SupabaseService } from '../supabase/supabase.service';
-import type { CreateDubInput, DubResponse, DubbingProgress } from '@repo/validation';
-import { calculateDubbingCredits, hasEnoughCredits } from '@repo/validation';
-import { createGoogleAI, GEMINI_TEXT_MODEL, fetchVideoAsBuffer, configureFFmpeg } from '../utils';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs/promises';
+import { SupabaseService } from '../supabase/supabase.service';
+import type { CreateDubInput, SignDubUploadInput, DubResponse } from '@repo/validation';
+import {
+  canDub,
+  hasEnoughCredits,
+  getMinimumCreditsForDubbing,
+  DUBBING_CREDIT_MULTIPLIER,
+  DUBBING_CANCEL_PREFIX,
+} from '@repo/validation';
+import {
+  getSignedUploadUrl,
+  gcsObjectMetadata,
+  gcsPublicUrl,
+  gcsUri,
+  deleteGcsObject,
+  getDubbingBucketName,
+} from '../utils';
 
-const MIN_DUBBING_CREDITS = 10;
-// Vertex AI takes media bytes inline (no Files API). base64 inflates size ~33%.
-const MAX_INLINE_BYTES = 50 * 1024 * 1024; // 50MB raw → ~67MB base64
+// Dubbing input is usually a short clip, but a video can be large — cap generously.
+const MAX_DUB_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
 
 @Injectable()
 export class DubbingService {
@@ -27,57 +39,256 @@ export class DubbingService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    @InjectQueue('dubbing') private readonly queue: Queue,
   ) {}
 
   private get supabase() {
     return this.supabaseService.getClient();
   }
 
-  async createDub(input: CreateDubInput, userId: string): Promise<{ projectId: string }> {
-    const { data: profile } = await this.supabase
+  /** Dedicated dubbing bucket (GCS_DUBBING_BUCKET) — separate from subtitles. */
+  private get bucket(): string {
+    return getDubbingBucketName(this.configService);
+  }
+
+  /** The active plan is the most-recent active subscription (same source as BillingService). */
+  private async getActivePlanName(userId: string): Promise<string | null> {
+    const { data: subscription } = await this.supabase
+      .from('subscriptions')
+      .select('plans(name)')
+      .eq('user_id', userId)
+      .in('status', ['active', 'on_trial', 'past_due'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return (subscription?.plans as { name?: string } | null)?.name ?? null;
+  }
+
+  /** Lightweight gate check for the UI — form vs. upgrade card. */
+  async getAccess(userId: string) {
+    const planName = await this.getActivePlanName(userId);
+    return { success: true, allowed: canDub(planName), plan: planName };
+  }
+
+  private sanitizeFileName(value: string): string {
+    return value.replace(/[^\w.\-]/g, '_');
+  }
+
+  private getEnvNumber(key: string, fallback: number): number {
+    const raw = process.env[key];
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  /**
+   * Step 1: plan-gate, size-check, then issue a signed URL the browser PUTs the
+   * source media straight to GCS with — the API never touches the bytes.
+   */
+  async signUpload(input: SignDubUploadInput, userId: string) {
+    const planName = await this.getActivePlanName(userId);
+    if (!canDub(planName)) {
+      throw new ForbiddenException('Dubbing is available on all paid plans. Please upgrade from Starter to dub your media.');
+    }
+
+    if (input.fileSize > MAX_DUB_UPLOAD_BYTES) {
+      throw new PayloadTooLargeException(
+        `File exceeds the ${Math.round(MAX_DUB_UPLOAD_BYTES / 1024 / 1024)}MB dubbing upload limit.`,
+      );
+    }
+
+    const safeName = this.sanitizeFileName(input.filename);
+    const objectName = `${userId}/dubbing/${Date.now()}_${safeName}`;
+    const uploadUrl = await getSignedUploadUrl(this.configService, objectName, input.contentType, this.bucket);
+    return { success: true, uploadUrl, objectName, contentType: input.contentType };
+  }
+
+  /**
+   * Step 2: verify the uploaded object (ownership + real size), create the job row,
+   * and enqueue the dubbing worker. The worker deducts the real (duration-based) cost.
+   */
+  async createDub(input: CreateDubInput, userId: string): Promise<{ projectId: string; jobId: string }> {
+    const { objectName, targetLanguage, isVideo, mediaName, durationSeconds } = input;
+
+    const planName = await this.getActivePlanName(userId);
+    if (!canDub(planName)) {
+      throw new ForbiddenException('Dubbing is available on all paid plans. Please upgrade from Starter to dub your media.');
+    }
+
+    // The signed URL was scoped to this user's prefix — refuse someone else's object.
+    if (!objectName.startsWith(`${userId}/`)) {
+      throw new ForbiddenException('Object does not belong to user');
+    }
+
+    let size: number;
+    let contentType: string;
+    try {
+      ({ size, contentType } = await gcsObjectMetadata(this.configService, objectName, this.bucket));
+    } catch {
+      throw new BadRequestException('Uploaded file not found in storage');
+    }
+    if (size > MAX_DUB_UPLOAD_BYTES) {
+      await deleteGcsObject(this.configService, objectName, this.bucket).catch(() => null);
+      throw new PayloadTooLargeException('Uploaded file exceeds the dubbing upload limit.');
+    }
+
+    // Precheck the floor before enqueuing — the worker deducts the duration-based cost.
+    const multiplier = this.getEnvNumber('DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER);
+    const { data: profile, error: profileError } = await this.supabase
       .from('profiles')
       .select('credits')
       .eq('user_id', userId)
       .single();
-
-    if (!profile || !hasEnoughCredits(profile.credits, MIN_DUBBING_CREDITS)) {
-      throw new ForbiddenException('Insufficient credits for dubbing.');
+    if (profileError || !profile) throw new NotFoundException('Profile not found');
+    if (!hasEnoughCredits(profile.credits, getMinimumCreditsForDubbing(multiplier))) {
+      throw new ForbiddenException('Insufficient credits. Please upgrade your plan or earn more credits.');
     }
 
-    const modalUrl = this.configService.get<string>('MODAL_API_URL');
-    if (!modalUrl) {
-      throw new BadRequestException('Dubbing service is not configured');
-    }
-
+    const publicUrl = gcsPublicUrl(this.configService, objectName, this.bucket);
+    const inputGsUri = gcsUri(this.configService, objectName, this.bucket);
     const projectId = crypto.randomUUID();
 
-    const { error } = await this.supabase.from('dubbing_projects').insert({
+    const { error: insertError } = await this.supabase.from('dubbing_projects').insert({
       project_id: projectId,
       user_id: userId,
-      original_media_url: input.mediaUrl,
-      target_language: input.targetLanguage,
-      is_video: input.isVideo,
-      media_name: input.mediaName,
-      status: 'dubbing',
+      original_media_url: publicUrl,
+      input_url: publicUrl,
+      input_gs_uri: inputGsUri,
+      target_language: targetLanguage,
+      is_video: isVideo,
+      media_name: mediaName,
+      duration_seconds: durationSeconds,
+      status: 'queued',
       credits_consumed: 0,
     });
+    if (insertError) {
+      await deleteGcsObject(this.configService, objectName, this.bucket).catch(() => null);
+      this.logger.error(`Failed to create dubbing project for user ${userId}: ${insertError.message}`);
+      throw new InternalServerErrorException('Failed to create dubbing project');
+    }
 
-    if (error) throw new InternalServerErrorException('Failed to create dubbing project');
+    const bullJobId = `dubbing-${userId}-${Date.now()}`;
+    await this.queue.add(
+      'dubbing',
+      {
+        userId,
+        projectId,
+        bullJobId,
+        inputGsUri,
+        inputUrl: publicUrl,
+        mimeType: contentType,
+        isVideo,
+        targetLanguage,
+        durationSeconds,
+      },
+      { jobId: bullJobId },
+    );
 
-    void this.processDub(projectId, input, userId, modalUrl);
+    await this.supabase.from('dubbing_projects').update({ job_id: bullJobId }).eq('project_id', projectId);
 
-    return { projectId };
+    return { projectId, jobId: bullJobId };
   }
 
-  streamDubbingStatus(projectId: string): Observable<MessageEvent> {
-    return interval(2500).pipe(
-      switchMap(() => from(this.getProgress(projectId))),
-      map((progress) => ({ data: JSON.stringify(progress) }) as MessageEvent),
-      takeWhile((event) => {
-        const data: DubbingProgress = JSON.parse((event as MessageEvent & { data: string }).data);
-        return !data.finished;
-      }, true),
+  /**
+   * Re-run a completed/failed dub with the SAME input — reuses the source object
+   * still in GCS (no re-upload), resets the row and enqueues a fresh job in place.
+   */
+  async regenerateDub(userId: string, projectId: string): Promise<{ projectId: string; jobId: string }> {
+    const planName = await this.getActivePlanName(userId);
+    if (!canDub(planName)) {
+      throw new ForbiddenException('Dubbing is available on all paid plans. Please upgrade from Starter to dub your media.');
+    }
+
+    const { data: row, error } = await this.supabase
+      .from('dubbing_projects')
+      .select('input_gs_uri, input_url, target_language, is_video, duration_seconds')
+      .eq('user_id', userId)
+      .eq('project_id', projectId)
+      .single();
+    if (error || !row) throw new NotFoundException('Dubbing project not found');
+    if (!row.input_gs_uri || !row.input_url || !row.duration_seconds) {
+      throw new BadRequestException('This dub is missing its source media and cannot be regenerated.');
+    }
+
+    // The stored source must still exist in GCS — and gives us its content type.
+    const objectName = String(row.input_gs_uri).split('/').slice(3).join('/');
+    let contentType: string;
+    try {
+      ({ contentType } = await gcsObjectMetadata(this.configService, objectName, this.bucket));
+    } catch {
+      throw new BadRequestException('The original media is no longer available. Please create a new dub.');
+    }
+
+    const multiplier = this.getEnvNumber('DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER);
+    const { data: profile, error: profileError } = await this.supabase
+      .from('profiles')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+    if (profileError || !profile) throw new NotFoundException('Profile not found');
+    if (!hasEnoughCredits(profile.credits, getMinimumCreditsForDubbing(multiplier))) {
+      throw new ForbiddenException('Insufficient credits. Please upgrade your plan or earn more credits.');
+    }
+
+    // Reset the row in place so the same detail page reflects the new run.
+    await this.supabase
+      .from('dubbing_projects')
+      .update({ status: 'queued', dubbed_url: null, error_message: null, credits_consumed: 0 })
+      .eq('project_id', projectId)
+      .eq('user_id', userId);
+
+    const bullJobId = `dubbing-${userId}-${Date.now()}`;
+    await this.queue.add(
+      'dubbing',
+      {
+        userId,
+        projectId,
+        bullJobId,
+        inputGsUri: row.input_gs_uri,
+        inputUrl: row.input_url,
+        mimeType: contentType,
+        isVideo: row.is_video,
+        targetLanguage: row.target_language,
+        durationSeconds: Number(row.duration_seconds),
+      },
+      { jobId: bullJobId },
     );
+
+    await this.supabase.from('dubbing_projects').update({ job_id: bullJobId }).eq('project_id', projectId);
+
+    return { projectId, jobId: bullJobId };
+  }
+
+  /**
+   * Mid-run cancellation (train-ai pattern): a queued job is removed outright;
+   * an active one gets a Redis flag the worker checks between pipeline stages.
+   */
+  async stopDub(userId: string, jobId: string): Promise<{ message: string }> {
+    const job = await this.queue.getJob(jobId);
+    if (!job || job.data?.userId !== userId) {
+      throw new NotFoundException('Job not found');
+    }
+
+    const state = await job.getState();
+
+    if (state === 'waiting' || state === 'delayed') {
+      await job.remove();
+      // Mark the row too — otherwise it sits 'queued' forever.
+      await this.supabase
+        .from('dubbing_projects')
+        .update({ status: 'failed', error_message: 'Cancelled by user' })
+        .eq('project_id', job.data.projectId)
+        .eq('user_id', userId);
+      return { message: 'Dubbing cancelled' };
+    }
+
+    if (state === 'active') {
+      const client = await this.queue.client;
+      await client.set(`${DUBBING_CANCEL_PREFIX}${jobId}`, '1', 'EX', 3600);
+      return { message: 'Cancellation requested' };
+    }
+
+    return { message: 'Job already finished' };
   }
 
   async listDubs(userId: string, pageSize = 100) {
@@ -118,174 +329,24 @@ export class DubbingService {
   }
 
   async deleteDub(userId: string, projectId: string): Promise<void> {
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from('dubbing_projects')
       .delete()
       .eq('user_id', userId)
-      .eq('project_id', projectId);
-
-    if (error) throw new BadRequestException('Dub not found or access denied');
-  }
-
-  // --- Background pipeline ---
-
-  private async getProgress(projectId: string): Promise<DubbingProgress> {
-    const { data } = await this.supabase
-      .from('dubbing_projects')
-      .select('status, credits_consumed')
       .eq('project_id', projectId)
+      .select('input_gs_uri')
       .single();
 
-    if (!data) {
-      return { state: 'failed', progress: 0, message: 'Project not found', finished: true };
+    if (error) throw new BadRequestException('Dub not found or access denied');
+
+    // Clean up the source object in GCS (output WAV is left to Supabase lifecycle).
+    if (data?.input_gs_uri) {
+      const objectName = String(data.input_gs_uri).split('/').slice(3).join('/');
+      if (objectName) {
+        await deleteGcsObject(this.configService, objectName, this.bucket).catch((e) =>
+          this.logger.error(`Failed to delete GCS object ${objectName}`, e),
+        );
+      }
     }
-
-    switch (data.status) {
-      case 'dubbing':
-        return { state: 'processing', progress: 30, message: 'Transcribing and translating audio...' };
-      case 'cloning':
-        return { state: 'processing', progress: 65, message: 'Generating dubbed audio...' };
-      case 'dubbed':
-        return { state: 'completed', progress: 100, message: 'Dubbing complete!', finished: true, creditsUsed: data.credits_consumed };
-      case 'failed':
-        return { state: 'failed', progress: 0, message: 'Dubbing failed. Please try again.', finished: true };
-      default:
-        return { state: 'processing', progress: 15, message: 'Starting...' };
-    }
-  }
-
-  private async processDub(projectId: string, input: CreateDubInput, userId: string, modalUrl: string): Promise<void> {
-    try {
-      const mediaBuffer = await fetchVideoAsBuffer(input.mediaUrl);
-
-      const referenceAudio = input.isVideo
-        ? await this.extractAudio(mediaBuffer)
-        : mediaBuffer;
-
-      const translatedText = await this.transcribeAndTranslate(mediaBuffer, input.isVideo, input.targetLanguage);
-
-      await this.updateStatus(projectId, 'cloning');
-
-      const dubbedAudio = await this.callModalDub(modalUrl, translatedText, referenceAudio);
-
-      const filePath = `dubbed/${projectId}.wav`;
-      const { error: uploadError } = await this.supabase.storage
-        .from('dubbing_media')
-        .upload(filePath, dubbedAudio, { contentType: 'audio/wav', upsert: true });
-
-      if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
-
-      const { data: urlData } = this.supabase.storage
-        .from('dubbing_media')
-        .getPublicUrl(filePath);
-
-      const creditsConsumed = calculateDubbingCredits({ externalCreditsUsed: 1 });
-
-      await this.supabase.rpc('update_user_credits', {
-        user_uuid: userId,
-        credit_change: -creditsConsumed,
-      });
-
-      await this.supabase
-        .from('dubbing_projects')
-        .update({ status: 'dubbed', dubbed_url: urlData.publicUrl, credits_consumed: creditsConsumed })
-        .eq('project_id', projectId);
-
-      this.logger.log(`Dubbing complete: ${projectId}`);
-    } catch (error) {
-      this.logger.error(`Dubbing failed: ${projectId}`, error);
-      await this.updateStatus(projectId, 'failed');
-    }
-  }
-
-  private async updateStatus(projectId: string, status: string) {
-    await this.supabase
-      .from('dubbing_projects')
-      .update({ status })
-      .eq('project_id', projectId);
-  }
-
-  // --- Gemini transcription + translation ---
-
-  private async transcribeAndTranslate(mediaBuffer: Buffer, isVideo: boolean, targetLanguage: string): Promise<string> {
-    const ai = await createGoogleAI(this.configService);
-    const mimeType = isVideo ? 'video/mp4' : 'audio/mpeg';
-
-    if (mediaBuffer.length > MAX_INLINE_BYTES) {
-      throw new BadRequestException('Media file is too large to process. Please use a shorter or smaller file.');
-    }
-
-    // Vertex AI: send media bytes inline (the Files API is not available on Vertex).
-    const result = await ai.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
-      contents: [{
-        role: 'user',
-        parts: [
-          { text: `Transcribe the spoken audio from this file, then translate the full transcript into ${targetLanguage}. Return ONLY the translated text as a single continuous paragraph. No timestamps, no formatting, no labels — just the translated text.` },
-          { inlineData: { data: mediaBuffer.toString('base64'), mimeType } },
-        ],
-      }],
-    });
-
-    const text = result.text?.trim();
-    if (!text) throw new Error('Empty transcription/translation result from Gemini');
-    return text;
-  }
-
-  // --- Audio extraction (video → audio via ffmpeg) ---
-
-  private async extractAudio(videoBuffer: Buffer): Promise<Buffer> {
-    const videoPath = path.join(os.tmpdir(), `vid_${Date.now()}.mp4`);
-    const audioPath = path.join(os.tmpdir(), `aud_${Date.now()}.wav`);
-    await fs.writeFile(videoPath, videoBuffer);
-
-    try {
-      const ffmpeg = configureFFmpeg();
-      await new Promise<void>((resolve, reject) => {
-        ffmpeg(videoPath)
-          .noVideo()
-          .audioCodec('pcm_s16le')
-          .audioFrequency(16000)
-          .audioChannels(1)
-          .format('wav')
-          .on('end', () => resolve())
-          .on('error', (err: Error) => reject(err))
-          .save(audioPath);
-      });
-      return await fs.readFile(audioPath);
-    } finally {
-      await Promise.allSettled([fs.unlink(videoPath), fs.unlink(audioPath)]);
-    }
-  }
-
-  // --- Modal VoxCPM API call ---
-
-  private async callModalDub(modalUrl: string, text: string, referenceAudio: Buffer): Promise<Buffer> {
-    const formData = new FormData();
-    formData.append('text', text);
-    formData.append('reference', new Blob([new Uint8Array(referenceAudio)]), 'reference.wav');
-
-    const response = await fetch(`${modalUrl}/dub`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Modal API error ${response.status}: ${errBody}`);
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-
-    if (contentType.includes('audio') || contentType.includes('octet-stream')) {
-      return Buffer.from(await response.arrayBuffer());
-    }
-
-    const json = await response.json() as Record<string, unknown>;
-    for (const key of ['audio_base64', 'audio', 'data']) {
-      if (typeof json[key] === 'string') return Buffer.from(json[key] as string, 'base64');
-    }
-
-    throw new Error('Unexpected response format from Modal dubbing API');
   }
 }

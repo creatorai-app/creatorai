@@ -1,4 +1,4 @@
-import { PlaySquare, Lightbulb, Image as ImageIcon, MessageSquare, Globe, PenTool, LayoutTemplate, Brain } from "lucide-react";
+import { PlaySquare, Lightbulb, Image as ImageIcon, MessageSquare, Globe, PenTool, LayoutTemplate, Mic } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/page";
 
 export interface DashboardHomeProps {
@@ -36,7 +36,7 @@ export const QUICK_ACTIONS = [
   { label: "Create Thumbnail", icon: ImageIcon, href: "/dashboard/thumbnails/new" },
   { label: "Add Subtitles", icon: MessageSquare, href: "/dashboard/subtitles/new" },
   { label: "Build Story", icon: LayoutTemplate, href: "/dashboard/story-builder/new" },
-  { label: "Ideate Content", icon: Brain, href: "/dashboard/research" },
+  { label: "Audio Dubbing", icon: Mic, href: "/dashboard/dubbing/new" },
 ] as const;
 
 export const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {

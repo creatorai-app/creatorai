@@ -2,11 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { motion } from "motion/react"
 import { Button } from "@repo/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@repo/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card"
 import { Label } from "@repo/ui/label"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip"
 import { toast } from "sonner"
-import { ArrowLeft, Download, Loader2, Trash2, CheckCircle2, Languages, Video, Music } from "lucide-react"
+import {
+  ArrowLeft, Download, Loader2, Trash2, CheckCircle2, Languages, Video, Music,
+  XCircle, RotateCw, Coins, CalendarDays, type LucideIcon,
+} from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,12 +24,33 @@ import {
   AlertDialogFooter,
 } from "@repo/ui/alert-dialog"
 import { useSupabase } from "@/components/supabase-provider"
-import { getDubbing, deleteDubbing } from "@/lib/api/getDubbings"
+import { getDubbing, deleteDubbing, regenerateDubbing } from "@/lib/api/getDubbings"
 import { DubResponse, supportedLanguages } from "@repo/validation"
 import { downloadFile } from "@/lib/download"
+import { DubbingMediaPlayer } from "@/components/dashboard/dubbing/DubbingMediaPlayer"
 
 function getLanguageLabel(code: string): string {
   return supportedLanguages.find((l) => l.value === code)?.label ?? code
+}
+
+/** Glassy stat card — mirrors the main dashboard's Quick Actions card design. */
+function StatCard({ icon: Icon, label, value, iconClassName }: {
+  icon: LucideIcon
+  label: string
+  value: string
+  iconClassName?: string
+}) {
+  return (
+    <div className="group bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-white/60 dark:border-slate-800/50 rounded-2xl p-5 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)] hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300">
+      <div className={`w-10 h-10 rounded-lg bg-slate-100/80 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:bg-purple-500/10 transition-all duration-300 group-hover:scale-110 shrink-0 ${iconClassName ?? ""}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="font-semibold text-slate-900 dark:text-slate-50 truncate">{value}</p>
+      </div>
+    </div>
+  )
 }
 
 export default function DubbingDetailPage() {
@@ -37,6 +63,7 @@ export default function DubbingDetailPage() {
   const [loading, setLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
 
   useEffect(() => {
     const fetchDubbing = async () => {
@@ -64,26 +91,47 @@ export default function DubbingDetailPage() {
     fetchDubbing()
   }, [projectId, session?.access_token, router])
 
+  // Poll while a job is in flight (queued/processing/cloning) — no SSE on this page.
+  const status = dubbing?.status
+  useEffect(() => {
+    if (!session?.access_token) return
+    if (!status || status === "completed" || status === "failed") return
+    const iv = setInterval(async () => {
+      const fresh = await getDubbing(projectId, session.access_token).catch(() => null)
+      if (fresh) setDubbing(fresh)
+    }, 4000)
+    return () => clearInterval(iv)
+  }, [status, projectId, session?.access_token])
+
   const handleDelete = async () => {
     if (!projectId) return
-
     setIsDeleting(true)
     try {
       const success = await deleteDubbing(projectId, session?.access_token)
       if (success) {
-        toast.success("Dubbing deleted!", {
-          description: "The dubbed media has been successfully deleted.",
-        })
+        toast.success("Dubbing deleted!", { description: "The dubbed media has been successfully deleted." })
         router.push("/dashboard/dubbing")
       } else {
         throw new Error("Failed to delete")
       }
     } catch (error: any) {
-      toast.error("Error deleting dubbing", {
-        description: error.message || "Failed to delete dubbing.",
-      })
+      toast.error("Error deleting dubbing", { description: error.message || "Failed to delete dubbing." })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleRegenerate = async () => {
+    setIsRegenerating(true)
+    try {
+      await regenerateDubbing(projectId, session?.access_token)
+      toast.success("Regeneration started", { description: "Re-dubbing your media with the same settings." })
+      const fresh = await getDubbing(projectId, session?.access_token).catch(() => null)
+      if (fresh) setDubbing(fresh)
+    } catch (error: any) {
+      toast.error("Could not regenerate", { description: error?.message || "Please try again." })
+    } finally {
+      setIsRegenerating(false)
     }
   }
 
@@ -91,10 +139,9 @@ export default function DubbingDetailPage() {
     if (!dubbing?.dubbedUrl) return
     setIsDownloading(true)
     try {
-      const ext = dubbing.isVideo ? "mp4" : "mp3"
+      const ext = dubbing.isVideo ? "mp4" : "wav"
       const baseName = dubbing.mediaName || `dubbed_${dubbing.isVideo ? "video" : "audio"}_${dubbing.targetLanguage}`
-      const filename = `${baseName}.${ext}`
-      await downloadFile(dubbing.dubbedUrl, filename)
+      await downloadFile(dubbing.dubbedUrl, `${baseName}.${ext}`)
       toast.success("Download started")
     } catch {
       toast.error("Download failed", { description: "Please try again" })
@@ -110,211 +157,159 @@ export default function DubbingDetailPage() {
       </div>
     )
   }
-
-  if (!dubbing) {
-    return null
-  }
+  if (!dubbing) return null
 
   const languageLabel = getLanguageLabel(dubbing.targetLanguage)
-  const isCompleted = dubbing.status === "dubbed" && dubbing.dubbedUrl
+  // Lifecycle: queued → processing → cloning → completed | failed
+  const isCompleted = dubbing.status === "completed" && !!dubbing.dubbedUrl
+  const isFailed = dubbing.status === "failed"
+  const isProcessing = !isCompleted && !isFailed
+
+  const StatusIcon = isCompleted ? CheckCircle2 : isFailed ? XCircle : Loader2
+  const statusColor = isCompleted
+    ? "text-green-600 dark:text-green-400"
+    : isFailed
+      ? "text-red-500"
+      : "text-purple-600 dark:text-purple-400"
+
+  const createdLabel = new Date(dubbing.createdAt).toLocaleDateString(undefined, {
+    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  })
 
   return (
     <div className="container py-8">
-      <div className="mb-8 flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+      {/* Header — icon-only back button on the left */}
+      <div className="mb-8 flex items-center gap-4">
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={() => router.push("/dashboard/dubbing")} className="shrink-0" aria-label="Back to Dubbings">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Back to Dubbings</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dubbing Details</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Preview and download your dubbed media
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Details</h1>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => router.push("/dashboard/dubbing")}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dubbings
-        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Preview Card */}
-        <div className="lg:col-span-2">
+      <motion.div className="space-y-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+        {/* 1. Details — glassy quick-action-style cards, full width */}
+        <section aria-label="Details">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">Details</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <StatCard icon={dubbing.isVideo ? Video : Music} label="Media Type" value={dubbing.isVideo ? "Video" : "Audio"} />
+            <StatCard icon={Languages} label="Target Language" value={languageLabel} />
+            <StatCard icon={StatusIcon} label="Status" value={dubbing.status} iconClassName={`${statusColor} ${isProcessing ? "[&>svg]:animate-spin" : ""}`} />
+            <StatCard icon={Coins} label="Credits Used" value={dubbing.creditsConsumed ? `${dubbing.creditsConsumed}` : "—"} />
+            <StatCard icon={CalendarDays} label="Created" value={createdLabel} />
+          </div>
+        </section>
+
+        {/* 2. Main media section — full width */}
+        <section aria-label="Preview">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {isCompleted ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                ) : (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                )}
-                {dubbing.mediaName || (isCompleted ? "Dubbing Complete" : "Processing...")}
-              </CardTitle>
-              <CardDescription>
-                {isCompleted
-                  ? `Your media has been dubbed into ${languageLabel}. Preview and download below.`
-                  : "Your dubbing is still being processed. Please check back later."}
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+              <div className="min-w-0">
+                <CardTitle className="flex items-center gap-2">
+                  <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor} ${isProcessing ? "animate-spin" : ""}`} />
+                  <span className="truncate">
+                    {dubbing.mediaName || (isCompleted ? "Dubbing Complete" : isFailed ? "Dubbing Failed" : "Processing…")}
+                  </span>
+                </CardTitle>
+                <CardDescription className="mt-1.5">
+                  {isCompleted
+                    ? `Dubbed into ${languageLabel}. Preview and download below.`
+                    : isFailed
+                      ? "This dubbing did not complete. No credits were charged."
+                      : "Your dubbing is being processed — this page updates automatically."}
+                </CardDescription>
+              </div>
+
+              {/* Icon toolbar — before the preview */}
+              <TooltipProvider delayDuration={0}>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isCompleted && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="icon" onClick={handleDownload} disabled={isDownloading} className="bg-purple-600 hover:bg-purple-700 text-white" aria-label={`Download ${dubbing.isVideo ? "video" : "audio"}`}>
+                          {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Download {dubbing.isVideo ? "video" : "audio"}</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {!isProcessing && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={handleRegenerate} disabled={isRegenerating} aria-label="Regenerate">
+                          {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Regenerate with same input</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  <AlertDialog>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="icon" disabled={isDeleting} className="text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30 hover:border-red-500/50" aria-label="Delete dubbing">
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </Button>
+                        </AlertDialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete dubbing</TooltipContent>
+                    </Tooltip>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete this dubbed media.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </TooltipProvider>
             </CardHeader>
+
             <CardContent className="space-y-6">
               {isCompleted && dubbing.dubbedUrl ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {dubbing.originalMediaUrl && (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <Label>Original Media</Label>
-                      <div className="rounded-lg border bg-slate-50 dark:bg-slate-900/40 p-4">
-                        {dubbing.isVideo ? (
-                          <video
-                            controls
-                            src={dubbing.originalMediaUrl}
-                            className="w-full max-h-[300px] rounded-lg"
-                          >
-                            Your browser does not support the video element.
-                          </video>
-                        ) : (
-                          <audio controls src={dubbing.originalMediaUrl} className="w-full">
-                            Your browser does not support the audio element.
-                          </audio>
-                        )}
-                      </div>
+                      <DubbingMediaPlayer url={dubbing.originalMediaUrl} isVideo={dubbing.isVideo} title="Original media" />
                     </div>
                   )}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <Label>Dubbed Media ({languageLabel})</Label>
-                    <div className="rounded-lg border bg-slate-50 dark:bg-slate-900/40 p-4">
-                      {dubbing.isVideo ? (
-                        <video
-                          controls
-                          src={dubbing.dubbedUrl}
-                          className="w-full max-h-[300px] rounded-lg"
-                        >
-                          Your browser does not support the video element.
-                        </video>
-                      ) : (
-                        <audio controls src={dubbing.dubbedUrl} className="w-full">
-                          Your browser does not support the audio element.
-                        </audio>
-                      )}
-                    </div>
+                    <DubbingMediaPlayer url={dubbing.dubbedUrl} isVideo={dubbing.isVideo} title={dubbing.mediaName || "Dubbed media"} />
                   </div>
                 </div>
+              ) : isFailed ? (
+                <div className="text-center py-16 text-slate-500">
+                  <XCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+                  <p>Dubbing failed or was cancelled. Regenerate to try again, or delete this project.</p>
+                </div>
               ) : (
-                <div className="text-center py-12 text-slate-500">
-                  <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" />
-                  <p>Your dubbing is still being processed...</p>
+                <div className="text-center py-16 text-slate-500">
+                  <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-purple-500" />
+                  <p>Your dubbing is still being processed…</p>
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full sm:w-auto text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30 hover:border-red-500/50"
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Dubbing
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete this dubbed media.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {isCompleted && (
-                <Button
-                  onClick={handleDownload}
-                  className="w-full sm:w-auto bg-slate-950 hover:bg-slate-900 text-white"
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  {isDownloading ? "Downloading..." : `Download ${dubbing.isVideo ? "Video" : "Audio"}`}
-                </Button>
-              )}
-            </CardFooter>
           </Card>
-        </div>
-
-        {/* Metadata Card */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 bg-purple-50 dark:bg-purple-900/20 p-2 rounded-lg">
-                  {dubbing.isVideo ? (
-                    <Video className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  ) : (
-                    <Music className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Media Type</p>
-                  <p className="font-medium">{dubbing.isVideo ? "Video" : "Audio"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 bg-purple-50 dark:bg-purple-900/20 p-2 rounded-lg">
-                  <Languages className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Target Language</p>
-                  <p className="font-medium">{languageLabel}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 bg-purple-50 dark:bg-purple-900/20 p-2 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Status</p>
-                  <p className="font-medium capitalize">{dubbing.status}</p>
-                </div>
-              </div>
-
-              {dubbing.creditsConsumed !== undefined && dubbing.creditsConsumed > 0 && (
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Credits Used</p>
-                  <p className="font-medium">{dubbing.creditsConsumed} credits</p>
-                </div>
-              )}
-
-              <div className="pt-4 border-t">
-                <p className="text-sm text-slate-500 dark:text-slate-400">Created</p>
-                <p className="font-medium">
-                  {new Date(dubbing.createdAt).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </section>
+      </motion.div>
     </div>
   )
 }
