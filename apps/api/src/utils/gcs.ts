@@ -34,6 +34,14 @@ function getBucketName(configService: ConfigService): string {
   return bucket;
 }
 
+function getVideoBucketName(configService: ConfigService): string {
+  const bucket = configService.get<string>('GCS_VIDEO_BUCKET');
+  if (!bucket) {
+    throw new Error('GCS_VIDEO_BUCKET is not configured');
+  }
+  return bucket;
+}
+
 /** Dubbing keeps its own bucket so retention/cleanup can diverge from subtitles. */
 export function getDubbingBucketName(configService: ConfigService): string {
   const bucket = configService.get<string>('GCS_DUBBING_BUCKET');
@@ -41,6 +49,28 @@ export function getDubbingBucketName(configService: ConfigService): string {
     throw new Error('GCS_DUBBING_BUCKET is not configured');
   }
   return bucket;
+}
+
+/** gs:// prefix Veo writes generated video(s) into. Trailing slash: it's a folder. */
+export function videoGcsOutputPrefix(configService: ConfigService, objectPrefix: string): string {
+  return `gs://${getVideoBucketName(configService)}/${objectPrefix}`;
+}
+
+/** gs://bucket/object → https public URL (video bucket is public-read, like subtitles). */
+export function gcsUriToPublicUrl(gsUri: string): string {
+  // gs://bucket/a/b.mp4 → https://storage.googleapis.com/bucket/a/b.mp4
+  return gsUri.replace(/^gs:\/\//, 'https://storage.googleapis.com/');
+}
+
+/** Delete an object from the video bucket by its gs:// URI (for job cleanup). */
+export async function deleteVideoGcsUri(configService: ConfigService, gsUri: string): Promise<void> {
+  const bucket = getVideoBucketName(configService);
+  const prefix = `gs://${bucket}/`;
+  if (!gsUri.startsWith(prefix)) return;
+  const objectName = gsUri.slice(prefix.length);
+  if (!objectName) return;
+  const storage = await getStorage(configService);
+  await storage.bucket(bucket).file(objectName).delete({ ignoreNotFound: true });
 }
 
 // The helpers below default to the subtitle bucket; pass `bucket` (e.g.
@@ -64,6 +94,7 @@ export async function getSignedUploadUrl(
   objectName: string,
   contentType: string,
   bucket?: string,
+  expiresMs: number = 15 * 60 * 1000,
 ): Promise<string> {
   const storage = await getStorage(configService);
   const [url] = await storage
@@ -72,7 +103,7 @@ export async function getSignedUploadUrl(
     .getSignedUrl({
       version: 'v4',
       action: 'write',
-      expires: Date.now() + 15 * 60 * 1000,
+      expires: Date.now() + expiresMs,
       contentType,
     });
   return url;

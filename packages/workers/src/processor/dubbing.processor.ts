@@ -32,6 +32,9 @@ interface DubJobData {
   isVideo: boolean;
   targetLanguage: string;
   durationSeconds: number;
+  outputPutUrl: string;       // signed PUT URL — Modal uploads the dubbed file straight to GCS
+  outputContentType: string;  // must match the URL's signed Content-Type (video/mp4 | audio/wav)
+  outputPublicUrl: string;    // public GCS URL of the result, recorded once Modal confirms upload
 }
 
 @Processor('dubbing', { concurrency: 2 })
@@ -58,7 +61,10 @@ export class DubbingProcessor extends WorkerHost {
   }
 
   async process(job: Job<DubJobData>): Promise<{ dubbedUrl: string }> {
-    const { userId, projectId, inputGsUri, inputUrl, mimeType, isVideo, targetLanguage, durationSeconds } = job.data;
+    const {
+      userId, projectId, inputGsUri, inputUrl, mimeType, isVideo, targetLanguage, durationSeconds,
+      outputPutUrl, outputContentType, outputPublicUrl,
+    } = job.data;
 
     await job.updateProgress(0);
     await job.log('Starting dubbing...');
@@ -81,26 +87,20 @@ export class DubbingProcessor extends WorkerHost {
       const translatedText = await this.transcribeAndTranslate(inputGsUri, mimeType, languageLabel);
       await job.updateProgress(30);
 
-      // 2. Clone the voice + synthesize the translation (Modal GPU). For a video
-      //    input, Modal also muxes the dubbed audio back over the original video and
-      //    returns an MP4; for audio input it returns a WAV.
+      // 2. Clone the voice + synthesize the translation (Modal GPU), then have Modal
+      //    upload the result straight to GCS via the signed PUT URL — the worker never
+      //    holds the file (a dubbed MP4 can be hundreds of MB). For a video input Modal
+      //    muxes the dubbed audio over the original and stores an MP4; audio → a WAV.
       await this.throwIfCancelled(job.id!);
       await this.updateJob(projectId, { status: 'cloning' });
       await job.log(isVideo ? 'Cloning voice and rebuilding video...' : 'Cloning voice and generating dubbed audio...');
-      const dubbedMedia = await this.callModalDub(modalUrl, translatedText, inputUrl, isVideo, targetLanguage);
+      await this.callModalDub(modalUrl, translatedText, inputUrl, isVideo, targetLanguage, outputPutUrl, outputContentType);
       await job.updateProgress(80);
 
-      // 3. Store the result — MP4 for video dubs, WAV for audio (Supabase Storage).
+      // 3. Modal already stored the result in GCS at the pre-signed location.
       // Last cancellation window — after this we charge credits and persist.
       await this.throwIfCancelled(job.id!);
-      const filePath = isVideo ? `dubbed/${projectId}.mp4` : `dubbed/${projectId}.wav`;
-      const outputContentType = isVideo ? 'video/mp4' : 'audio/wav';
-      const { error: uploadError } = await this.supabase.storage
-        .from('dubbing_media')
-        .upload(filePath, dubbedMedia, { contentType: outputContentType, upsert: true });
-      if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
-
-      const { data: urlData } = this.supabase.storage.from('dubbing_media').getPublicUrl(filePath);
+      const dubbedUrl = outputPublicUrl;
       await job.updateProgress(90);
 
       // 4. Deduct duration-based credits — only after a successful clone.
@@ -119,13 +119,13 @@ export class DubbingProcessor extends WorkerHost {
 
       await this.updateJob(projectId, {
         status: 'completed',
-        dubbed_url: urlData.publicUrl,
+        dubbed_url: dubbedUrl,
         credits_consumed: creditsConsumed,
       });
       await job.updateProgress(100);
       await job.log(`Done! ${creditsConsumed} credits deducted.`);
 
-      return { dubbedUrl: urlData.publicUrl };
+      return { dubbedUrl };
     } catch (error: any) {
       const cancelled = error instanceof DubbingCancelledError;
       await job.log(cancelled ? 'Cancelled by user.' : `Fatal error: ${error.message}`);
@@ -166,13 +166,15 @@ export class DubbingProcessor extends WorkerHost {
   }
 
   /**
-   * Modal contract: JSON { text, reference_url, is_video, language } → dubbed media.
-   * MODAL_API_URL is the exact URL `modal deploy` printed for the /dub endpoint — Modal
-   * gives each web endpoint its own dedicated hostname, there is no path routing on top
-   * of it, so we POST to modalUrl directly (no path appended). Modal fetches reference_url
-   * (public GCS URL), extracts audio if is_video, clones the voice and synthesizes `text`
-   * in `language`. When is_video it muxes the dubbed audio over the original video and
-   * returns an MP4 (video/mp4); otherwise a WAV (audio/wav). Also accepts { audio_base64 }.
+   * Modal contract: JSON { text, reference_url, is_video, language, output_put_url,
+   * output_content_type } → Modal uploads the dubbed file straight to GCS via the signed
+   * PUT URL and returns a small JSON ack. MODAL_API_URL is the exact URL `modal deploy`
+   * printed for the /dub endpoint — Modal gives each web endpoint its own dedicated
+   * hostname with no path routing, so we POST to modalUrl directly (no path appended).
+   * Modal fetches reference_url (public GCS URL), extracts audio if is_video, clones the
+   * voice, synthesizes `text` in `language`, muxes over the original video when is_video,
+   * and PUTs the result to output_put_url. Keeping the bytes off the worker is the point:
+   * the dubbed media never transits this process.
    */
   private async callModalDub(
     modalUrl: string,
@@ -180,11 +182,20 @@ export class DubbingProcessor extends WorkerHost {
     referenceUrl: string,
     isVideo: boolean,
     language: string,
-  ): Promise<Buffer> {
+    outputPutUrl: string,
+    outputContentType: string,
+  ): Promise<void> {
     const response = await fetch(modalUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, reference_url: referenceUrl, is_video: isVideo, language }),
+      body: JSON.stringify({
+        text,
+        reference_url: referenceUrl,
+        is_video: isVideo,
+        language,
+        output_put_url: outputPutUrl,
+        output_content_type: outputContentType,
+      }),
       signal: AbortSignal.timeout(MODAL_TIMEOUT_MS),
     });
 
@@ -192,17 +203,6 @@ export class DubbingProcessor extends WorkerHost {
       const errBody = await response.text().catch(() => 'Unknown error');
       throw new Error(`Modal API error ${response.status}: ${errBody.slice(0, 500)}`);
     }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('audio') || contentType.includes('video') || contentType.includes('octet-stream')) {
-      return Buffer.from(await response.arrayBuffer());
-    }
-
-    const jsonBody = (await response.json()) as Record<string, unknown>;
-    for (const key of ['audio_base64', 'audio', 'data']) {
-      if (typeof jsonBody[key] === 'string') return Buffer.from(jsonBody[key] as string, 'base64');
-    }
-    throw new Error('Unexpected response format from Modal dubbing API');
   }
 
   private async updateJob(projectId: string, fields: Record<string, any>) {

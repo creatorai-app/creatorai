@@ -32,6 +32,20 @@ import {
 // Dubbing input is usually a short clip, but a video can be large — cap generously.
 const MAX_DUB_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
 
+// The output PUT URL is minted here (at enqueue) but used later by Modal, which only
+// runs after the job leaves the queue and the clone finishes (minutes). Give it a wide
+// window so a backlogged queue doesn't expire the URL before Modal uploads.
+// ponytail: 2h covers the concurrency-2 queue; if backlogs ever exceed it, mint the URL
+// in the worker right before the Modal call instead (needs GCS signing in the worker).
+const OUTPUT_URL_TTL_MS = 2 * 60 * 60 * 1000; // 2h
+
+/** Deterministic output object + content type, derivable from projectId alone (for cleanup). */
+function dubOutput(projectId: string, isVideo: boolean): { objectName: string; contentType: string } {
+  return isVideo
+    ? { objectName: `dubbed/${projectId}.mp4`, contentType: 'video/mp4' }
+    : { objectName: `dubbed/${projectId}.wav`, contentType: 'audio/wav' };
+}
+
 @Injectable()
 export class DubbingService {
   private readonly logger = new Logger(DubbingService.name);
@@ -167,6 +181,8 @@ export class DubbingService {
       throw new InternalServerErrorException('Failed to create dubbing project');
     }
 
+    const output = await this.signOutputUpload(projectId, isVideo);
+
     const bullJobId = `dubbing-${userId}-${Date.now()}`;
     await this.queue.add(
       'dubbing',
@@ -180,6 +196,7 @@ export class DubbingService {
         isVideo,
         targetLanguage,
         durationSeconds,
+        ...output,
       },
       { jobId: bullJobId },
     );
@@ -187,6 +204,26 @@ export class DubbingService {
     await this.supabase.from('dubbing_projects').update({ job_id: bullJobId }).eq('project_id', projectId);
 
     return { projectId, jobId: bullJobId };
+  }
+
+  /**
+   * Mint the destination for the dubbed file: a long-lived signed PUT URL Modal uploads
+   * to directly (the worker never handles the bytes), plus the public URL we'll record.
+   */
+  private async signOutputUpload(projectId: string, isVideo: boolean) {
+    const { objectName, contentType } = dubOutput(projectId, isVideo);
+    const outputPutUrl = await getSignedUploadUrl(
+      this.configService,
+      objectName,
+      contentType,
+      this.bucket,
+      OUTPUT_URL_TTL_MS,
+    );
+    return {
+      outputPutUrl,
+      outputContentType: contentType,
+      outputPublicUrl: gcsPublicUrl(this.configService, objectName, this.bucket),
+    };
   }
 
   /**
@@ -237,6 +274,8 @@ export class DubbingService {
       .eq('project_id', projectId)
       .eq('user_id', userId);
 
+    const output = await this.signOutputUpload(projectId, row.is_video);
+
     const bullJobId = `dubbing-${userId}-${Date.now()}`;
     await this.queue.add(
       'dubbing',
@@ -250,6 +289,7 @@ export class DubbingService {
         isVideo: row.is_video,
         targetLanguage: row.target_language,
         durationSeconds: Number(row.duration_seconds),
+        ...output,
       },
       { jobId: bullJobId },
     );
@@ -334,19 +374,22 @@ export class DubbingService {
       .delete()
       .eq('user_id', userId)
       .eq('project_id', projectId)
-      .select('input_gs_uri')
+      .select('input_gs_uri, is_video')
       .single();
 
     if (error) throw new BadRequestException('Dub not found or access denied');
 
-    // Clean up the source object in GCS (output WAV is left to Supabase lifecycle).
-    if (data?.input_gs_uri) {
-      const objectName = String(data.input_gs_uri).split('/').slice(3).join('/');
-      if (objectName) {
-        await deleteGcsObject(this.configService, objectName, this.bucket).catch((e) =>
-          this.logger.error(`Failed to delete GCS object ${objectName}`, e),
-        );
-      }
+    // Clean up both GCS objects: the source (input_gs_uri) and the dubbed output
+    // (deterministic name from projectId + is_video).
+    const objectNames = [
+      data?.input_gs_uri ? String(data.input_gs_uri).split('/').slice(3).join('/') : null,
+      dubOutput(projectId, Boolean(data?.is_video)).objectName,
+    ].filter((n): n is string => Boolean(n));
+
+    for (const objectName of objectNames) {
+      await deleteGcsObject(this.configService, objectName, this.bucket).catch((e) =>
+        this.logger.error(`Failed to delete GCS object ${objectName}`, e),
+      );
     }
   }
 }
