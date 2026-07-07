@@ -43,12 +43,12 @@ const EarlyAccessEmail = () => {
           <p className="text-gray-600 text-sm">
             &copy; {new Date().getFullYear()} Creator AI. All rights reserved.
           </p>
-          {/* <p className="text-gray-600 text-sm">
-            Questions? Reach out to me at{' '}
-            <a href="mailto:afrinnahar1999@gmail.com" className="text-purple-600 hover:underline">
-              support@your-script-ai-website.com
+          <p className="text-gray-600 text-sm">
+            Questions? Reach out to us at{' '}
+            <a href="mailto:support@tryscriptai.com" className="text-purple-600 hover:underline">
+              support@tryscriptai.com
             </a>
-          </p> */}
+          </p>
         </div>
       </div>
     </div>

@@ -422,6 +422,12 @@ export default function BlogDetailPage() {
               >
                 Get Started Free
               </Link>
+              <p className="text-purple-100/90 text-sm mt-5">
+                Questions? Reach us at{" "}
+                <a href="mailto:support@tryscriptai.com" className="underline hover:text-white">
+                  support@tryscriptai.com
+                </a>
+              </p>
             </motion.div>
           </div>
         </section>
