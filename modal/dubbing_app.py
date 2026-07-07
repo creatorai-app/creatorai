@@ -1,11 +1,18 @@
 # Creator AI — dubbing clone service (Modal, serverless GPU).
 #
 # Implements the contract the worker calls (packages/workers/.../dubbing.processor.ts):
-#   POST <MODAL_API_URL>  { text, reference_url, is_video, language }  ->  audio/wav bytes
+#   POST <MODAL_API_URL>
+#     { text, reference_url, is_video, language, output_put_url, output_content_type }
+#   -> streams the dubbed file straight to GCS via output_put_url, returns { "ok": true }
 #
 # It fetches reference_url (a public GCS URL), extracts audio if is_video, clones the
 # speaker's voice from it and synthesizes `text` in `language` using Chatterbox
-# Multilingual (MIT license, 23 languages). Scales to zero between requests.
+# Multilingual (MIT license, 23 languages). The result is uploaded directly to GCS with
+# the pre-signed PUT URL the API minted, so the dubbed media (a video can be hundreds of
+# MB) never round-trips through the Node worker. Scales to zero between requests.
+#
+# Back-compat: if output_put_url is omitted, it falls back to returning the raw bytes
+# (handy for `modal run` / curl testing).
 #
 # Deploy:  modal deploy modal/dubbing_app.py
 # The deploy prints a dedicated URL for this endpoint, e.g.
@@ -93,6 +100,22 @@ class Dubber:
         )
         return out_path
 
+    def _upload(self, path: str, put_url: str, content_type: str):
+        # Stream the file to the pre-signed GCS PUT URL. `data=<file object>` makes
+        # requests stream from disk in chunks — the file is never fully read into memory,
+        # so a big MP4 stays off the heap on both ends. Content-Type MUST match what the
+        # URL was signed with (the API binds it), or GCS rejects the PUT.
+        import requests
+
+        with open(path, "rb") as f:
+            resp = requests.put(
+                put_url,
+                data=f,
+                headers={"Content-Type": content_type},
+                timeout=600,
+            )
+        resp.raise_for_status()
+
     @modal.fastapi_endpoint(method="POST", docs=True)
     def dub(self, payload: dict):
         from fastapi import Response
@@ -102,6 +125,10 @@ class Dubber:
         reference_url = payload.get("reference_url")
         language = payload.get("language") or "en"
         is_video = bool(payload.get("is_video"))
+        output_put_url = payload.get("output_put_url")
+        output_content_type = payload.get("output_content_type") or (
+            "video/mp4" if is_video else "audio/wav"
+        )
         if not text or not reference_url:
             return Response(content="text and reference_url are required", status_code=400)
 
@@ -118,12 +145,15 @@ class Dubber:
         dubbed_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
         torchaudio.save(dubbed_wav, audio.cpu(), self.model.sr)
 
-        # Video in → mux the dubbed audio over the original video and return an MP4.
-        if is_video:
-            out_mp4 = self._mux(src_path, dubbed_wav)
-            with open(out_mp4, "rb") as f:
-                return Response(content=f.read(), media_type="video/mp4")
+        # Video in → mux the dubbed audio over the original video (MP4); audio in → the WAV.
+        out_path = self._mux(src_path, dubbed_wav) if is_video else dubbed_wav
+        media_type = "video/mp4" if is_video else "audio/wav"
 
-        # Audio in → return the dubbed WAV.
-        with open(dubbed_wav, "rb") as f:
-            return Response(content=f.read(), media_type="audio/wav")
+        # Preferred path: upload straight to GCS, keeping the bytes off the worker.
+        if output_put_url:
+            self._upload(out_path, output_put_url, output_content_type)
+            return {"ok": True}
+
+        # Fallback (no output_put_url): return the bytes — for local `modal run` / curl.
+        with open(out_path, "rb") as f:
+            return Response(content=f.read(), media_type=media_type)

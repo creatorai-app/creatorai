@@ -79,7 +79,11 @@ export default function FAQSection() {
             Frequently Asked Questions
           </h2>
           <p className="max-w-[700px] text-slate-600 dark:text-slate-400 md:text-lg">
-            Got questions? We've got answers.
+            Got questions? We've got answers. Can't find yours? Email us at{" "}
+            <a href="mailto:support@tryscriptai.com" className="text-purple-600 dark:text-purple-400 hover:underline">
+              support@tryscriptai.com
+            </a>
+            .
           </p>
         </motion.div>
 

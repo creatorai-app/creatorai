@@ -92,6 +92,12 @@ const Footer = () => {
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs">
                 Personalized AI assistant for content creators. Empowering creators worldwide.
               </p>
+              <a
+                href="mailto:support@tryscriptai.com"
+                className="block text-sm text-slate-600 dark:text-slate-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors"
+              >
+                support@tryscriptai.com
+              </a>
               <FloatingDock
                 desktopClassName="bg-transparent"
                 items={socialLinks.map((item) => ({

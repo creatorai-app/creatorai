@@ -558,13 +558,6 @@ Users can CRUD their own data:
 
 ## Storage Buckets
 
-### `dubbing_media` (public)
-**Purpose:** Store dubbing audio/video files  
-**Policies:**
-- Authenticated users: INSERT, SELECT, UPDATE, DELETE
-
----
-
 ### `user_avatar` (public)
 **Purpose:** Profile pictures  
 **Policies:**

@@ -15,8 +15,8 @@ only Starter (free) is excluded.
 ## 0. What already exists (and why it must change)
 
 There is a **working prototype** in `apps/api/src/dubbing/` (`dubbing.service.ts`,
-`dubbing.controller.ts`, `dubbing.module.ts`) plus a `dubbing_projects` table and
-a `dubbing_media` Supabase Storage bucket. It already does: Gemini
+`dubbing.controller.ts`, `dubbing.module.ts`) plus a `dubbing_projects` table. It
+already does: Gemini
 transcribe+translate, ffmpeg audio extraction, a call to a Modal `/dub`
 endpoint (VoxCPM), and credit deduction.
 
@@ -44,7 +44,7 @@ closes:
 | SSE progress | `createJobSSE` (`common/sse`) | Worker `job.updateProgress()` → browser. Replaces the DB-poll SSE. |
 | Credits | `update_user_credits` RPC + `calculateDubbingCredits` | Change to duration-based (§5). |
 | Plan gating | `getActivePlanName` in `VideoGenerationService` | Same `subscriptions → plans(name)` query; allow Pro/Business/Scale. |
-| Storage | `dubbing_media` Supabase bucket (output), GCS (input) | Input on GCS (Vertex needs `gs://`); output stays Supabase (small WAV/MP4). |
+| Storage | `GCS_DUBBING_BUCKET` (input + output) | Both on GCS. Input needs `gs://` for Vertex; output goes there too — Supabase's 50MB free-tier cap rejects dubbed MP4s. Modal PUTs the output straight to GCS so the worker never holds the bytes. |
 
 No new dependencies. `@nestjs/bullmq`, `@google/genai`, `@google-cloud/storage`,
 `fluent-ffmpeg` are all already installed and used.
@@ -70,11 +70,11 @@ Browser opens SSE  GET /dubbing/status/:jobId   (createJobSSE)
 Worker: DubbingProcessor.process()          [packages/workers]
   │   1. status='processing'  (progress 5)
   │   2. Gemini (Vertex, gs:// fileData): transcribe + translate → target text   (progress 30)
-  │   3. download media from GCS → ffmpeg extract clean reference WAV            (progress 45)
-  │   4. status='cloning'; POST Modal /dub { text, reference } → dubbed WAV      (progress 80)
-  │   5. (if isVideo) ffmpeg mux dubbed audio over original video → MP4          (progress 90)
-  │   6. upload result → dubbing_media (Supabase); deduct duration-based credits
-  │   7. status='completed', dubbed_url persisted                               (progress 100)
+  │   3. status='cloning'; POST Modal { text, reference_url, output_put_url }    (progress 80)
+  │        Modal clones + synthesizes, (if isVideo) muxes over the original,
+  │        and PUTs the result straight to GCS via the signed URL (worker holds no bytes)
+  │   4. deduct duration-based credits; dubbed_url = the GCS public URL
+  │   5. status='completed', dubbed_url persisted                               (progress 100)
   ▼
 SSE emits completed → browser plays the dubbed media
 ```
@@ -162,9 +162,11 @@ upgrade card to Starter users.
   `gs://` URI; Modal fetches the public URL as the voice reference. The shared
   `gcs.ts` helpers take an optional `bucket` argument, so no code duplication.
   See §9.1 for the bucket setup guide.
-- **Output** → keep the existing `dubbing_media` Supabase Storage bucket. Output
-  is a small WAV; Supabase public URL is already wired. No reason to move it.
-- Delete cleans up the GCS input object on `DELETE /dubbing/:id`.
+- **Output** → same **`GCS_DUBBING_BUCKET`**. The API mints a long-lived signed PUT
+  URL at enqueue; Modal uploads the dubbed file straight to it, so the worker never
+  holds the bytes (a dubbed MP4 can be hundreds of MB). Supabase Storage was dropped —
+  its 50MB free-tier cap rejects dubbed video.
+- Delete cleans up both GCS objects (input + output) on `DELETE /dubbing/:id`.
 
 ## 5b. Cancellation (train-ai pattern)
 
@@ -279,8 +281,8 @@ gcloud storage buckets update gs://creator-ai-dubbing --cors-file=cors.json
 > `iam.serviceAccounts.signBlob` on an attached SA — same requirement as the
 > subtitle uploader.
 
-Also ensure the **Supabase** Storage bucket `dubbing_media` exists and is public
-(worker uploads the dubbed WAV there).
+The dubbed output lands in the same `GCS_DUBBING_BUCKET` (Modal PUTs it there via the
+signed URL) — no separate output bucket to provision.
 
 ### 9.2 One-time setup — Modal + env + DB
 
