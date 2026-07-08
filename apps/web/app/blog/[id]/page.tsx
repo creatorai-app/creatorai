@@ -139,6 +139,30 @@ const markdownComponents: Components = {
       </a>
     )
   },
+  // A YouTube URL as a markdown image renders as a responsive embed; anything
+  // else falls back to a normal image. Lets posts embed video without raw HTML.
+  img: ({ src, alt }) => {
+    const url = typeof src === "string" ? src : ""
+    const yt = url.match(
+      /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/
+    )
+    if (yt) {
+      return (
+        <span className="block my-8 aspect-video w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${yt[1]}`}
+            title={alt || "YouTube video player"}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+            className="h-full w-full"
+          />
+        </span>
+      )
+    }
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt={alt || ""} className="my-8 w-full rounded-xl border border-slate-200" />
+  },
 }
 
 export default function BlogDetailPage() {
