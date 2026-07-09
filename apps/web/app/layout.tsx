@@ -10,6 +10,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { siteConfig, createMetadata } from "@/lib/seo"
 import JsonLd from "@/components/JsonLd"
 import Script from "next/script"
+import PublicHannah from "@/components/hannah/PublicHannah"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -76,6 +77,7 @@ export default function RootLayout({
         >
           <SupabaseProvider>
             <main>{children}</main>
+            <PublicHannah />
             <Toaster closeButton={true} richColors />
           </SupabaseProvider>
         </ThemeProvider>
