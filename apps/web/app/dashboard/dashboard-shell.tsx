@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useSupabase } from "@/components/supabase-provider"
 import { DashboardSidebar } from "@/components/dashboard/sidebar/dashboard-sidebar"
 import DashboardHeader from "@/components/dashboard-header"
+import HannahChat from "@/components/hannah/HannahChat"
 
 export default function DashboardShell({
   children,
@@ -47,6 +48,7 @@ export default function DashboardShell({
         <DashboardHeader />
         <div className="flex-1 overflow-auto">{children}</div>
       </div>
+      <HannahChat context="dashboard" />
     </div>
   )
 }

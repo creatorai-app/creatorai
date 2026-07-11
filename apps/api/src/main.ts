@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import axios from 'axios';
 import {
@@ -12,7 +13,14 @@ installCreatorAiFetchDefaults();
 installCreatorAiAxiosDefaults(axios);
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  // bodyParser disabled so we can re-register with a higher limit (Hannah voice
+  // messages arrive as base64 audio in JSON). rawBody stays intact for webhooks.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+    bodyParser: false,
+  });
+  app.useBodyParser('json', { limit: '3mb' });
+  app.useBodyParser('urlencoded', { extended: true, limit: '3mb' });
 
   app.use((_req, res, next) => {
     res.setHeader('Server', CREATOR_AI_USER_AGENT);
