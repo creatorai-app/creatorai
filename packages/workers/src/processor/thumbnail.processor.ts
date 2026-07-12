@@ -3,9 +3,8 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { createSupabaseClient, getSupabaseServiceEnv, SupabaseClient } from '@repo/supabase';
 import {
-  calculateThumbnailCredits,
+  calculateThumbnailCreditsByCount,
   THUMBNAIL_CREDIT_MULTIPLIER,
-  TOKENS_PER_CREDIT,
   type ThumbnailRatio,
 } from '@repo/validation';
 import { GoogleGenAI } from '@google/genai';
@@ -165,17 +164,15 @@ ${prompt}`;
       await job.updateProgress(90);
       await job.log(`${imageUrls.length}/${count} thumbnails generated. Saving...`);
 
-      const tokensPerCredit = this.getEnvNumber('TOKENS_PER_CREDIT', TOKENS_PER_CREDIT);
-      const thumbnailMultiplier = this.getEnvNumber(
+      // Bill per successfully generated image (flat $0.039 vendor cost each), not per
+      // token — text-token rates can't capture image cost. Only successes are charged.
+      const creditsPerImage = this.getEnvNumber(
         'THUMBNAIL_CREDIT_MULTIPLIER',
         THUMBNAIL_CREDIT_MULTIPLIER,
       );
-      const creditsToDeduct = calculateThumbnailCredits(
-        { totalTokens: totalConsumedTokens },
-        { tokensPerCredit, multiplier: thumbnailMultiplier },
-      );
+      const creditsToDeduct = calculateThumbnailCreditsByCount(imageUrls.length, creditsPerImage);
       this.logger.log(
-        `Job ${bullJobId}: generated=${imageUrls.length}, tokens=${totalConsumedTokens}, tokensPerCredit=${tokensPerCredit}, multiplier=${thumbnailMultiplier}, credits=${creditsToDeduct}`,
+        `Job ${bullJobId}: generated=${imageUrls.length}, tokens=${totalConsumedTokens}, creditsPerImage=${creditsPerImage}, credits=${creditsToDeduct}`,
       );
 
       const { error: creditError } = await this.supabase.rpc('update_user_credits', {
