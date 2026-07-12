@@ -7,11 +7,11 @@ import Footer from "@/components/footer"
 import { Type, ImageIcon, Layers, Wand2, Camera, Lightbulb, ArrowRight } from "lucide-react"
 
 const formula = [
-  { key: "Subject", hint: "Who or what is on screen — a red fox, a vintage car, a barista." },
-  { key: "Action", hint: "What it does — sprinting, drifting, pouring a latte." },
-  { key: "Setting", hint: "Where it happens — a snowy forest, a neon alley, a sunlit café." },
-  { key: "Camera", hint: "How it's shot — slow push-in, drone flyover, handheld follow." },
-  { key: "Lighting & mood", hint: "The feeling — golden hour, moody neon, soft overcast calm." },
+  { key: "Subject", hint: "Who or what is on screen: a red fox, a vintage car, a barista." },
+  { key: "Action", hint: "What it does: sprinting, drifting, pouring a latte." },
+  { key: "Setting", hint: "Where it happens: a snowy forest, a neon alley, a sunlit café." },
+  { key: "Camera", hint: "How it's shot: slow push-in, drone flyover, handheld follow." },
+  { key: "Lighting & mood", hint: "The feeling: golden hour, moody neon, soft overcast calm." },
 ]
 
 const modes = [
@@ -19,14 +19,14 @@ const modes = [
     icon: Type,
     title: "Text-to-video prompts",
     body:
-      "With text-to-video you build the whole scene from words, so detail wins. Instead of \"a dog running\", try \"a golden retriever sprinting along a wet beach at sunrise, camera tracking alongside, warm backlight\". Name one clear subject, one main action, and the camera move — piling on five subjects usually muddies the shot.",
+      "With text-to-video you build the whole scene from words, so detail wins. Instead of \"a dog running\", try \"a golden retriever sprinting along a wet beach at sunrise, camera tracking alongside, warm backlight\". Name one clear subject, one main action, and the camera move. Piling on five subjects usually muddies the shot.",
     example: "A lone lighthouse on a cliff during a storm, waves crashing below, slow aerial orbit, dramatic overcast light.",
   },
   {
     icon: ImageIcon,
     title: "Image-to-video prompts",
     body:
-      "Image-to-video animates a still you provide, so your prompt should describe motion, not the scene. The picture already sets the look — your words say what moves and how the camera behaves. Keep it about action: \"gently zoom in as she turns her head and smiles, hair moving in the breeze\".",
+      "Image-to-video animates a still you provide, so your prompt should describe motion, not the scene. The picture already sets the look. Your words say what moves and how the camera behaves. Keep it about action: \"gently zoom in as she turns her head and smiles, hair moving in the breeze\".",
     example: "Slowly push in on the character while steam rises from the cup and neon signs flicker behind them.",
   },
   {
@@ -39,10 +39,10 @@ const modes = [
 ]
 
 const mistakes = [
-  "Stuffing keywords instead of directing a shot — write like a director, not a search box.",
-  "Asking for many actions at once — one clear beat per clip reads far cleaner than five.",
-  "Forgetting the camera and lighting — they decide the mood as much as the subject does.",
-  "Starting over to fix one detail — use editing to change a single thing and keep the rest.",
+  "Stuffing keywords instead of directing a shot: write like a director, not a search box.",
+  "Asking for many actions at once: one clear beat per clip reads far cleaner than five.",
+  "Forgetting the camera and lighting: they decide the mood as much as the subject does.",
+  "Starting over to fix one detail: use editing to change a single thing and keep the rest.",
 ]
 
 const faqs = [
@@ -89,8 +89,8 @@ export default function PromptGuidePage() {
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="mt-4 text-lg text-slate-600 dark:text-slate-400"
           >
-            A plain-English guide to writing better AI video prompts — text-to-video, image-to-video,
-            and reference-to-video — with a simple prompt formula, real examples, and the mistakes to skip.
+            A plain-English guide to writing better AI video prompts (text-to-video, image-to-video,
+            and reference-to-video) with a simple prompt formula, real examples, and the mistakes to skip.
           </motion.p>
         </div>
       </section>
@@ -147,7 +147,7 @@ export default function PromptGuidePage() {
           <h2 className="text-2xl font-bold">Editing prompts: change one thing at a time</h2>
         </div>
         <p className="text-slate-600 dark:text-slate-400">
-          The fastest way to a great clip is rarely the first prompt — it's the edits. After a video is
+          The fastest way to a great clip is rarely the first prompt. It's the edits. After a video is
           generated, you can refine it with short instructions like &ldquo;make it night time&rdquo;,
           &ldquo;remove the on-screen text&rdquo;, or &ldquo;add falling snow&rdquo;. Because the edit is
           stateful, everything you didn't mention stays the same, so you can dial in a shot step by step
