@@ -6,4 +6,5 @@ export * from "./storybuilder.schema";
 export * from "./referral.schema";
 export * from "./script.schema";
 export * from "./affiliate.schema";
+export * from "./videoGeneration.schema";
 

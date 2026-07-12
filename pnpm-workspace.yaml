@@ -9,7 +9,7 @@ catalog:
   "@types/node": ^20
   "@types/eslint": ^8
   "supabase": ^2.54.10
-  "@google/genai": ^1.12.0
+  "@google/genai": ^2.11.0
   "@elevenlabs/elevenlabs-js": ^2.21.0
   "bullmq": ^5.62.2
   "axios": ^1.11.0
