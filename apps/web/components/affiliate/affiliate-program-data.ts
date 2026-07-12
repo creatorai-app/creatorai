@@ -11,7 +11,7 @@ import {
 
 export const PAGE_PATH = "/affiliate-program";
 
-export const PAGE_TITLE = "Affiliate Program | Earn 20% Recurring Commission";
+export const PAGE_TITLE = "Use, Promote & Earn | Creator AI Affiliate Program (20% Recurring)";
 
 export const PAGE_DESCRIPTION =
   "Join the Creator AI affiliate program and earn 20% recurring commission on every subscription you refer, for up to 12 months per customer. Free to join, $50 minimum payout, paid via PayPal, Wise, or bank transfer.";

@@ -188,7 +188,7 @@ function HubHeader() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Affiliate Hub
+              Use, promote and earn
             </h1>
             <Badge className="bg-purple-600 text-white hover:bg-purple-600 gap-1">
               <Repeat className="h-3 w-3" /> 20% recurring
