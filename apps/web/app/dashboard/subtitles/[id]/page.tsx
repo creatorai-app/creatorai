@@ -114,7 +114,7 @@ export default function SubtitleEditorPage() {
                 videoPath={subtitleData?.video_path || 'Loading...'}
                 isSaving={isSaving}
                 hasSubtitles={subtitles.length > 0}
-                totalTokens={subtitleData?.total_tokens}
+                creditsConsumed={subtitleData?.credits_consumed}
                 onSave={handleSave}
                 onDownload={handleDownload}
                 onUndo={undo}

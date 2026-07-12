@@ -3,14 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { Button } from "@repo/ui/button";
-import { Save, Download, Loader2, Undo2, Redo2, ArrowLeft, Coins } from 'lucide-react';
+import { Save, Download, Loader2, Undo2, Redo2, ArrowLeft, CreditCard } from 'lucide-react';
 
 type SubtitleHeaderProps = {
     filename: string;
     videoPath: string;
     isSaving: boolean;
     hasSubtitles: boolean;
-    totalTokens?: number;
+    creditsConsumed?: number;
     onSave: () => void;
     onDownload: () => void;
     onUndo: () => void;
@@ -23,7 +23,7 @@ export function SubtitleHeader({
     filename,
     isSaving,
     hasSubtitles,
-    totalTokens,
+    creditsConsumed,
     onSave,
     onDownload,
     onUndo,
@@ -49,13 +49,13 @@ export function SubtitleHeader({
                         {filename}
                     </h1>
                 </div>
-                {totalTokens ? (
+                {creditsConsumed ? (
                     <span
-                        title="Total Gemini tokens used to generate these subtitles"
+                        title="Credits used to generate these subtitles"
                         className="hidden sm:inline-flex items-center gap-1 shrink-0 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-100 dark:border-violet-900 px-2.5 py-1 text-xs font-medium"
                     >
-                        <Coins className="h-3.5 w-3.5" />
-                        {totalTokens.toLocaleString()} tokens
+                        <CreditCard className="h-3.5 w-3.5" />
+                        {creditsConsumed} credit{creditsConsumed > 1 ? "s" : ""} used
                     </span>
                 ) : null}
             </div>
