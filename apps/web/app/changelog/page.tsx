@@ -18,7 +18,7 @@ import {
 
 const TYPE_META: Record<
   ChangeType,
-  { label: string; icon: React.ElementType; className: string }
+  { label: string; icon: React.ComponentType<{ className?: string }>; className: string }
 > = {
   added: { label: "Added", icon: Plus, className: "text-emerald-700 bg-emerald-50 border-emerald-200" },
   changed: { label: "Changed", icon: RefreshCw, className: "text-blue-700 bg-blue-50 border-blue-200" },
@@ -50,7 +50,7 @@ export default function ChangelogPage() {
     return () => lenis.destroy()
   }, [])
 
-  const latest = releases[0]
+  const latest = releases[0]! // static, never empty
 
   return (
     <div className="flex flex-col min-h-screen">

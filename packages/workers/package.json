@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "catalog:",
+    "@google-cloud/storage": "^7.21.0",
     "@google/genai": "catalog:",
     "@nestjs/bullmq": "^10.2.1",
     "@nestjs/cli": "^10.0.0",

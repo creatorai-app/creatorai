@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-export { GEMINI_TEXT_MODEL, GEMINI_IMAGE_MODEL, GEMINI_EMBEDDING_MODEL } from '@repo/validation';
+export { GEMINI_TEXT_MODEL, GEMINI_IMAGE_MODEL, GEMINI_EMBEDDING_MODEL, GEMINI_VIDEO_MODEL } from '@repo/validation';
 
 let cached: GoogleGenAI | null = null;
 

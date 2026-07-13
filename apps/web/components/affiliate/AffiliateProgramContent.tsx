@@ -64,9 +64,9 @@ export default function AffiliateProgramContent() {
             variants={fadeUp}
             className="mx-auto mt-5 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-5xl"
           >
-            Earn recurring income by sharing{" "}
+            Use, promote and{" "}
             <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent dark:from-purple-400 dark:to-indigo-400">
-              Creator AI
+              earn
             </span>
           </motion.h1>
           <motion.p

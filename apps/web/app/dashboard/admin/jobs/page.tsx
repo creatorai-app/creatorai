@@ -64,7 +64,7 @@ const emptyJob = {
   category: "engineering" as const,
   description: "",
   requirements: "",
-  status: "active",
+  status: "active" as const,
 }
 
 export default function AdminJobsPage() {

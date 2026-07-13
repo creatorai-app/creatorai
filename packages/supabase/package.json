@@ -32,7 +32,8 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.76.1"
+    "@supabase/supabase-js": "^2.76.1",
+    "ioredis": "^5.8.2"
   },
   "devDependencies": {
     "@types/node": "catalog:",

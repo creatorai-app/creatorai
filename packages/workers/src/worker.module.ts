@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import * as path from 'path';
-import { getRedisConnection } from './redis';
+import { getRedisConnection } from '@repo/supabase';
 import { HealthController } from './health.controller';
 import { TrainAiProcessor } from './processor/train-ai.processor';
 import { ThumbnailProcessor } from './processor/thumbnail.processor';
 import { StoryBuilderProcessor } from './processor/story-builder.processor';
 import { IdeationProcessor } from './processor/ideation.processor';
 import { ScriptProcessor } from './processor/script.processor';
+import { VideoGenerationProcessor } from './processor/video-generation.processor';
 import { DubbingProcessor } from './processor/dubbing.processor';
 
 @Module({
@@ -23,14 +24,16 @@ import { DubbingProcessor } from './processor/dubbing.processor';
         path.resolve(process.cwd(), '../../.env.local'),
       ],
     }),
-    BullModule.forRoot({
-      connection: getRedisConnection(),
-      defaultJobOptions: {
-        attempts: 1,
-        backoff: { type: 'exponential', delay: 1000 },
-        removeOnComplete: { count: 1000 },
-        removeOnFail: { count: 5000 },
-      },
+    BullModule.forRootAsync({
+      useFactory: async () => ({
+        connection: await getRedisConnection(),
+        defaultJobOptions: {
+          attempts: 1,
+          backoff: { type: 'exponential', delay: 1000 },
+          removeOnComplete: { count: 1000 },
+          removeOnFail: { count: 5000 },
+        },
+      }),
     }),
     BullModule.registerQueue(
       { name: 'train-ai' },
@@ -38,9 +41,10 @@ import { DubbingProcessor } from './processor/dubbing.processor';
       { name: 'story-builder' },
       { name: 'ideation' },
       { name: 'script' },
+      { name: 'video-generation' },
       { name: 'dubbing' },
     ),
   ],
-  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, DubbingProcessor],
+  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor],
 })
 export class WorkerModule {}

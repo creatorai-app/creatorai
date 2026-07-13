@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import * as path from 'path';
-import { getRedisConnection } from './redis';
+import { getRedisConnection } from '@repo/supabase';
 import { SupabaseModule } from './supabase/supabase.module';
 
 import { AppController } from './app.controller';
@@ -23,6 +23,7 @@ import { IdeationModule } from './ideation/ideation.module';
 import { BillingModule } from './billing/billing.module';
 import { AdminModule } from './admin/admin.module';
 import { AffiliateModule } from './affiliate/affiliate.module';
+import { VideoGenerationModule } from './video-generation/video-generation.module';
 import { HannahModule } from './hannah/hannah.module';
 
 @Module({
@@ -37,8 +38,8 @@ import { HannahModule } from './hannah/hannah.module';
       ],
     }),
     BullModule.forRootAsync({
-      useFactory: () => ({
-        connection: getRedisConnection(),
+      useFactory: async () => ({
+        connection: await getRedisConnection(),
         defaultJobOptions: {
           attempts: 1,
           backoff: { type: 'exponential', delay: 1000 },
@@ -65,6 +66,7 @@ import { HannahModule } from './hannah/hannah.module';
     BillingModule,
     AdminModule,
     AffiliateModule,
+    VideoGenerationModule,
     HannahModule,
   ],
   controllers: [AppController, HealthController],

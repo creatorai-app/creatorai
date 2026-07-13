@@ -1,72 +1,76 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { Clapperboard } from "lucide-react"
+import { getVideoGenerationAccess } from "@/lib/api/getVideoGenerations"
+import { useVideoGeneration } from "@/hooks/useVideoGeneration"
+import { VideoModeCards } from "@/components/dashboard/video-generation/VideoModeCards"
+import { VideoGenerationForm } from "@/components/dashboard/video-generation/VideoGenerationForm"
+import { VideoHowItWorksGuide } from "@/components/dashboard/video-generation/VideoHowItWorksGuide"
+import { VideoUpgradeCard } from "@/components/dashboard/video-generation/VideoUpgradeCard"
 import { Button } from "@repo/ui/button"
-import { Card, CardContent } from "@repo/ui/card"
-import { Clock, Video, Wand2, Music, Type, Layers, Sparkles } from "lucide-react"
-
-const FEATURES = [
-  { icon: Wand2, title: "AI Scene Generation", desc: "Auto-generate scenes from your script with intelligent visual matching" },
-  { icon: Music, title: "Background Music", desc: "AI-selected royalty-free tracks that match your video's mood" },
-  { icon: Type, title: "Auto Captions", desc: "Perfectly timed captions with customizable styles" },
-  { icon: Layers, title: "B-Roll Integration", desc: "Smart stock footage suggestions placed at the right moments" },
-  { icon: Video, title: "Multiple Formats", desc: "Export in YouTube, Shorts, Reels, and TikTok formats" },
-  { icon: Sparkles, title: "Style Transfer", desc: "Match your existing video style for brand consistency" },
-]
+import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog"
 
 export default function VideoGenerationPage() {
-  const router = useRouter()
+  const [allowed, setAllowed] = useState<boolean | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
+  const vm = useVideoGeneration()
+
+  useEffect(() => {
+    getVideoGenerationAccess().then((a) => setAllowed(a.allowed))
+  }, [])
+
+  // UI is fully unlocked so everyone can explore the modes; the plan gate fires on
+  // Generate. The server still enforces the plan authoritatively regardless.
+  const locked = allowed === false
+  const handleGenerate = async () => {
+    if (locked) {
+      setShowUpgrade(true)
+      return
+    }
+    await vm.handleGenerate()
+  }
 
   return (
     <div className="container py-8 md:py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          Video Generation
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
-          Turn your scripts into fully produced videos with AI
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+            Video Generation
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
+            Turn a prompt, an image, or reference subjects into a fully generated video clip with AI
+          </p>
+        </div>
+        <Link href="/dashboard/video-generation/history">
+          <Button variant="outline">
+            <Clapperboard className="mr-2 h-4 w-4" />
+            My videos
+          </Button>
+        </Link>
       </div>
 
-      <Card className="relative overflow-hidden">
-        <CardContent className="p-8 md:p-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="flex items-start gap-3 rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800/50"
-              >
-                <div className="flex-shrink-0 rounded-md bg-purple-50 dark:bg-purple-900/20 p-2">
-                  <Icon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100">{title}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
+      <div className="mb-8">
+        <VideoModeCards mode={vm.mode} onSelect={vm.setMode} locked={locked} disabled={vm.isGenerating} />
+      </div>
 
-        <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <Clock className="h-12 w-12 mx-auto text-slate-500 dark:text-slate-400" />
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Coming Soon
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 max-w-md">
-              We&apos;re building an AI-powered video generator that turns your scripts into fully produced videos. Stay tuned!
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard")}
-              className="bg-slate-950 hover:bg-slate-900 text-white"
-            >
-              Back to Dashboard
-            </Button>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* How it works on the left, the prompt/generation form on the right. */}
+        <div className="order-2 lg:order-1">
+          <VideoHowItWorksGuide />
         </div>
-      </Card>
+        <div className="order-1 lg:order-2">
+          <VideoGenerationForm vm={{ ...vm, handleGenerate }} locked={locked} />
+        </div>
+      </div>
+
+      <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+        <DialogContent className="max-w-xl border-none bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Upgrade to unlock video generation</DialogTitle>
+          <VideoUpgradeCard />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
