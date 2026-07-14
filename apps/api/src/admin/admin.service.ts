@@ -73,22 +73,165 @@ export class AdminService {
     const { data, error, count } = await query;
     if (error) throw new BadRequestException(error.message);
 
-    return { data, total: count ?? 0, page, limit };
+    // subscriptions.user_id has no FK to profiles, so PostgREST can't embed it.
+    // Fetch active subscriptions separately and join in JS — same pattern as the
+    // affiliate admin queries. (subscriptions.plan_id -> plans FK does resolve.)
+    const userIds = [...new Set((data ?? []).map((u) => u.user_id))];
+    const { data: subs } = userIds.length
+      ? await this.db
+          .from('subscriptions')
+          .select('user_id, plan_id, plans(id, name, credits_monthly)')
+          .in('user_id', userIds)
+          .eq('status', 'active')
+      : { data: [] };
+    const planByUser = new Map<string, { plan_id: string; plans: unknown }>(
+      (subs ?? []).map((s) => [s.user_id as string, s as { plan_id: string; plans: unknown }]),
+    );
+
+    const withPlan = (data ?? []).map((u) => {
+      const sub = planByUser.get(u.user_id);
+      return { ...u, plan: sub?.plans ?? null, plan_id: sub?.plan_id ?? null };
+    });
+
+    return { data: withPlan, total: count ?? 0, page, limit };
   }
+
+  async getPlans() {
+    const { data, error } = await this.db
+      .from('plans')
+      .select('id, name, price_monthly, credits_monthly')
+      .eq('is_active', true)
+      .order('price_monthly', { ascending: true });
+
+    if (error) throw new BadRequestException(error.message);
+    return data ?? [];
+  }
+
+  /**
+   * Manually set a user's membership plan and grant that plan's credit allowance.
+   * Mirrors the billing free-plan flow: cancel active subs, insert a fresh active
+   * row. ponytail: admin-granted override — Lemon Squeezy is NOT touched, so a user
+   * on a real paid subscription keeps getting billed there. Cancel in LS separately
+   * if that's intended.
+   */
+  async setUserPlan(userId: string, planId: string) {
+    const { data: plan, error: planErr } = await this.db
+      .from('plans')
+      .select('id, credits_monthly')
+      .eq('id', planId)
+      .single();
+    if (planErr || !plan) throw new NotFoundException('Plan not found');
+
+    await this.db
+      .from('subscriptions')
+      .update({ status: 'canceled' })
+      .eq('user_id', userId)
+      .in('status', ['active', 'on_trial', 'past_due']);
+
+    const now = new Date().toISOString();
+    const { data: newSub, error: subErr } = await this.db
+      .from('subscriptions')
+      .insert({
+        user_id: userId,
+        plan_id: planId,
+        ls_subscription_id: null,
+        ls_customer_id: null,
+        ls_order_id: null,
+        status: 'active',
+        billing_interval: 'monthly',
+        credits_last_refreshed_at: now,
+        current_period_start: now,
+        current_period_end: null,
+      })
+      .select('*, plans(*)')
+      .single();
+    if (subErr) throw new BadRequestException(subErr.message);
+
+    const { data: profile, error: credErr } = await this.db
+      .from('profiles')
+      .update({ credits: plan.credits_monthly })
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (credErr) throw new BadRequestException(credErr.message);
+
+    return { success: true, credits: plan.credits_monthly, subscription: newSub, profile };
+  }
+
+  // Feature tables that record per-user credit usage — same set billing uses for
+  // usage history. Each has user_id, created_at and credits_consumed.
+  private static readonly ACTIVITY_TABLES: Record<string, string> = {
+    scripts: 'Script',
+    ideation_jobs: 'Ideation',
+    thumbnail_jobs: 'Thumbnail',
+    subtitle_jobs: 'Subtitle',
+    dubbing_projects: 'Dubbing',
+    story_builder_jobs: 'Story Builder',
+    documentation_generations: 'Documentation',
+    video_generation_jobs: 'Video Generation',
+  };
+
+  // Never expose password-reset OTP columns to the admin UI.
+  private static readonly PROFILE_SECRET_FIELDS = [
+    'password_reset_otp',
+    'password_reset_otp_expires_at',
+    'password_reset_otp_attempts',
+    'password_reset_otp_verified',
+  ];
 
   async getUser(userId: string) {
     const { data, error } = await this.db
       .from('profiles')
-      .select('*, subscriptions(*), usage_credits(*)')
+      .select('*')
       .eq('user_id', userId)
       .single();
 
     if (error || !data) throw new NotFoundException('User not found');
-    return data;
+
+    for (const f of AdminService.PROFILE_SECRET_FIELDS) delete (data as Record<string, unknown>)[f];
+
+    // subscriptions / usage_credits / youtube_channels have no FK to profiles, so
+    // they can't be embedded — fetch them separately by user_id.
+    const [{ data: subscriptions }, { data: usage_credits }, { data: channels }] = await Promise.all([
+      this.db.from('subscriptions').select('*, plans(*)').eq('user_id', userId).order('created_at', { ascending: false }),
+      this.db.from('usage_credits').select('*').eq('user_id', userId),
+      this.db.from('youtube_channels').select('*').eq('user_id', userId),
+    ]);
+
+    const activity = await this.getUserActivity(userId);
+
+    return {
+      ...data,
+      subscriptions: subscriptions ?? [],
+      usage_credits: usage_credits ?? [],
+      channels: channels ?? [],
+      activity,
+    };
+  }
+
+  private async getUserActivity(userId: string, perTable = 10) {
+    const entries = Object.entries(AdminService.ACTIVITY_TABLES);
+    const results = await Promise.all(
+      entries.map(async ([table, label]) => {
+        const { data } = await this.db
+          .from(table)
+          .select('id, created_at, credits_consumed')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(perTable);
+        return (data ?? []).map((r) => ({ ...r, feature: label }));
+      }),
+    );
+
+    return results
+      .flat()
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+      .slice(0, 30);
   }
 
   private static readonly ALLOWED_USER_FIELDS = new Set([
-    'full_name', 'name', 'email', 'credits', 'role', 'avatar_url',
+    'full_name', 'name', 'email', 'bio', 'credits', 'role', 'avatar_url',
+    'ai_trained', 'youtube_connected', 'language', 'referral_code', 'referred_by',
   ]);
 
   async updateUser(userId: string, updates: Record<string, unknown>) {

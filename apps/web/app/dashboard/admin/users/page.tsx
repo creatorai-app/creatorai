@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAdminUsers, adminApi } from "@/hooks/useAdmin"
 import { Search, ChevronLeft, ChevronRight, Trash2, Edit, Shield } from "lucide-react"
 import { AdminButton } from "@/components/admin/admin-button"
+import { UserEditDialog } from "@/components/admin/user-edit-dialog"
 import { Input } from "@repo/ui/input"
 import {
   Select,
@@ -22,6 +24,7 @@ import {
 import { toast } from "sonner"
 
 export default function AdminUsersPage() {
+  const router = useRouter()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("")
@@ -29,9 +32,12 @@ export default function AdminUsersPage() {
   const { data, total, loading, refresh } = useAdminUsers(page, search, roleFilter)
 
   const [editUser, setEditUser] = useState<Record<string, unknown> | null>(null)
-  const [editRole, setEditRole] = useState("")
-  const [editCredits, setEditCredits] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [plans, setPlans] = useState<Array<{ id: string; name: string; credits_monthly: number }>>([])
+
+  useEffect(() => {
+    adminApi.getPlans().then(setPlans).catch(() => {})
+  }, [])
 
   const totalPages = Math.ceil((total || 0) / 20)
 
@@ -39,21 +45,6 @@ export default function AdminUsersPage() {
     e.preventDefault()
     setSearch(searchInput)
     setPage(1)
-  }
-
-  const handleUpdateUser = async () => {
-    if (!editUser) return
-    try {
-      const updates: Record<string, unknown> = {}
-      if (editRole) updates.role = editRole
-      if (editCredits) updates.credits = Number(editCredits)
-      await adminApi.updateUser(editUser.user_id as string, updates)
-      toast.success("User updated")
-      setEditUser(null)
-      refresh()
-    } catch {
-      toast.error("Failed to update user")
-    }
   }
 
   const handleDelete = async () => {
@@ -110,6 +101,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium">Plan</th>
                 <th className="px-4 py-3 font-medium">Credits</th>
                 <th className="px-4 py-3 font-medium">Joined</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
@@ -119,18 +111,22 @@ export default function AdminUsersPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} className="px-4 py-3">
+                    <td colSpan={7} className="px-4 py-3">
                       <div className="h-5 bg-slate-800 rounded animate-pulse" />
                     </td>
                   </tr>
                 ))
               ) : data?.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">No users found</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">No users found</td>
                 </tr>
               ) : (
                 data?.map((user: Record<string, unknown>) => (
-                  <tr key={user.user_id as string} className="hover:bg-slate-900/30">
+                  <tr
+                    key={user.user_id as string}
+                    onClick={() => router.push(`/dashboard/admin/users/${user.user_id}`)}
+                    className="hover:bg-slate-900/30 cursor-pointer"
+                  >
                     <td className="px-4 py-3 text-slate-200">{(user.full_name || user.name || "-") as string}</td>
                     <td className="px-4 py-3 text-slate-400">{user.email as string}</td>
                     <td className="px-4 py-3">
@@ -143,14 +139,17 @@ export default function AdminUsersPage() {
                         {user.role as string}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-slate-300">
+                      {(user.plan as { name?: string } | null)?.name ?? "Free"}
+                    </td>
                     <td className="px-4 py-3 text-slate-300">{user.credits as number}</td>
                     <td className="px-4 py-3 text-slate-500">
                       {new Date(user.created_at as string).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => { setEditUser(user); setEditRole(user.role as string); setEditCredits(String(user.credits)); }}
+                          onClick={() => setEditUser(user)}
                           className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200"
                         >
                           <Edit className="h-4 w-4" />
@@ -188,45 +187,12 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* Edit User Dialog */}
-      <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm text-slate-400 mb-1 block">Role</label>
-              <Select value={editRole} onValueChange={setEditRole}>
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm text-slate-400 mb-1 block">Credits</label>
-              <Input
-                type="number"
-                value={editCredits}
-                onChange={(e) => setEditCredits(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-slate-200"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <AdminButton variant="tertiary" onClick={() => setEditUser(null)}>
-              Cancel
-            </AdminButton>
-            <AdminButton variant="primary" onClick={handleUpdateUser}>
-              Save
-            </AdminButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UserEditDialog
+        user={editUser}
+        plans={plans}
+        onOpenChange={(open) => { if (!open) setEditUser(null) }}
+        onSaved={refresh}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
