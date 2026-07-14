@@ -61,11 +61,30 @@ export class AdminController {
     );
   }
 
+  @Get('plans')
+  @ApiOperation({ summary: 'Active membership plans (for admin assignment)' })
+  getPlans() {
+    return this.adminService.getPlans();
+  }
+
   @Get('users/:userId')
   @ApiOperation({ summary: 'Get user by id' })
   @ApiParam({ name: 'userId' })
   getUser(@Param('userId') userId: string) {
     return this.adminService.getUser(userId);
+  }
+
+  @Put('users/:userId/plan')
+  @ApiOperation({ summary: 'Set a user membership plan and grant its credits' })
+  @ApiParam({ name: 'userId' })
+  @ApiBody({ schema: { type: 'object', required: ['planId'], properties: { planId: { type: 'string' } } } })
+  setUserPlan(
+    @Param('userId') userId: string,
+    @Body() body: { planId: string },
+    @Req() req: AuthRequest,
+  ) {
+    this.adminService.logActivity(this.getUserId(req), 'set_user_plan', 'user', userId, body);
+    return this.adminService.setUserPlan(userId, body.planId);
   }
 
   @Put('users/:userId')

@@ -258,6 +258,12 @@ export const adminApi = {
     api.put(`/api/v1/admin/users/${userId}`, updates, AUTH),
   deleteUser: (userId: string) =>
     api.delete(`/api/v1/admin/users/${userId}`, AUTH),
+  getPlans: () =>
+    api.get<Array<{ id: string; name: string; price_monthly: number; credits_monthly: number }>>('/api/v1/admin/plans', AUTH),
+  getUser: (userId: string) =>
+    api.get<Record<string, unknown>>(`/api/v1/admin/users/${userId}`, AUTH),
+  setUserPlan: (userId: string, planId: string) =>
+    api.put(`/api/v1/admin/users/${userId}/plan`, { planId }, AUTH),
   createBlog: (data: Partial<BlogPost>) =>
     api.post<BlogPost>('/api/v1/admin/blogs', data, AUTH),
   updateBlog: (id: string, data: Partial<BlogPost>) =>
