@@ -66,7 +66,7 @@ export default function AffiliateProgramContent() {
           >
             Use, promote and{" "}
             <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent dark:from-purple-400 dark:to-indigo-400">
-              earn
+              Earn
             </span>
           </motion.h1>
           <motion.p

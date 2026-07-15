@@ -237,9 +237,15 @@ export class AdminService {
   async updateUser(userId: string, updates: Record<string, unknown>) {
     const filtered: Record<string, unknown> = {};
     for (const key of Object.keys(updates)) {
-      if (AdminService.ALLOWED_USER_FIELDS.has(key)) {
-        filtered[key] = updates[key];
+      if (!AdminService.ALLOWED_USER_FIELDS.has(key)) continue;
+      let value = updates[key];
+      // referred_by is a FK to profiles.referral_code (and referral_code is unique). A
+      // blank string matches no code and violates profiles_referred_by_fkey, so an empty
+      // input means "no referral" → null, not "".
+      if ((key === 'referred_by' || key === 'referral_code') && (value === '' || value == null)) {
+        value = null;
       }
+      filtered[key] = value;
     }
 
     if (Object.keys(filtered).length === 0) {
