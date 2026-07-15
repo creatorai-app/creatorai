@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Param,
   Req,
   Query,
   UseGuards,
@@ -99,6 +100,16 @@ export class BillingController {
       body.origin,
       body.interval === 'annual' ? 'annual' : 'monthly',
     );
+  }
+
+  @Post('expiry-reminder/:id/seen')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Dismiss a plan-expiry reminder (marks the modal seen)' })
+  dismissExpiryReminder(@Req() req: AuthRequest, @Param('id') id: string) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    return this.billingService.dismissExpiryReminder(userId, id);
   }
 
   @Post('portal')

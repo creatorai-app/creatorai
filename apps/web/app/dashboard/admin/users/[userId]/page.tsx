@@ -41,7 +41,7 @@ export default function AdminUserDetailPage() {
   const [user, setUser] = useState<Row | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
-  const [plans, setPlans] = useState<Array<{ id: string; name: string; credits_monthly: number }>>([])
+  const [plans, setPlans] = useState<Array<{ id: string; name: string; credits_monthly: number; price_monthly: number }>>([])
 
   const fetchUser = useCallback(async () => {
     setLoading(true)

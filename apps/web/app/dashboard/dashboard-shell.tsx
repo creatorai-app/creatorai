@@ -7,6 +7,7 @@ import { useSupabase } from "@/components/supabase-provider"
 import { DashboardSidebar } from "@/components/dashboard/sidebar/dashboard-sidebar"
 import DashboardHeader from "@/components/dashboard-header"
 import HannahChat from "@/components/hannah/HannahChat"
+import { SubscriptionExpiryModal } from "@/components/billing/subscription-expiry-modal"
 
 export default function DashboardShell({
   children,
@@ -49,6 +50,7 @@ export default function DashboardShell({
         <div className="flex-1 overflow-auto">{children}</div>
       </div>
       <HannahChat context="dashboard" />
+      <SubscriptionExpiryModal />
     </div>
   )
 }
