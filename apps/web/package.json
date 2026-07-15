@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "@ai-sdk/openai": "^1.3.23",
     "@google/genai": "^1.12.0",
     "@hookform/resolvers": "^3.9.1",
