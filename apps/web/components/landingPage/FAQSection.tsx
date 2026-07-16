@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: "How do credits work?",
-    a: "Credits are what power the AI. Each action (like generating a script or creating a thumbnail) uses a certain number of credits. The free Starter plan gives you 200 credits per month. Paid plans, Creator (3,000), Pro (8,000), Business (50,000) and Scale (150,000), give you more.",
+    a: "Credits are what power the AI. Each action (like generating a script or creating a thumbnail) uses a certain number of credits. The free Starter plan gives you 500 credits per month. Paid plans, Creator (3,000), Pro (8,000), Business (50,000) and Scale (150,000), give you more.",
   },
   {
     q: "Do I need a YouTube channel to use it?",
@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     q: "Is there a free plan?",
-    a: "Yes! The Starter plan is completely free with 200 credits per month and no credit card required. Every feature is unlocked on the free plan, AI voice training, script generation, ideation, thumbnails, subtitles, story builder, dubbing and more. Paid plans simply give you more credits.",
+    a: "Yes! The Starter plan is completely free with 500 credits per month and no credit card required. Every feature is unlocked on the free plan, AI voice training, script generation, ideation, thumbnails, subtitles, story builder, dubbing and more. Paid plans simply give you more credits.",
   },
   {
     q: "Can I export my content?",
