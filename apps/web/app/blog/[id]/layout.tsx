@@ -114,11 +114,39 @@ export default async function BlogPostLayout({
         }
       : null;
 
+  // One VideoObject per embedded video so Google indexes this as a video watch
+  // page (fixes the "Video isn't on a watch page" exclusion). embedUrl points at
+  // the same player rendered in the article; contentUrl is the YouTube watch URL.
+  const videoJsonLd = (post.videos ?? []).map((video) => ({
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: video.name,
+    description: video.description,
+    thumbnailUrl: [`https://i.ytimg.com/vi/${video.youtubeId}/maxresdefault.jpg`],
+    uploadDate: toIsoDate(video.uploadDate),
+    ...(video.duration ? { duration: video.duration } : {}),
+    contentUrl: `https://www.youtube.com/watch?v=${video.youtubeId}`,
+    embedUrl: `https://www.youtube.com/embed/${video.youtubeId}`,
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+      logo: {
+        "@type": "ImageObject",
+        url: `${siteConfig.url}/dark-logo.png`,
+      },
+    },
+    // Ties the video to this page so Google treats the page as its watch page.
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  }));
+
   return (
     <>
       <JsonLd data={articleJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       {faqJsonLd && <JsonLd data={faqJsonLd} />}
+      {videoJsonLd.map((data, i) => (
+        <JsonLd key={`video-${i}`} data={data} />
+      ))}
       {children}
     </>
   );
