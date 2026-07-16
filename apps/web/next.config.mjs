@@ -10,6 +10,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') })
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },

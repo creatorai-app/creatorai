@@ -1,0 +1,7 @@
+tryscriptai.com, www.tryscriptai.com {
+	reverse_proxy web:3000
+}
+
+api.tryscriptai.com {
+	reverse_proxy api:8000
+}

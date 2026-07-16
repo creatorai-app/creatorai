@@ -28,8 +28,7 @@ export async function validateEnvironment(): Promise<void> {
   const envValidation = validateOAuthEnvironment();
   if (
     !envValidation.isValid ||
-    !process.env.GOOGLE_CLOUD_PROJECT ||
-    !process.env.ELEVENLABS_API_KEY
+    !process.env.GOOGLE_CLOUD_PROJECT
   ) {
     throw new Error('Missing environment variables');
   }
