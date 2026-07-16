@@ -10,7 +10,9 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "seo:audit": "node --experimental-strip-types scripts/seo-audit.mts",
+    "llms:generate": "node --experimental-strip-types scripts/generate-llms.mts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
