@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { motion } from "motion/react"
 import Link from "next/link"
 import Lenis from "lenis"
@@ -8,9 +8,27 @@ import "lenis/dist/lenis.css"
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
 import Footer from "@/components/footer"
 import { SparklesCore } from "@repo/ui/sparkles"
-import { ArrowRight, Calendar, Clock, User } from "lucide-react"
+import {
+  ArrowRight,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Search,
+  User,
+  X,
+} from "lucide-react"
 import { blogPosts } from "@/lib/blog-data"
 import { toast } from "sonner"
+
+const POSTS_PER_PAGE = 20
+
+// Blog dates are human strings like "Jul 16, 2026"; parse to a timestamp for
+// sorting and range filtering. Invalid dates sort last.
+const toTime = (date: string): number => {
+  const t = new Date(date).getTime()
+  return Number.isNaN(t) ? 0 : t
+}
 
 export default function BlogPage() {
   useEffect(() => {
@@ -20,6 +38,63 @@ export default function BlogPage() {
 
   const [newsletterEmail, setNewsletterEmail] = useState("")
   const [subscribing, setSubscribing] = useState(false)
+
+  // Search + date-range filter + pagination state.
+  const [query, setQuery] = useState("")
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+  const [page, setPage] = useState(1)
+
+  // Newest first, always.
+  const sorted = useMemo(
+    () => [...blogPosts].sort((a, b) => toTime(b.date) - toTime(a.date)),
+    [],
+  )
+
+  const isFiltering = query.trim() !== "" || fromDate !== "" || toDate !== ""
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const from = fromDate ? toTime(fromDate) : -Infinity
+    // Include the whole "to" day (native date input is midnight of that day).
+    const to = toDate ? toTime(toDate) + 86_399_999 : Infinity
+    return sorted.filter((p) => {
+      const t = toTime(p.date)
+      if (t < from || t > to) return false
+      if (!q) return true
+      const haystack = `${p.title} ${p.excerpt} ${p.category} ${p.tags.join(" ")}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [sorted, query, fromDate, toDate])
+
+  // Featured hero: newest featured post, shown only on the unfiltered first page.
+  const featured = !isFiltering ? sorted.find((p) => p.featured) : undefined
+  const gridPosts = featured
+    ? filtered.filter((p) => p.slug !== featured.slug)
+    : filtered
+
+  const totalPages = Math.max(1, Math.ceil(gridPosts.length / POSTS_PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const pageStart = (currentPage - 1) * POSTS_PER_PAGE
+  const paged = gridPosts.slice(pageStart, pageStart + POSTS_PER_PAGE)
+
+  // Reset to page 1 whenever the filter changes.
+  useEffect(() => {
+    setPage(1)
+  }, [query, fromDate, toDate])
+
+  const clearFilters = () => {
+    setQuery("")
+    setFromDate("")
+    setToDate("")
+  }
+
+  const goToPage = (p: number) => {
+    setPage(p)
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
+  }
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,9 +119,6 @@ export default function BlogPage() {
       setSubscribing(false)
     }
   }
-
-  const featured = blogPosts.find((p) => p.featured)
-  const rest = blogPosts.filter((p) => !p.featured)
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -131,57 +203,164 @@ export default function BlogPage() {
           </section>
         )}
 
-        {/* Blog Grid */}
+        {/* Blog Grid + Search / Filters / Pagination */}
         <section className="py-16 bg-slate-50">
           <div className="container max-w-6xl mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="mb-10"
-            >
-              <h2 className="text-2xl font-bold text-slate-900">Latest Posts</h2>
-            </motion.div>
+            <div className="mb-8 flex flex-col gap-4">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {isFiltering ? "Search Results" : "Latest Posts"}
+              </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rest.map((post, i) => (
-                <Link key={post.slug} href={`/blog/${post.slug}`}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.08 }}
-                    className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer h-full"
-                  >
-                    <span className="inline-block w-fit text-xs font-medium text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full mb-4">
-                      {post.category}
-                    </span>
-                    <h3 className="text-lg font-semibold text-slate-800 mb-2 group-hover:text-purple-700 transition-colors line-clamp-2">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-slate-600 mb-4 flex-1 line-clamp-3">
-                      {post.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-slate-500 mt-auto pt-4 border-t border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {post.date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {post.readTime}
+              {/* Search + date range */}
+              <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search posts by title, topic, or tag..."
+                    aria-label="Search blog posts"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <span className="hidden sm:inline">From</span>
+                    <input
+                      type="date"
+                      value={fromDate}
+                      max={toDate || undefined}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      aria-label="Filter from date"
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <span className="hidden sm:inline">To</span>
+                    <input
+                      type="date"
+                      value={toDate}
+                      min={fromDate || undefined}
+                      onChange={(e) => setToDate(e.target.value)}
+                      aria-label="Filter to date"
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </label>
+                  {isFiltering && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {paged.length > 0 ? (
+              <motion.div
+                key={currentPage}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                {paged.map((post) => (
+                  <Link key={post.slug} href={`/blog/${post.slug}`}>
+                    <div className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer h-full">
+                      <span className="inline-block w-fit text-xs font-medium text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full mb-4">
+                        {post.category}
+                      </span>
+                      <h3 className="text-lg font-semibold text-slate-800 mb-2 group-hover:text-purple-700 transition-colors line-clamp-2">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-slate-600 mb-4 flex-1 line-clamp-3">
+                        {post.excerpt}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-slate-500 mt-auto pt-4 border-t border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {post.date}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {post.readTime}
+                          </span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-purple-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                          Read <ArrowRight className="w-3 h-3" />
                         </span>
                       </div>
-                      <span className="inline-flex items-center gap-1 text-purple-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        Read <ArrowRight className="w-3 h-3" />
-                      </span>
                     </div>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
+                  </Link>
+                ))}
+              </motion.div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-20 text-center">
+                <p className="text-lg font-semibold text-slate-800">No posts found</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Try a different search term or widen the date range.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  Clear filters
+                </button>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <nav
+                aria-label="Blog pagination"
+                className="mt-12 flex items-center justify-center gap-1.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-purple-300 hover:text-purple-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => goToPage(p)}
+                    aria-label={`Page ${p}`}
+                    aria-current={p === currentPage ? "page" : undefined}
+                    className={
+                      p === currentPage
+                        ? "inline-flex h-10 min-w-10 items-center justify-center rounded-lg bg-purple-600 px-3 text-sm font-semibold text-white shadow-sm shadow-purple-500/20"
+                        : "inline-flex h-10 min-w-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition-colors hover:border-purple-300 hover:text-purple-700"
+                    }
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:border-purple-300 hover:text-purple-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </nav>
+            )}
           </div>
         </section>
 
