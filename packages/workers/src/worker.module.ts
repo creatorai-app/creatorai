@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as path from 'path';
 import { getRedisConnection } from '@repo/supabase';
 import { HealthController } from './health.controller';
+import { SubscriptionReminderService } from './reminders/subscription-reminder.service';
 import { TrainAiProcessor } from './processor/train-ai.processor';
 import { ThumbnailProcessor } from './processor/thumbnail.processor';
 import { StoryBuilderProcessor } from './processor/story-builder.processor';
@@ -35,6 +37,7 @@ import { DubbingProcessor } from './processor/dubbing.processor';
         },
       }),
     }),
+    ScheduleModule.forRoot(),
     BullModule.registerQueue(
       { name: 'train-ai' },
       { name: 'thumbnail' },
@@ -45,6 +48,6 @@ import { DubbingProcessor } from './processor/dubbing.processor';
       { name: 'dubbing' },
     ),
   ],
-  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor],
+  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor, SubscriptionReminderService],
 })
 export class WorkerModule {}

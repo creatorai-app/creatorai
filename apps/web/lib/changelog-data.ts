@@ -28,6 +28,17 @@ export interface ChangelogRelease {
  */
 export const releases: ChangelogRelease[] = [
   {
+    version: "1.2.0",
+    date: "2026-07-16",
+    tag: "minor",
+    title: "More free credits",
+    summary:
+      "The free Starter plan now includes 500 credits every month, up from 200, so you can try more of Creator AI before upgrading.",
+    changes: [
+      { type: "changed", description: "Starter (free) plan monthly credits increased from 200 to 500. Existing free users are topped up automatically." },
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-06-19",
     tag: "minor",

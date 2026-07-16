@@ -28,10 +28,10 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     name: "Starter",
     priceMonthly: 0,
     priceAnnualMonthly: 0,
-    credits: 200,
+    credits: 500,
     tagline: "Best for trying Creator AI risk-free, every feature unlocked, no card.",
     features: [
-      "200 credits every month",
+      "500 credits every month",
       "No credit card required",
       "Train the AI on your own voice",
       "Scripts, ideas, thumbnails & subtitles",

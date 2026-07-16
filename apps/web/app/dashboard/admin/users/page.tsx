@@ -33,7 +33,7 @@ export default function AdminUsersPage() {
 
   const [editUser, setEditUser] = useState<Record<string, unknown> | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [plans, setPlans] = useState<Array<{ id: string; name: string; credits_monthly: number }>>([])
+  const [plans, setPlans] = useState<Array<{ id: string; name: string; credits_monthly: number; price_monthly: number }>>([])
 
   useEffect(() => {
     adminApi.getPlans().then(setPlans).catch(() => {})

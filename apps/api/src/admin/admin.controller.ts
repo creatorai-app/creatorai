@@ -77,14 +77,14 @@ export class AdminController {
   @Put('users/:userId/plan')
   @ApiOperation({ summary: 'Set a user membership plan and grant its credits' })
   @ApiParam({ name: 'userId' })
-  @ApiBody({ schema: { type: 'object', required: ['planId'], properties: { planId: { type: 'string' } } } })
+  @ApiBody({ schema: { type: 'object', required: ['planId'], properties: { planId: { type: 'string' }, validityMonths: { type: 'number', enum: [1, 2, 3, 6, 12] } } } })
   setUserPlan(
     @Param('userId') userId: string,
-    @Body() body: { planId: string },
+    @Body() body: { planId: string; validityMonths?: number },
     @Req() req: AuthRequest,
   ) {
     this.adminService.logActivity(this.getUserId(req), 'set_user_plan', 'user', userId, body);
-    return this.adminService.setUserPlan(userId, body.planId);
+    return this.adminService.setUserPlan(userId, body.planId, body.validityMonths);
   }
 
   @Put('users/:userId')

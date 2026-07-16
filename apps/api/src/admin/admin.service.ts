@@ -107,20 +107,34 @@ export class AdminService {
     return data ?? [];
   }
 
+  // Validity options (in months) an admin may grant a paid plan for.
+  private static readonly VALIDITY_MONTHS = [1, 2, 3, 6, 12];
+
   /**
    * Manually set a user's membership plan and grant that plan's credit allowance.
    * Mirrors the billing free-plan flow: cancel active subs, insert a fresh active
    * row. ponytail: admin-granted override — Lemon Squeezy is NOT touched, so a user
    * on a real paid subscription keeps getting billed there. Cancel in LS separately
    * if that's intended.
+   *
+   * validityMonths (1/2/3/6/12) sets current_period_end = now + N months for PAID
+   * plans; the daily downgrade cron drops the user back to Starter after that date
+   * (see migration 20260715000000). Free/Starter plans never expire (period_end null),
+   * so validityMonths is ignored for them.
    */
-  async setUserPlan(userId: string, planId: string) {
+  async setUserPlan(userId: string, planId: string, validityMonths?: number) {
     const { data: plan, error: planErr } = await this.db
       .from('plans')
-      .select('id, credits_monthly')
+      .select('id, credits_monthly, price_monthly')
       .eq('id', planId)
       .single();
     if (planErr || !plan) throw new NotFoundException('Plan not found');
+
+    const isPaid = Number(plan.price_monthly) > 0;
+    if (isPaid && validityMonths !== undefined &&
+        !AdminService.VALIDITY_MONTHS.includes(validityMonths)) {
+      throw new BadRequestException('validityMonths must be one of 1, 2, 3, 6, 12');
+    }
 
     await this.db
       .from('subscriptions')
@@ -128,7 +142,15 @@ export class AdminService {
       .eq('user_id', userId)
       .in('status', ['active', 'on_trial', 'past_due']);
 
-    const now = new Date().toISOString();
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
+    // Paid plan with a chosen validity -> expiry date; otherwise no expiry.
+    let periodEnd: string | null = null;
+    if (isPaid && validityMonths) {
+      const end = new Date(nowDate);
+      end.setMonth(end.getMonth() + validityMonths);
+      periodEnd = end.toISOString();
+    }
     const { data: newSub, error: subErr } = await this.db
       .from('subscriptions')
       .insert({
@@ -141,7 +163,7 @@ export class AdminService {
         billing_interval: 'monthly',
         credits_last_refreshed_at: now,
         current_period_start: now,
-        current_period_end: null,
+        current_period_end: periodEnd,
       })
       .select('*, plans(*)')
       .single();

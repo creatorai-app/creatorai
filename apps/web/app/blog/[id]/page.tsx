@@ -139,24 +139,31 @@ const markdownComponents: Components = {
       </a>
     )
   },
-  // A YouTube URL as a markdown image renders as a responsive embed; anything
-  // else falls back to a normal image. Lets posts embed video without raw HTML.
+  // A YouTube URL as a markdown image renders as a prominent captioned embed;
+  // anything else falls back to a normal image. The figure semantics + visible
+  // caption help Google treat the page as the video's "watch page" (paired with
+  // the VideoObject JSON-LD in the blog layout). Spans (not <figure>) keep the
+  // markup valid inside react-markdown's <p> wrapper.
   img: ({ src, alt }) => {
     const url = typeof src === "string" ? src : ""
     const yt = url.match(
       /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/
     )
     if (yt) {
+      const caption = alt || "Video walkthrough"
       return (
-        <span className="block my-8 aspect-video w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${yt[1]}`}
-            title={alt || "YouTube video player"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-            className="h-full w-full"
-          />
+        <span role="figure" aria-label={caption} className="block my-8">
+          <span className="block aspect-video w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${yt[1]}`}
+              title={caption}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+              className="h-full w-full"
+            />
+          </span>
+          <span className="mt-2 block text-center text-sm text-slate-500">{caption}</span>
         </span>
       )
     }

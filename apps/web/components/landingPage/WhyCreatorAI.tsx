@@ -171,7 +171,7 @@ export default function WhyCreatorAI() {
             Get Started Free
           </a>
           <a
-            href="/blog/creator-ai-vs-chatgpt-for-youtubers"
+            href="/blog/creator-ai-vs-chatgpt-for-youtube-creators"
             className="inline-flex items-center gap-2 text-white font-medium border border-white/30 px-6 py-3 rounded-lg hover:bg-white/10 transition-colors"
           >
             Read the full comparison

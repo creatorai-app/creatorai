@@ -127,8 +127,40 @@ export class BillingService {
 
     const isPaidSubscription = !!subscription?.ls_subscription_id;
 
+    // Nearest un-dismissed expiry reminder (drives the in-app modal). Rows are
+    // created by the worker's daily reminder cron; latest created = most urgent
+    // milestone reached (7d -> 3d -> 24h).
+    let reminder: {
+      id: string;
+      milestone: string;
+      periodEnd: string;
+      planName: string;
+    } | null = null;
+    if (subscription?.id) {
+      const { data: rem } = await supabase
+        .from('subscription_reminders')
+        .select('id, milestone, period_end')
+        .eq('subscription_id', subscription.id)
+        .is('seen_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (rem) {
+        reminder = {
+          id: rem.id,
+          milestone: rem.milestone,
+          periodEnd: rem.period_end,
+          planName: (subscription.plans as { name?: string })?.name ?? 'your',
+        };
+      }
+    }
+
     return {
       currentPlan: subscription?.plans ?? starterPlan,
+      // Expiry of the active plan whether it's LS- or admin-granted (admin
+      // grants have no lsSubscriptionId but do have a current_period_end).
+      expiresAt: subscription?.current_period_end ?? null,
+      reminder,
       subscription: isPaidSubscription
         ? {
           id: subscription!.id,
@@ -139,6 +171,18 @@ export class BillingService {
         : null,
       credits: profile?.credits ?? 0,
     };
+  }
+
+  /** Dismiss an expiry reminder so the in-app modal stops showing it. */
+  async dismissExpiryReminder(userId: string, reminderId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase
+      .from('subscription_reminders')
+      .update({ seen_at: new Date().toISOString() })
+      .eq('id', reminderId)
+      .eq('user_id', userId); // scope to owner so one user can't dismiss another's
+    if (error) throw new BadRequestException(error.message);
+    return { success: true };
   }
 
   async createCheckoutSession(

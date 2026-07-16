@@ -69,7 +69,7 @@ export default function PricingPage() {
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
                 {[
-                  { icon: Zap, text: "200 free credits/month" },
+                  { icon: Zap, text: "500 free credits/month" },
                   { icon: CreditCard, text: "No credit card required" },
                   { icon: Shield, text: "Cancel anytime" },
                 ].map(({ icon: Icon, text }) => (
@@ -188,7 +188,7 @@ export default function PricingPage() {
               Start Free, Upgrade Anytime
             </h2>
             <p className="max-w-[600px] mx-auto text-slate-300 md:text-lg mb-8">
-              No credit card required. Get 200 free credits every month and full access to every feature.
+              No credit card required. Get 500 free credits every month and full access to every feature.
             </p>
             <Link href={billingHref("starter")}>
               <MButton

@@ -22,7 +22,17 @@ import {
 } from "@repo/ui/dialog"
 import { toast } from "sonner"
 
-type Plan = { id: string; name: string; credits_monthly: number }
+type Plan = { id: string; name: string; credits_monthly: number; price_monthly?: number }
+
+// Validity options an admin can grant a paid plan for. The plan auto-downgrades
+// to Starter once the period ends (backend cron); reminders fire at 7d/3d/24h.
+const VALIDITY_OPTIONS = [
+  { value: 1, label: "1 month" },
+  { value: 2, label: "2 months" },
+  { value: 3, label: "3 months" },
+  { value: 6, label: "6 months" },
+  { value: 12, label: "12 months" },
+]
 
 // Profile fields the admin can edit. Mirrors ALLOWED_USER_FIELDS on the API.
 const TEXT_FIELDS: Array<{ key: string; label: string; type?: string }> = [
@@ -48,7 +58,11 @@ export function UserEditDialog({
 }) {
   const [form, setForm] = useState<Record<string, unknown>>({})
   const [planId, setPlanId] = useState("")
+  const [validityMonths, setValidityMonths] = useState(1)
   const [saving, setSaving] = useState(false)
+
+  const selectedPlan = plans.find((p) => p.id === planId)
+  const isPaidPlan = (selectedPlan?.price_monthly ?? 0) > 0
 
   useEffect(() => {
     if (!user) return
@@ -78,7 +92,12 @@ export function UserEditDialog({
       // Plan first — this grants the plan's credit allowance — then the profile
       // fields, so any manual credits override wins.
       if (planId && planId !== ((user.plan_id as string) ?? "")) {
-        await adminApi.setUserPlan(user.user_id as string, planId)
+        // Validity only applies to paid plans; Starter never expires.
+        await adminApi.setUserPlan(
+          user.user_id as string,
+          planId,
+          isPaidPlan ? validityMonths : undefined,
+        )
       }
       await adminApi.updateUser(user.user_id as string, {
         ...form,
@@ -148,6 +167,25 @@ export function UserEditDialog({
             </Select>
           </div>
 
+          {isPaidPlan && (
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Validity</label>
+              <Select
+                value={String(validityMonths)}
+                onValueChange={(v) => setValidityMonths(Number(v))}
+              >
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {VALIDITY_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <label className="text-sm text-slate-400 mb-1 block">Credits</label>
             <Input
@@ -177,7 +215,10 @@ export function UserEditDialog({
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 -mt-2">Changing the plan grants its credit allowance and resets the subscription (billing provider is not affected).</p>
+        <p className="text-xs text-slate-500 -mt-2">
+          Changing the plan grants its credit allowance and resets the subscription (billing provider is not affected).
+          {isPaidPlan && " Paid plans auto-downgrade to Starter when the validity ends; the user is reminded at 7 days, 3 days and 24 hours before."}
+        </p>
 
         <DialogFooter>
           <AdminButton variant="tertiary" onClick={() => onOpenChange(false)}>
