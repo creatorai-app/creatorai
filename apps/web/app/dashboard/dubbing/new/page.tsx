@@ -13,8 +13,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/
 import {
   Loader2, Play, Download, UploadCloud, ArrowLeft, CheckCircle2,
   Mic, Languages, FileAudio, FileVideo, Sparkles, ArrowUpRight, Type,
-  Clapperboard, Music, RotateCw, Plus, List,
+  Clapperboard, Music, RotateCw, Plus, List, Lock,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { useDubbing } from "@/hooks/useDubbing";
 import { supportedLanguages } from "@repo/validation";
 import { downloadFile } from "@/lib/download";
@@ -36,7 +37,7 @@ const itemVariants = {
 function DubbingUpgradeCard() {
   const router = useRouter();
   return (
-    <motion.div variants={itemVariants}>
+    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
       <div className="group relative bg-slate-900 rounded-3xl p-8 sm:p-10 text-white overflow-hidden shadow-xl shadow-slate-200 dark:shadow-none">
         <div className="absolute -top-12 -right-12 w-40 h-40 bg-violet-600/30 rounded-full blur-3xl group-hover:bg-violet-500/40 transition-colors duration-500" />
         <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl" />
@@ -116,6 +117,17 @@ export default function NewDubbing() {
 
   const [isDragging, setIsDragging] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  // UI stays explorable; the plan gate fires on the Dub action. Server enforces authoritatively.
+  const locked = allowed === false;
+  const handleGenerate = () => {
+    if (locked) {
+      setShowUpgrade(true);
+      return;
+    }
+    handleDubMedia();
+  };
 
   const selectedLanguageLabel = supportedLanguages.find((l) => l.value === targetLanguage)?.label;
   const isComplete = !!dubbedResult && progress.state === "completed";
@@ -195,8 +207,6 @@ export default function NewDubbing() {
         <motion.div variants={itemVariants} className="flex justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
         </motion.div>
-      ) : !allowed ? (
-        <DubbingUpgradeCard />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* LEFT — animated hero + how it works (stacks on top on mobile) */}
@@ -388,13 +398,16 @@ export default function NewDubbing() {
 
                     <CardFooter>
                       <Button
-                        onClick={handleDubMedia}
+                        onClick={handleGenerate}
                         size="lg"
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all active:scale-[0.98]"
-                        disabled={!mediaFile || !targetLanguage || !mediaName.trim()}
+                        disabled={!locked && (!mediaFile || !targetLanguage || !mediaName.trim())}
                       >
-                        <Play className="mr-2 h-4 w-4" />
-                        Dub {selectedLanguageLabel ? `to ${selectedLanguageLabel}` : "Media"}
+                        {locked ? (
+                          <><Lock className="mr-2 h-4 w-4" /> Unlock audio dubbing</>
+                        ) : (
+                          <><Play className="mr-2 h-4 w-4" /> Dub {selectedLanguageLabel ? `to ${selectedLanguageLabel}` : "Media"}</>
+                        )}
                       </Button>
                     </CardFooter>
                   </Card>
@@ -404,6 +417,13 @@ export default function NewDubbing() {
           </motion.div>
         </div>
       )}
+
+      <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+        <DialogContent className="max-w-xl border-none bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Upgrade to unlock audio dubbing</DialogTitle>
+          <DubbingUpgradeCard />
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

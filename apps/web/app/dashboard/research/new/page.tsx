@@ -9,10 +9,10 @@ import { Label } from "@repo/ui/label";
 import { Textarea } from "@repo/ui/textarea";
 import { Switch } from "@repo/ui/switch";
 import { Skeleton } from "@repo/ui/skeleton";
-import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
-import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired";
+import { Sparkles, Loader2, ArrowLeft, Lock } from "lucide-react";
 import IdeationProgress from "@/components/dashboard/research/IdeationProgress";
 import { useIdeation } from "@/hooks/useIdeation";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
 import { useCurrentPlan } from "@/hooks/useCurrentPlan";
 import Link from "next/link";
 
@@ -32,6 +32,7 @@ export default function NewIdeationPage() {
   const router = useRouter();
   // Every plan has the same idea capabilities, usage is bounded only by credits.
   const { maxIdeas, loading: planLoading } = useCurrentPlan();
+  const gate = useAISetupGate();
   const [customCount, setCustomCount] = useState("3");
   const {
     context, setContext,
@@ -94,8 +95,6 @@ export default function NewIdeationPage() {
         <Skeleton className="h-12 w-full rounded-lg" />
       </motion.div>
     );
-  } else if (!aiTrained) {
-    content = <AITrainingRequired />;
   } else if (generatedResult && activeJobDbId) {
     content = null;
   } else {
@@ -214,11 +213,15 @@ export default function NewIdeationPage() {
               </p>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button
-                  onClick={handleGenerateClick}
-                  disabled={isGenerating || credits < 2 || (!autoMode && !nicheFocus.trim())}
+                  onClick={gate.locked ? gate.requestUnlock : handleGenerateClick}
+                  disabled={gate.locked ? false : (isGenerating || credits < 2 || (!autoMode && !nicheFocus.trim()))}
                   className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900"
                 >
-                  {isGenerating ? (
+                  {gate.locked ? (
+                    <>
+                      <Lock className="mr-2 h-4 w-4" /> Unlock to generate
+                    </>
+                  ) : isGenerating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
                     </>
@@ -280,6 +283,7 @@ export default function NewIdeationPage() {
           {content}
         </div>
       </motion.div>
+      {gate.modal}
     </motion.div>
   );
 }

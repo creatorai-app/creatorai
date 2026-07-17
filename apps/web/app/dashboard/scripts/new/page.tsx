@@ -8,7 +8,7 @@ import { useSupabase } from "@/components/supabase-provider"
 import ScriptGenerationForm from "@/components/dashboard/scripts/ScriptGenerationForm"
 import ScriptOutputPanel from "@/components/dashboard/scripts/ScriptOutputPanel"
 import { ScriptHowItWorksGuide } from "@/components/dashboard/scripts/ScriptHowItWorksGuide"
-import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired"
+import { useAISetupGate } from "@/hooks/useAISetupGate"
 import { Skeleton } from "@repo/ui/skeleton"
 import { Badge } from "@repo/ui/badge"
 import { Sparkles } from "lucide-react"
@@ -18,7 +18,8 @@ import type { IdeationJob } from "@repo/validation"
 function NewScriptPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { profile, profileLoading } = useSupabase()
+  const { profileLoading } = useSupabase()
+  const gate = useAISetupGate()
 
   const ideationId = searchParams.get("ideationId") ?? undefined
   const ideaIndex = searchParams.get("ideaIndex") != null ? Number(searchParams.get("ideaIndex")) : undefined
@@ -56,8 +57,6 @@ function NewScriptPageInner() {
     )
   }
 
-  const showTrainingOverlay = !profile?.youtube_connected || !profile?.ai_trained
-
   return (
     <motion.div
       className="container py-8"
@@ -80,16 +79,7 @@ function NewScriptPageInner() {
         )}
       </div>
 
-      {showTrainingOverlay ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <AITrainingRequired />
-        </motion.div>
-      ) : (
-        <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait">
           {hook.showOutput ? (
             <motion.div
               key="output"
@@ -137,13 +127,14 @@ function NewScriptPageInner() {
                   references={hook.references} setReferences={hook.setReferences}
                   files={hook.files} setFiles={hook.setFiles}
                   isGenerating={hook.isGenerating}
-                  onGenerate={hook.handleGenerate}
+                  onGenerate={gate.locked ? gate.requestUnlock : hook.handleGenerate}
+                  locked={gate.locked}
                 />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      )}
+      {gate.modal}
     </motion.div>
   )
 }

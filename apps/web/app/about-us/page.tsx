@@ -12,7 +12,7 @@ import Link from "next/link"
 import {
   Zap, Heart, Users, TrendingUp, Lightbulb,
   Video, PenTool, Search, ImageIcon, BookOpen,
-  FileText, Volume2, Gift, ArrowRight, Rocket,
+  FileText, Volume2, Gift, ArrowRight,
   Globe, MessageSquare, Settings, Sparkles,
 } from "lucide-react"
 import FeatureCard from "@/components/feature-card"
@@ -72,7 +72,6 @@ const features = [
 ]
 
 const futureFeatures = [
-  { title: "AI Video Generator", description: "Create AI-generated videos and reels like Sora and Veo.", icon: Rocket },
   { title: "Multi-Platform Support", description: "Expand features for TikTok, Instagram Reels, and podcasts.", icon: Globe },
   { title: "Collaboration Mode", description: "Real-time collaboration for teams.", icon: MessageSquare },
   { title: "Advanced Personalization", description: "Train AI with custom fine-tuned models.", icon: Settings },

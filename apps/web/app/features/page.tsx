@@ -17,9 +17,7 @@ import {
   Clapperboard,
   ImageIcon,
   MessageSquare,
-  Film,
   BookOpen,
-  Volume2,
   BarChart3,
   Gift,
 } from "lucide-react"
@@ -119,19 +117,9 @@ const coreFeatures = [
 
 const comingSoonFeatures = [
   {
-    title: "Video Generation",
-    description: "Turn scripts into full videos with AI-generated scenes, background music, captions, and B-roll.",
-    icon: Film,
-  },
-  {
     title: "Course Builder",
     description: "Break down complex topics into structured video courses with organized outlines and scripts.",
     icon: BookOpen,
-  },
-  {
-    title: "Audio Dubbing",
-    description: "Dub your videos into other languages while preserving your natural voice through AI cloning.",
-    icon: Volume2,
   },
 ]
 

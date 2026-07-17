@@ -11,7 +11,6 @@ import { AnimatePresence, motion } from "motion/react"
 import { ContentCard } from "@/components/dashboard/common/ContentCard"
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton"
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg"
-import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired"
 import { getScripts, deleteScript, type Script } from "@/lib/api/getScripts"
 import { downloadBlob } from "@/lib/download"
 import { api } from "@/lib/api-client"
@@ -34,7 +33,7 @@ const emptyStateVariants = {
 }
 
 export default function Scripts() {
-  const { profile, profileLoading } = useSupabase()
+  const { profileLoading } = useSupabase()
   const [scripts, setScripts] = useState<Script[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -80,8 +79,6 @@ export default function Scripts() {
     return <ContentCardSkeleton />
   }
 
-  const showTrainingOverlay = !profile?.youtube_connected || !profile?.ai_trained
-
   const filteredScripts = scripts.filter(s =>
     (s.title ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -100,14 +97,12 @@ export default function Scripts() {
             Manage all your generated scripts
           </p>
         </div>
-        {!showTrainingOverlay && (
-          <Link href="/dashboard/scripts/new">
-            <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10">
-              <Plus className="mr-2 h-4 w-4" />
-              New Script
-            </Button>
-          </Link>
-        )}
+        <Link href="/dashboard/scripts/new">
+          <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10">
+            <Plus className="mr-2 h-4 w-4" />
+            New Script
+          </Button>
+        </Link>
       </div>
 
       <div className="mb-8">
@@ -123,16 +118,7 @@ export default function Scripts() {
       </div>
 
       <AnimatePresence mode="wait">
-        {showTrainingOverlay ? (
-          <motion.div
-            key="training-required"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <AITrainingRequired />
-          </motion.div>
-        ) : filteredScripts.length > 0 ? (
+        {filteredScripts.length > 0 ? (
           <motion.div
             key="script-list"
             className="grid grid-cols-1 gap-4"

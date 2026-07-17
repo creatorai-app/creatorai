@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@repo/ui/button"
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react"
 
 import ScriptGenerationStepper from "@/components/dashboard/scripts/ScriptGenerationStepper"
 import ThumbnailStep1 from "./ThumbnailStep1"
@@ -33,6 +33,7 @@ interface ThumbnailFormProps {
   isGenerating: boolean
   onGenerate: () => void
   onUsePreset: (prompt: string) => void
+  locked?: boolean
 }
 
 export function ThumbnailForm({
@@ -44,6 +45,7 @@ export function ThumbnailForm({
   faceImage, setFaceImage,
   isGenerating,
   onGenerate, onUsePreset,
+  locked,
 }: ThumbnailFormProps) {
   const [step, setStep] = useState(1)
   const [promptError, setPromptError] = useState<string | null>(null)
@@ -140,11 +142,15 @@ export function ThumbnailForm({
           </Button>
         ) : (
           <Button
-            onClick={handleGenerate}
+            onClick={locked ? onGenerate : handleGenerate}
             className="bg-slate-900 hover:bg-slate-800 text-white min-w-[180px]"
-            disabled={isGenerating}
+            disabled={!locked && isGenerating}
           >
-            {isGenerating ? (
+            {locked ? (
+              <>
+                <Lock className="mr-2 h-4 w-4" /> Unlock to generate
+              </>
+            ) : isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
               </>

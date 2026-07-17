@@ -10,7 +10,6 @@ import { Search, Plus, Trash2, Download, MoreHorizontal, ExternalLink, Loader2 }
 import { Card } from "@repo/ui/card";
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg";
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton";
-import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired";
 import { motion } from "motion/react";
 import { useSupabase } from "@/components/supabase-provider";
 import { downloadBlob } from "@/lib/download";
@@ -33,7 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function IdeationListPage() {
   const [jobs, setJobs] = useState<IdeationJob[]>([]);
-  const { profile, profileLoading } = useSupabase();
+  const { profileLoading } = useSupabase();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
@@ -86,8 +85,6 @@ export default function IdeationListPage() {
 
   if (profileLoading || loading) return <ContentCardSkeleton />;
 
-  const showTrainingOverlay = !profile?.ai_trained;
-
   return (
     <div className="container py-8 md:py-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -97,14 +94,12 @@ export default function IdeationListPage() {
             AI-powered video idea generation with trend intelligence
           </p>
         </div>
-        {!showTrainingOverlay && (
-          <Link href="/dashboard/research/new">
-            <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10">
-              <Plus className="mr-2 h-4 w-4" />
-              Generate Ideas
-            </Button>
-          </Link>
-        )}
+        <Link href="/dashboard/research/new">
+          <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10">
+            <Plus className="mr-2 h-4 w-4" />
+            Generate Ideas
+          </Button>
+        </Link>
       </div>
 
       <div className="mb-8">
@@ -119,11 +114,7 @@ export default function IdeationListPage() {
         </div>
       </div>
 
-      {showTrainingOverlay ? (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <AITrainingRequired />
-        </motion.div>
-      ) : filteredJobs.length > 0 ? (
+      {filteredJobs.length > 0 ? (
         <div className="flex flex-col gap-3">
           {filteredJobs.map((job) => (
             <IdeationJobCard
