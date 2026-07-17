@@ -1,10 +1,20 @@
+"use client";
+
+import { useState } from "react";
 import { Button } from "@repo/ui/button";
-import { error } from "console";
-import { AlertCircle, Link, Link2 } from "lucide-react";
+import { AlertCircle, Youtube } from "lucide-react";
 import { motion } from "motion/react";
+import { useSupabase } from "@/components/supabase-provider";
+import { connectYoutubeChannel } from "@/lib/connectYT";
 import { itemVariants } from "./util";
 
 export function ChannelStatsError({ error }: { error: string }) {
+    const { supabase, user } = useSupabase();
+    const [connecting, setConnecting] = useState(false);
+
+    const handleConnect = () =>
+        connectYoutubeChannel({ supabase, user, setIsConnectingYoutube: setConnecting });
+
     return (
         <div className="container py-8 max-w-7xl mx-auto">
             <motion.header variants={itemVariants} initial="hidden" animate="visible" className="space-y-2 mb-8">
@@ -29,12 +39,14 @@ export function ChannelStatsError({ error }: { error: string }) {
                     <p className="text-slate-500 dark:text-slate-400 max-w-sm mb-8 leading-relaxed">
                         {error || "Connect your YouTube channel to unlock deep analytics and AI-powered synchronization."}
                     </p>
-                    <Link href="/dashboard">
-                        <Button className="h-12 px-8 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200 shadow-lg gap-2">
-                            <Link2 className="h-4 w-4" />
-                            Go to Dashboard
-                        </Button>
-                    </Link>
+                    <Button
+                        onClick={handleConnect}
+                        disabled={connecting}
+                        className="h-12 px-8 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200 shadow-lg gap-2"
+                    >
+                        <Youtube className="h-4 w-4" />
+                        {connecting ? "Connecting..." : "Connect Channel"}
+                    </Button>
                 </div>
             </motion.div>
         </div>
