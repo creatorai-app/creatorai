@@ -12,7 +12,6 @@ import { AnimatePresence, motion } from "motion/react"
 import { ContentCard } from "@/components/dashboard/common/ContentCard"
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton"
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg"
-import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired"
 import {
   getStoryBuilderJobs,
   deleteStoryBuilderJob,
@@ -37,7 +36,7 @@ const emptyStateVariants = {
 }
 
 export default function StoryBuilderListPage() {
-  const { profile, profileLoading } = useSupabase()
+  const { profileLoading } = useSupabase()
   const [jobs, setJobs] = useState<StoryBuilderJob[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -69,8 +68,6 @@ export default function StoryBuilderListPage() {
     return <ContentCardSkeleton />
   }
 
-  const showTrainingOverlay = !profile?.youtube_connected || !profile?.ai_trained
-
   const filteredJobs = jobs.filter(j =>
     (j.video_topic ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -89,14 +86,12 @@ export default function StoryBuilderListPage() {
             Manage all your generated story blueprints
           </p>
         </div>
-        {!showTrainingOverlay && (
-          <Link href="/dashboard/story-builder/new">
-            <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10">
-              <Plus className="mr-2 h-4 w-4" />
-              New Blueprint
-            </Button>
-          </Link>
-        )}
+        <Link href="/dashboard/story-builder/new">
+          <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10">
+            <Plus className="mr-2 h-4 w-4" />
+            New Blueprint
+          </Button>
+        </Link>
       </div>
 
       <div className="mb-8">
@@ -112,16 +107,7 @@ export default function StoryBuilderListPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        {showTrainingOverlay ? (
-          <motion.div
-            key="training-required"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <AITrainingRequired />
-          </motion.div>
-        ) : filteredJobs.length > 0 ? (
+        {filteredJobs.length > 0 ? (
           <motion.div
             key="job-list"
             className="grid grid-cols-1 gap-4"

@@ -17,7 +17,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Badge } from "@repo/ui/badge"
 import {
   Loader2, Sparkles, BookOpen, Users, Clock, Film, Palette, Wand2,
-  ArrowRight, Lightbulb, Clapperboard, GraduationCap,
+  ArrowRight, Lightbulb, Clapperboard, GraduationCap, Lock,
 } from "lucide-react"
 import {
   VIDEO_DURATIONS,
@@ -57,6 +57,7 @@ interface StoryBuilderFormProps {
   aiTrained: boolean
   isGenerating: boolean
   onGenerate: () => void
+  locked?: boolean
   ideationJobs: IdeationJob[]
   isLoadingIdeations: boolean
   onSelectIdea: (ideationId: string, ideaIndex: number, ideaTitle: string) => void
@@ -83,7 +84,7 @@ export function StoryBuilderForm({
   tone, setTone,
   additionalContext, setAdditionalContext,
   personalized, setPersonalized,
-  aiTrained, isGenerating, onGenerate,
+  aiTrained, isGenerating, onGenerate, locked,
   ideationJobs, isLoadingIdeations, onSelectIdea,
   selectedIdeationId, selectedIdeaIndex,
 }: StoryBuilderFormProps) {
@@ -369,10 +370,15 @@ export function StoryBuilderForm({
         <Button
           onClick={onGenerate}
           className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-          disabled={isGenerating || !videoTopic.trim()}
+          disabled={!locked && (isGenerating || !videoTopic.trim())}
           size="lg"
         >
-          {isGenerating ? (
+          {locked ? (
+            <>
+              <Lock className="mr-2 h-4 w-4" />
+              Unlock to generate
+            </>
+          ) : isGenerating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Generating Story Blueprint...

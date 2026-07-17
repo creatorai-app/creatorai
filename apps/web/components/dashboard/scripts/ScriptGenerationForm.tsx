@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@repo/ui/button"
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react"
 
 import ScriptGenerationStepper from "./ScriptGenerationStepper"
 import FormStep1 from "./FormStep1"
@@ -23,6 +23,7 @@ interface ScriptGenerationFormProps {
   files: File[]; setFiles: React.Dispatch<React.SetStateAction<File[]>>
   isGenerating: boolean
   onGenerate: () => void
+  locked?: boolean
 }
 
 const formStepVariants = {
@@ -123,11 +124,13 @@ export default function ScriptGenerationForm(props: ScriptGenerationFormProps) {
           </Button>
         ) : (
           <Button
-            onClick={handleGenerate}
+            onClick={props.locked ? props.onGenerate : handleGenerate}
             className="bg-slate-900 hover:bg-slate-800 text-white min-w-[180px]"
-            disabled={props.isGenerating}
+            disabled={!props.locked && props.isGenerating}
           >
-            {props.isGenerating ? (
+            {props.locked ? (
+              <><Lock className="mr-2 h-4 w-4" /> Unlock to generate</>
+            ) : props.isGenerating ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
             ) : (
               "Generate Script"

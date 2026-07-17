@@ -8,7 +8,7 @@ import { useSupabase } from "@/components/supabase-provider"
 import { ThumbnailForm } from "@/components/dashboard/thumbnails/ThumbnailForm"
 import { ThumbnailOutputPanel } from "@/components/dashboard/thumbnails/ThumbnailOutputPanel"
 import { VideoFrameModal } from "@/components/dashboard/thumbnails/VideoFrameModal"
-import { AITrainingRequired } from "@/components/dashboard/common/AITrainingRequired"
+import { useAISetupGate } from "@/hooks/useAISetupGate"
 import { Skeleton } from "@repo/ui/skeleton"
 import { Badge } from "@repo/ui/badge"
 import { FileText, Clapperboard } from "lucide-react"
@@ -16,7 +16,8 @@ import { FileText, Clapperboard } from "lucide-react"
 function NewThumbnailPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { profile, profileLoading } = useSupabase()
+  const { profileLoading } = useSupabase()
+  const gate = useAISetupGate()
 
   const scriptId = searchParams.get("scriptId") ?? undefined
   const storyBuilderId = searchParams.get("storyBuilderId") ?? undefined
@@ -56,8 +57,6 @@ function NewThumbnailPageInner() {
     )
   }
 
-  const showTrainingOverlay = !profile?.youtube_connected || !profile?.ai_trained
-
   return (
     <motion.div
       className="container py-8"
@@ -80,16 +79,7 @@ function NewThumbnailPageInner() {
         )}
       </div>
 
-      {showTrainingOverlay ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <AITrainingRequired />
-        </motion.div>
-      ) : (
-        <div className="max-w-full mx-auto">
+      <div className="max-w-full mx-auto">
           <AnimatePresence mode="wait">
             {showOutput ? (
               <motion.div
@@ -132,14 +122,16 @@ function NewThumbnailPageInner() {
                   faceImage={faceImage}
                   setFaceImage={setFaceImage}
                   isGenerating={isGenerating}
-                  onGenerate={handleGenerate}
+                  onGenerate={gate.locked ? gate.requestUnlock : handleGenerate}
+                  locked={gate.locked}
                   onUsePreset={handleUsePreset}
                 />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      )}
+
+      {gate.modal}
 
       <VideoFrameModal
         open={showFrameModal}
