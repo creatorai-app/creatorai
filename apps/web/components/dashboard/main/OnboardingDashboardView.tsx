@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Button } from "@repo/ui/button";
 import { Progress } from "@repo/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
-import { Check, Youtube, Brain, Unlink, Lock } from "lucide-react";
+import { Check, Youtube, Brain, Unlink, Lock, Users, Video, Eye, BarChart3 } from "lucide-react";
+import { useChannelStats } from "@/hooks/useChannelStats";
+import { formatNumber } from "@/components/dashboard/channel-stats/util";
 import { containerVariants, itemVariants } from "./types";
 import type { SharedProps } from "./types";
 import {
@@ -17,6 +21,13 @@ import {
 } from "./SharedComponents";
 
 export function OnboardingDashboardView(props: SharedProps) {
+  const router = useRouter();
+  const { stats: channel, fetchStats } = useChannelStats();
+
+  useEffect(() => {
+    if (props.isYoutubeConnected) fetchStats();
+  }, [props.isYoutubeConnected, fetchStats]);
+
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex-1 max-w-[1440px] w-full mx-auto space-y-8 relative z-10">
       <BackgroundGlow />
@@ -57,17 +68,54 @@ export function OnboardingDashboardView(props: SharedProps) {
               </div>
 
               <span className="text-[10px] font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-2 bg-purple-50 dark:bg-purple-500/10 px-2 py-1 rounded-sm">Phase 01</span>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">Connect Channel</h3>
-              <p className="text-slate-500 dark:text-slate-400 mb-10 max-w-[300px] leading-relaxed text-sm md:text-base">
-                Securely link your YouTube channel to provide the AI with your unique voice, style, and niche data.
-              </p>
 
-              <div className="mt-auto w-full max-w-[200px]">
+              {props.isYoutubeConnected ? (
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50">{channel?.channelName || props.profile?.youtube_channel_name || "Connected Channel"}</h3>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                      Connected
+                    </span>
+                  </div>
+
+                  {channel && (
+                    <div className="grid grid-cols-3 gap-4 mb-10 w-full max-w-[320px]">
+                      {[
+                        { label: "Subscribers", value: channel.subscriberCount, icon: Users },
+                        { label: "Videos", value: channel.totalVideos, icon: Video },
+                        { label: "Views", value: channel.totalViews, icon: Eye },
+                      ].map((s) => (
+                        <div key={s.label} className="flex flex-col items-center text-center gap-1">
+                          <s.icon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-lg font-bold text-slate-900 dark:text-slate-50 tracking-tight">{formatNumber(s.value)}</span>
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">Connect Channel</h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-10 max-w-[300px] leading-relaxed text-sm md:text-base">
+                    Securely link your YouTube channel to provide the AI with your unique voice, style, and niche data.
+                  </p>
+                </>
+              )}
+
+              <div className="mt-auto w-full max-w-[240px]">
                 {props.isYoutubeConnected ? (
-                  <Button variant="outline" onClick={props.disconnectYoutubeChannel} disabled={props.disconnectingYoutube} className="w-full border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:border-red-500/30">
-                    <Unlink className="w-4 h-4 mr-2" />
-                    Disconnect
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => router.push("/dashboard/channel-stats")} className="flex-1 border-slate-200 dark:border-slate-700 hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-500/10">
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      View Details
+                    </Button>
+                    <Button variant="outline" onClick={props.disconnectYoutubeChannel} disabled={props.disconnectingYoutube} className="flex-1 border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:border-red-500/30">
+                      <Unlink className="w-4 h-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  </div>
                 ) : (
                   <Button onClick={props.connectYoutubeChannel} disabled={props.connectingYoutube} className="w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200 shadow-lg h-12 text-base">
                     {props.connectingYoutube ? "Connecting..." : "Connect"}
@@ -130,7 +178,7 @@ export function OnboardingDashboardView(props: SharedProps) {
       </motion.section>
 
       <div className="pt-4">
-        <QuickActionsGrid isSetupComplete={false} />
+        <QuickActionsGrid isSetupComplete={true} />
       </div>
 
     </motion.div>

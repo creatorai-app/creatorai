@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Button } from "@repo/ui/button";
-import { Youtube, Unlink, BarChart3, ChevronRight, LayoutTemplate } from "lucide-react";
+import { Youtube, Unlink, BarChart3, ChevronRight, LayoutTemplate, Users, Eye, Video } from "lucide-react";
+import { useChannelStats } from "@/hooks/useChannelStats";
+import { formatNumber } from "@/components/dashboard/channel-stats/util";
 import {
   AreaChart, Area, XAxis, YAxis,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -28,6 +30,11 @@ export function ConnectedDashboardView(props: SharedProps) {
   const router = useRouter();
   const [activityPeriod, setActivityPeriod] = useState<ActivityPeriod>("weekly");
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
+  const { stats: channel, fetchStats } = useChannelStats();
+
+  useEffect(() => {
+    if (props.isYoutubeConnected) fetchStats();
+  }, [props.isYoutubeConnected, fetchStats]);
 
   const getRouteForActivity = (type: string, id: string) => {
     switch (type) {
@@ -207,16 +214,32 @@ export function ConnectedDashboardView(props: SharedProps) {
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="text-sm font-medium text-slate-900 dark:text-slate-50 truncate block">{props.profile?.youtube_channel_name || "Connected Channel"}</h3>
+                    <h3 className="text-sm font-medium text-slate-900 dark:text-slate-50 truncate block">{channel?.channelName || props.profile?.youtube_channel_name || "Connected Channel"}</h3>
                     <span className="shrink-0 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-sm text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">YT</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Language • {props.profile?.language || "EN"}</p>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100/50 dark:bg-slate-800/50 rounded text-slate-500 dark:text-slate-400 text-[11px] font-medium shrink-0">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded text-emerald-600 dark:text-emerald-400 text-[11px] font-medium shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                   <span className="hidden sm:inline">Connected</span>
                 </div>
               </div>
+
+              {channel && (
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+                  {[
+                    { label: "Subscribers", value: channel.subscriberCount, icon: Users },
+                    { label: "Videos", value: channel.totalVideos, icon: Video },
+                    { label: "Views", value: channel.totalViews, icon: Eye },
+                  ].map((s) => (
+                    <div key={s.label} className="flex flex-col items-center text-center gap-1">
+                      <s.icon className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <span className="text-sm font-bold text-slate-900 dark:text-slate-50 tracking-tight">{formatNumber(s.value)}</span>
+                      <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex gap-2 w-full pt-3 mt-1 border-t border-slate-100 dark:border-slate-800/50">
                 <Button 
