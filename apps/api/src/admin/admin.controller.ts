@@ -223,6 +223,27 @@ export class AdminController {
     return this.adminService.getMails(Number(page) || 1, Number(limit) || 20, status);
   }
 
+  @Get('mails/:id')
+  @ApiOperation({ summary: 'Get a single mail message' })
+  @ApiParam({ name: 'id' })
+  getMail(@Param('id') id: string) {
+    return this.adminService.getMail(id);
+  }
+
+  @Post('mails/:id/reply')
+  @ApiOperation({ summary: 'Reply to a mail via Resend and mark it replied' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: { type: 'object', required: ['subject', 'html'], properties: { subject: { type: 'string' }, html: { type: 'string' } } } })
+  replyToMail(
+    @Param('id') id: string,
+    @Body() body: { subject: string; html: string },
+    @Req() req: AuthRequest,
+  ) {
+    const userId = this.getUserId(req);
+    this.adminService.logActivity(userId, 'reply_mail', 'mail_message', id, { subject: body.subject });
+    return this.adminService.replyToMail(id, userId, body.subject, body.html);
+  }
+
   @Put('mails/:id')
   @ApiOperation({ summary: 'Update mail delivery status' })
   @ApiParam({ name: 'id' })

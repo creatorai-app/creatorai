@@ -1,9 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Resend } from 'resend';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  private readonly resend: Resend | null = null;
+
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly configService: ConfigService,
+  ) {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (apiKey) this.resend = new Resend(apiKey);
+  }
 
   private get db() {
     const client = this.supabaseService.getAdminClient();
@@ -413,6 +423,55 @@ export class AdminService {
     const { data, error, count } = await query;
     if (error) throw new BadRequestException(error.message);
     return { data, total: count ?? 0, page, limit };
+  }
+
+  async getMail(id: string) {
+    const { data, error } = await this.db
+      .from('mail_messages')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) throw new NotFoundException('Mail not found');
+    return data;
+  }
+
+  /**
+   * Send a reply to a contact/inbound mail via Resend and mark it replied.
+   * `html` is the fully rendered reply body (the web editor converts the admin's
+   * markdown to HTML before posting).
+   */
+  async replyToMail(id: string, adminId: string, subject: string, html: string) {
+    if (!subject?.trim() || !html?.trim()) {
+      throw new BadRequestException('Subject and message are required');
+    }
+    if (!this.resend) throw new InternalServerErrorException('Email service not configured');
+
+    const { data: mail, error } = await this.db
+      .from('mail_messages')
+      .select('from_email, subject')
+      .eq('id', id)
+      .single();
+    if (error || !mail) throw new NotFoundException('Mail not found');
+
+    const { error: sendErr } = await this.resend.emails.send({
+      from: 'Creator AI <notifications@tryscriptai.com>',
+      to: mail.from_email,
+      replyTo: 'support@tryscriptai.com',
+      subject,
+      html: `<div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">${html}</div>`,
+    });
+    if (sendErr) throw new InternalServerErrorException('Failed to send reply');
+
+    const { data: updated, error: updErr } = await this.db
+      .from('mail_messages')
+      .update({ status: 'replied', replied_at: new Date().toISOString(), replied_by: adminId })
+      .eq('id', id)
+      .select()
+      .single();
+    if (updErr) throw new BadRequestException(updErr.message);
+
+    return { success: true, mail: updated };
   }
 
   async updateMailStatus(id: string, status: string, repliedBy?: string) {

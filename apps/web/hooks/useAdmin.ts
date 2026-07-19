@@ -272,8 +272,12 @@ export const adminApi = {
     api.delete(`/api/v1/admin/blogs/${id}`, AUTH),
   getBlog: (id: string) =>
     api.get<BlogPost>(`/api/v1/admin/blogs/${id}`, AUTH),
+  getMail: (id: string) =>
+    api.get<MailMessage>(`/api/v1/admin/mails/${id}`, AUTH),
   updateMailStatus: (id: string, status: string) =>
     api.put(`/api/v1/admin/mails/${id}`, { status }, AUTH),
+  replyToMail: (id: string, subject: string, html: string) =>
+    api.post<{ success: boolean; mail: MailMessage }>(`/api/v1/admin/mails/${id}/reply`, { subject, html }, AUTH),
   updateAffiliateLink: (id: string, updates: Record<string, unknown>) =>
     api.put(`/api/v1/admin/affiliates/links/${id}`, updates, AUTH),
   updateSaleStatus: (id: string, status: string) =>
