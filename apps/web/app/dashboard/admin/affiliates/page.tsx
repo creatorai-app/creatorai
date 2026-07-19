@@ -194,6 +194,7 @@ function LinksTab() {
               <tr className="bg-slate-900/50 text-slate-400 text-left">
                 <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Label</th>
+                <th className="px-4 py-3 font-medium">Promotion</th>
                 <th className="px-4 py-3 font-medium">Owner</th>
                 <th className="px-4 py-3 font-medium">Commission %</th>
                 <th className="px-4 py-3 font-medium">Clicks</th>
@@ -205,11 +206,11 @@ function LinksTab() {
             <tbody className="divide-y divide-slate-800">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-5 bg-slate-800 rounded animate-pulse" /></td></tr>
+                  <tr key={i}><td colSpan={9} className="px-4 py-3"><div className="h-5 bg-slate-800 rounded animate-pulse" /></td></tr>
                 ))
               ) : !data?.data?.length ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                     <Link2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     No affiliate links created yet
                   </td>
@@ -223,6 +224,9 @@ function LinksTab() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-300">{link.label || "-"}</td>
+                    <td className="px-4 py-3 text-slate-400 max-w-xs truncate" title={link.promotion_channel || undefined}>
+                      {link.promotion_channel || "-"}
+                    </td>
                     <td className="px-4 py-3 text-slate-400">
                       {link.profiles?.full_name || link.profiles?.email || "-"}
                     </td>

@@ -11,6 +11,7 @@ import {
 } from "@repo/ui/card";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
+import { Textarea } from "@repo/ui/textarea";
 import { Label } from "@repo/ui/label";
 import { Badge } from "@repo/ui/badge";
 import { Skeleton } from "@repo/ui/skeleton";
@@ -432,15 +433,19 @@ function LinksSection({
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [label, setLabel] = useState("");
+  const [promotion, setPromotion] = useState("");
   const [creating, setCreating] = useState(false);
 
   const create = async () => {
+    if (!promotion.trim()) {
+      toast.error("Tell us where you'll promote Creator AI");
+      return;
+    }
     try {
       setCreating(true);
-      await affiliateHubApi.createLink({ label: label.trim() || undefined });
-      toast.success("Affiliate link created");
-      setLabel("");
+      await affiliateHubApi.createLink({ promotion_channel: promotion.trim() });
+      toast.success("Your affiliate code is ready");
+      setPromotion("");
       setOpen(false);
       onChanged();
     } catch (err) {
@@ -471,7 +476,7 @@ function LinksSection({
           <CardDescription>Tracking links that attribute sales to you</CardDescription>
         </div>
         <Button size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> New Link
+          <Plus className="h-4 w-4" /> Generate New Link
         </Button>
       </CardHeader>
       <CardContent>
@@ -519,26 +524,51 @@ function LinksSection({
       </CardContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create affiliate link</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="link-label">Label (optional)</Label>
-            <Input
-              id="link-label"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. YouTube bio link"
-            />
-            <p className="text-xs text-slate-500">A unique code will be generated automatically.</p>
+        <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+          <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 px-6 py-5 text-white">
+            <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-white/15 p-2">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <DialogTitle className="text-lg font-bold text-white">
+                  Get paid to promote Creator AI
+                </DialogTitle>
+              </div>
+              <Badge className="shrink-0 bg-white/20 text-white hover:bg-white/20">20% recurring</Badge>
+            </div>
+            <p className="relative mt-2 text-sm text-purple-100">
+              Share your link and earn 20% recurring commission on every subscription you refer.
+            </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={create} disabled={creating}>
-              {creating ? "Creating..." : "Create"}
+
+          <div className="space-y-4 px-6 pb-6 pt-5">
+            <div className="space-y-2">
+              <Label htmlFor="promotion-channel" className="text-sm font-medium">
+                Where will you promote Creator AI?
+              </Label>
+              <Textarea
+                id="promotion-channel"
+                value={promotion}
+                onChange={(e) => setPromotion(e.target.value)}
+                placeholder="X, newsletter, YouTube, cold email, personal network..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+              Commissions repeat for up to 12 billing cycles and mature after a 30-day holding
+              period. You can't earn commission on your own subscription. A unique tracking code
+              is generated for you automatically.
+            </div>
+
+            <Button className="w-full gap-1.5" onClick={create} disabled={creating}>
+              <Sparkles className="h-4 w-4" />
+              {creating ? "Generating your code..." : "Apply and get my code"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

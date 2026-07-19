@@ -51,6 +51,7 @@ export interface AffiliateLink {
   click_count: number
   is_active: boolean
   ls_affiliate_id?: string
+  promotion_channel?: string | null
   created_at: string
   updated_at: string
 }

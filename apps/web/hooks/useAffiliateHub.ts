@@ -66,7 +66,7 @@ export function useAffiliateHub() {
 }
 
 export const affiliateHubApi = {
-  createLink: (data: { label?: string; target_url?: string }) =>
+  createLink: (data: { label?: string; target_url?: string; promotion_channel?: string }) =>
     api.post<AffiliateLink>('/api/v1/affiliate/links', data, AUTH),
   updateLink: (id: string, data: Record<string, unknown>) =>
     api.put<AffiliateLink>(`/api/v1/affiliate/links/${id}`, data, AUTH),
