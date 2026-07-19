@@ -3,6 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { SupabaseService } from '../supabase/supabase.service';
 
+interface FeedEvent {
+  id: string;
+  user_id: string;
+  category: 'feature' | 'error' | 'subscription' | 'affiliate';
+  label: string;
+  action: string;
+  status: string | null;
+  error_message: string | null;
+  credits_consumed: number;
+  created_at: string;
+}
+
 @Injectable()
 export class AdminService {
   private readonly resend: Resend | null = null;
@@ -383,20 +395,130 @@ export class AdminService {
 
   // ==================== ACTIVITIES ====================
 
-  async getActivities(page = 1, limit = 50, entityType?: string) {
-    let query = this.db
-      .from('activities')
-      .select('*, profiles!activities_actor_fkey(full_name, email, avatar_url)', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
+  // Feature tables that record per-user work. `status`/`error` flag which optional
+  // columns each has (scripts has neither job-status nor error_message).
+  private static readonly FEATURE_SOURCES: Array<{ table: string; label: string; status: boolean; error: boolean }> = [
+    { table: 'scripts', label: 'Script', status: false, error: false },
+    { table: 'ideation_jobs', label: 'Ideation', status: true, error: true },
+    { table: 'thumbnail_jobs', label: 'Thumbnail', status: true, error: true },
+    { table: 'subtitle_jobs', label: 'Subtitle', status: true, error: true },
+    { table: 'dubbing_projects', label: 'Dubbing', status: true, error: false },
+    { table: 'story_builder_jobs', label: 'Story Builder', status: true, error: true },
+    { table: 'documentation_generations', label: 'Documentation', status: true, error: true },
+    { table: 'video_generation_jobs', label: 'Video Generation', status: true, error: true },
+  ];
 
-    if (entityType) {
-      query = query.eq('entity_type', entityType);
+  // ponytail: bounded "recent" feed — pull the newest FEED_CAP rows per source,
+  // merge and sort in JS. There's no unified events table, so deep historical
+  // paging past this window isn't supported; add one if that's ever needed.
+  private static readonly FEED_CAP = 200;
+
+  /**
+   * Cross-feature activity feed: every user's feature usage (with failures surfaced
+   * as errors), subscription changes, and affiliate actions — merged and sorted by
+   * time. `category` filters to feature | error | subscription | affiliate.
+   */
+  async getActivityFeed(page = 1, limit = 30, category?: string) {
+    const cap = AdminService.FEED_CAP;
+    const wantFeature = !category || category === 'feature' || category === 'error';
+    const wantSub = !category || category === 'subscription';
+    const wantAff = !category || category === 'affiliate';
+
+    const recent = (table: string, cols: string) =>
+      this.db.from(table).select(cols).order('created_at', { ascending: false }).limit(cap);
+
+    const tasks: Promise<FeedEvent[]>[] = [];
+
+    if (wantFeature) {
+      for (const src of AdminService.FEATURE_SOURCES) {
+        const cols = ['id', 'user_id', 'created_at', 'credits_consumed'];
+        if (src.status) cols.push('status');
+        if (src.error) cols.push('error_message');
+        tasks.push(
+          recent(src.table, cols.join(', ')).then(({ data }) =>
+            ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => {
+              const failed = r.status === 'failed';
+              return {
+                id: `${src.table}:${r.id as string}`,
+                user_id: r.user_id as string,
+                category: failed ? 'error' : 'feature',
+                label: src.label,
+                action: r.status ? String(r.status) : 'generated',
+                status: (r.status as string) ?? null,
+                error_message: (r.error_message as string) ?? null,
+                credits_consumed: Number(r.credits_consumed ?? 0),
+                created_at: r.created_at as string,
+              };
+            }),
+          ),
+        );
+      }
     }
 
-    const { data, error, count } = await query;
-    if (error) throw new BadRequestException(error.message);
-    return { data, total: count ?? 0, page, limit };
+    if (wantSub) {
+      tasks.push(
+        recent('subscriptions', 'id, user_id, created_at, status, plans(name)').then(({ data }) =>
+          ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
+            id: `subscriptions:${r.id as string}`,
+            user_id: r.user_id as string,
+            category: 'subscription',
+            label: (r.plans as { name?: string } | null)?.name ?? 'Plan',
+            action: r.status === 'active' ? 'activated' : String(r.status),
+            status: r.status as string,
+            error_message: null,
+            credits_consumed: 0,
+            created_at: r.created_at as string,
+          })),
+        ),
+      );
+    }
+
+    if (wantAff) {
+      tasks.push(
+        recent('affiliate_requests', 'id, user_id, created_at, status').then(({ data }) =>
+          ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
+            id: `affiliate_requests:${r.id as string}`,
+            user_id: r.user_id as string,
+            category: 'affiliate',
+            label: 'Affiliate request',
+            action: String(r.status),
+            status: r.status as string,
+            error_message: null,
+            credits_consumed: 0,
+            created_at: r.created_at as string,
+          })),
+        ),
+        recent('affiliate_sales', 'id, sales_rep_id, created_at, status, amount').then(({ data }) =>
+          ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
+            id: `affiliate_sales:${r.id as string}`,
+            user_id: r.sales_rep_id as string,
+            category: 'affiliate',
+            label: `Affiliate sale · $${Number(r.amount ?? 0).toFixed(2)}`,
+            action: String(r.status),
+            status: r.status as string,
+            error_message: null,
+            credits_consumed: 0,
+            created_at: r.created_at as string,
+          })),
+        ),
+      );
+    }
+
+    let merged = (await Promise.all(tasks)).flat();
+    if (category === 'error') merged = merged.filter((e) => e.category === 'error');
+    merged.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+
+    const total = merged.length;
+    const pageRows = merged.slice((page - 1) * limit, page * limit);
+
+    const userIds = [...new Set(pageRows.map((e) => e.user_id).filter(Boolean))];
+    const { data: profiles } = userIds.length
+      ? await this.db.from('profiles').select('user_id, full_name, name, email, avatar_url').in('user_id', userIds)
+      : { data: [] };
+    const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+
+    const data = pageRows.map((e) => ({ ...e, profiles: pmap.get(e.user_id) ?? null }));
+    return { data, total, page, limit };
   }
 
   async logActivity(actorId: string, action: string, entityType: string, entityId?: string, metadata?: Record<string, unknown>) {

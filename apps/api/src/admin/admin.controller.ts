@@ -192,19 +192,19 @@ export class AdminController {
   // ==================== ACTIVITIES ====================
 
   @Get('activities')
-  @ApiOperation({ summary: 'Admin activity log' })
+  @ApiOperation({ summary: 'Cross-feature user activity feed' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'entityType', required: false })
+  @ApiQuery({ name: 'category', required: false, description: 'feature | error | subscription | affiliate' })
   getActivities(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('entityType') entityType?: string,
+    @Query('category') category?: string,
   ) {
-    return this.adminService.getActivities(
+    return this.adminService.getActivityFeed(
       Number(page) || 1,
-      Number(limit) || 50,
-      entityType,
+      Number(limit) || 30,
+      category,
     );
   }
 
