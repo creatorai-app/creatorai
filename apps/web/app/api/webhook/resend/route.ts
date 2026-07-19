@@ -67,9 +67,11 @@ export async function POST(request: NextRequest) {
   try {
     // Fetch full inbound content (webhook payload has only metadata per Resend docs).
     const { data: email } = await resend.emails.receiving.get(email_id);
+    // Prefer the HTML body so the admin dashboard can render the email with its
+    // real design (like Resend does); fall back to plain text when there's no HTML.
     const bodyText =
-      (email as { text?: string | null; html?: string | null } | null)?.text?.trim() ||
       (email as { text?: string | null; html?: string | null } | null)?.html?.trim() ||
+      (email as { text?: string | null; html?: string | null } | null)?.text?.trim() ||
       "";
 
     const { url, key } = getSupabaseServiceEnv();

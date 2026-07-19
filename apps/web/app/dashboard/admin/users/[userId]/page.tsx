@@ -135,6 +135,43 @@ export default function AdminUserDetailPage() {
         </Card>
       </div>
 
+      {subscriptions.length > 0 && (
+        <Card title="Subscription history">
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-1 pb-2 font-medium">Plan</th>
+                  <th className="px-1 pb-2 font-medium">Status</th>
+                  <th className="px-1 pb-2 font-medium">Billing</th>
+                  <th className="px-1 pb-2 font-medium">Period</th>
+                  <th className="px-1 pb-2 font-medium">LS Sub ID</th>
+                  <th className="px-1 pb-2 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {subscriptions.map((s) => (
+                  <tr key={s.id as string}>
+                    <td className="px-1 py-2 text-slate-200">{(s.plans as { name?: string })?.name ?? "—"}</td>
+                    <td className="px-1 py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${subStatusColor(s.status as string)}`}>
+                        {(s.status as string) ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-1 py-2 text-slate-400">{(s.billing_interval as string) ?? "—"}</td>
+                    <td className="px-1 py-2 text-slate-500">
+                      {fmtDate(s.current_period_start)} – {fmtDate(s.current_period_end)}
+                    </td>
+                    <td className="px-1 py-2 text-slate-400 font-mono text-xs">{(s.ls_subscription_id as string) || "—"}</td>
+                    <td className="px-1 py-2 text-slate-500">{fmtDate(s.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {channels.length > 0 && (
         <Card title="Connected channels">
           <div className="space-y-3">
@@ -205,6 +242,18 @@ function fmtDate(v: unknown): string {
   if (!v) return "—"
   const d = new Date(v as string)
   return isNaN(d.getTime()) ? "—" : d.toLocaleDateString()
+}
+
+function subStatusColor(s: string): string {
+  switch (s) {
+    case "active": return "bg-green-900/40 text-green-400"
+    case "on_trial": return "bg-blue-900/40 text-blue-400"
+    case "past_due":
+    case "unpaid": return "bg-orange-900/40 text-orange-400"
+    case "canceled":
+    case "expired": return "bg-red-900/40 text-red-400"
+    default: return "bg-slate-800 text-slate-400"
+  }
 }
 
 function fmtNum(v: unknown): string {

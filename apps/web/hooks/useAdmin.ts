@@ -4,7 +4,7 @@ import type {
   AdminDashboardStats,
   BlogPost,
   MailMessage,
-  Activity,
+  ActivityFeedItem,
   JobPost,
   JobApplication,
   AffiliateRequest,
@@ -81,23 +81,23 @@ export function useAdminBlogs(page = 1, status?: string) {
   return { ...data, loading, refresh: fetchBlogs };
 }
 
-export function useAdminActivities(page = 1, entityType?: string) {
-  const [data, setData] = useState<PaginatedResponse<Activity> | null>(null);
+export function useAdminActivities(page = 1, category?: string) {
+  const [data, setData] = useState<PaginatedResponse<ActivityFeedItem> | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({ page: String(page), limit: '50' });
-      if (entityType) params.set('entityType', entityType);
-      const res = await api.get<PaginatedResponse<Activity>>(`/api/v1/admin/activities?${params}`, AUTH);
+      const params = new URLSearchParams({ page: String(page), limit: '30' });
+      if (category) params.set('category', category);
+      const res = await api.get<PaginatedResponse<ActivityFeedItem>>(`/api/v1/admin/activities?${params}`, AUTH);
       setData(res);
     } catch (err) {
       console.error('Failed to fetch activities:', err);
     } finally {
       setLoading(false);
     }
-  }, [page, entityType]);
+  }, [page, category]);
 
   useEffect(() => { fetch(); }, [fetch]);
   return { ...data, loading, refresh: fetch };
@@ -272,8 +272,12 @@ export const adminApi = {
     api.delete(`/api/v1/admin/blogs/${id}`, AUTH),
   getBlog: (id: string) =>
     api.get<BlogPost>(`/api/v1/admin/blogs/${id}`, AUTH),
+  getMail: (id: string) =>
+    api.get<MailMessage>(`/api/v1/admin/mails/${id}`, AUTH),
   updateMailStatus: (id: string, status: string) =>
     api.put(`/api/v1/admin/mails/${id}`, { status }, AUTH),
+  replyToMail: (id: string, subject: string, html: string) =>
+    api.post<{ success: boolean; mail: MailMessage }>(`/api/v1/admin/mails/${id}/reply`, { subject, html }, AUTH),
   updateAffiliateLink: (id: string, updates: Record<string, unknown>) =>
     api.put(`/api/v1/admin/affiliates/links/${id}`, updates, AUTH),
   updateSaleStatus: (id: string, status: string) =>

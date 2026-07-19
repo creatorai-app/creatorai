@@ -177,6 +177,19 @@ export interface MailMessage {
   created_at: string
 }
 
+export interface ActivityFeedItem {
+  id: string
+  user_id: string
+  category: 'feature' | 'error' | 'subscription' | 'affiliate'
+  label: string
+  action: string
+  status: string | null
+  error_message: string | null
+  credits_consumed: number
+  created_at: string
+  profiles: { user_id: string; full_name: string | null; name: string | null; email: string | null; avatar_url: string | null } | null
+}
+
 export interface Activity {
   id: string
   actor_id: string

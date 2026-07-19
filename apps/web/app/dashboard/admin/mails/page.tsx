@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAdminMails, adminApi } from "@/hooks/useAdmin"
-import { ChevronLeft, ChevronRight, Mail, Eye, Archive, Reply, MailOpen } from "lucide-react"
+import { ChevronLeft, ChevronRight, Mail, Archive, Reply, MailOpen } from "lucide-react"
 import { AdminButton } from "@/components/admin/admin-button"
 import {
   Select,
@@ -11,20 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@repo/ui/dialog"
 import { toast } from "sonner"
-import type { MailMessage } from "@repo/validation"
 
 export default function AdminMailsPage() {
+  const router = useRouter()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState("")
   const { data, total, loading, refresh } = useAdminMails(page, statusFilter)
-  const [viewMail, setViewMail] = useState<MailMessage | null>(null)
 
   const totalPages = Math.ceil((total || 0) / 20)
 
@@ -45,14 +39,6 @@ export default function AdminMailsPage() {
       refresh()
     } catch {
       toast.error("Failed to update status")
-    }
-  }
-
-  const handleView = async (mail: MailMessage) => {
-    setViewMail(mail)
-    if (mail.status === "unread") {
-      await adminApi.updateMailStatus(mail.id, "read")
-      refresh()
     }
   }
 
@@ -105,7 +91,7 @@ export default function AdminMailsPage() {
                   <tr
                     key={mail.id}
                     className={`hover:bg-slate-900/30 cursor-pointer ${mail.status === "unread" ? "bg-slate-900/20" : ""}`}
-                    onClick={() => handleView(mail)}
+                    onClick={() => router.push(`/dashboard/admin/mails/${mail.id}`)}
                   >
                     <td className="px-4 py-3">
                       {mail.status === "unread" ? (
@@ -169,30 +155,6 @@ export default function AdminMailsPage() {
           </div>
         </div>
       )}
-
-      {/* View Mail Dialog */}
-      <Dialog open={!!viewMail} onOpenChange={() => setViewMail(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{viewMail?.subject}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex gap-4 text-sm">
-              <div>
-                <span className="text-slate-500">From:</span>{" "}
-                <span className="text-slate-200">{viewMail?.from_name} &lt;{viewMail?.from_email}&gt;</span>
-              </div>
-              <div>
-                <span className="text-slate-500">Date:</span>{" "}
-                <span className="text-slate-300">{viewMail && new Date(viewMail.created_at).toLocaleString()}</span>
-              </div>
-            </div>
-            <div className="border-t border-slate-800 pt-4">
-              <p className="text-slate-300 whitespace-pre-wrap">{viewMail?.body}</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

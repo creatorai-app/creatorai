@@ -192,19 +192,19 @@ export class AdminController {
   // ==================== ACTIVITIES ====================
 
   @Get('activities')
-  @ApiOperation({ summary: 'Admin activity log' })
+  @ApiOperation({ summary: 'Cross-feature user activity feed' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'entityType', required: false })
+  @ApiQuery({ name: 'category', required: false, description: 'feature | error | subscription | affiliate' })
   getActivities(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('entityType') entityType?: string,
+    @Query('category') category?: string,
   ) {
-    return this.adminService.getActivities(
+    return this.adminService.getActivityFeed(
       Number(page) || 1,
-      Number(limit) || 50,
-      entityType,
+      Number(limit) || 30,
+      category,
     );
   }
 
@@ -221,6 +221,27 @@ export class AdminController {
     @Query('status') status?: string,
   ) {
     return this.adminService.getMails(Number(page) || 1, Number(limit) || 20, status);
+  }
+
+  @Get('mails/:id')
+  @ApiOperation({ summary: 'Get a single mail message' })
+  @ApiParam({ name: 'id' })
+  getMail(@Param('id') id: string) {
+    return this.adminService.getMail(id);
+  }
+
+  @Post('mails/:id/reply')
+  @ApiOperation({ summary: 'Reply to a mail via Resend and mark it replied' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: { type: 'object', required: ['subject', 'html'], properties: { subject: { type: 'string' }, html: { type: 'string' } } } })
+  replyToMail(
+    @Param('id') id: string,
+    @Body() body: { subject: string; html: string },
+    @Req() req: AuthRequest,
+  ) {
+    const userId = this.getUserId(req);
+    this.adminService.logActivity(userId, 'reply_mail', 'mail_message', id, { subject: body.subject });
+    return this.adminService.replyToMail(id, userId, body.subject, body.html);
   }
 
   @Put('mails/:id')
@@ -352,6 +373,21 @@ export class AdminController {
   deleteApplication(@Param('id') id: string, @Req() req: AuthRequest) {
     this.adminService.logActivity(this.getUserId(req), 'delete_application', 'job_application', id);
     return this.adminService.deleteApplication(id);
+  }
+
+  // ==================== SUBSCRIPTIONS ====================
+
+  @Get('subscriptions')
+  @ApiOperation({ summary: 'All subscriptions with owning user and plan' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  getSubscriptions(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getAllSubscriptions(Number(page) || 1, Number(limit) || 20, status);
   }
 
   // ==================== AFFILIATES ====================
