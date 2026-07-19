@@ -524,23 +524,25 @@ function LinksSection({
       </CardContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
-          <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 px-6 py-5 text-white">
+        <DialogContent className="overflow-hidden p-0 sm:max-w-lg [&>button]:top-5 [&>button]:text-white [&>button]:opacity-80 [&>button:hover]:opacity-100">
+          <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 px-6 py-5 pr-12 text-white">
             <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-            <div className="relative flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg bg-white/15 p-2">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <DialogTitle className="text-lg font-bold text-white">
-                  Get paid to promote Creator AI
-                </DialogTitle>
+            <div className="relative flex items-start gap-2.5 pr-8">
+              <div className="rounded-lg bg-white/15 p-2">
+                <Sparkles className="h-5 w-5" />
               </div>
-              <Badge className="shrink-0 bg-white/20 text-white hover:bg-white/20">20% recurring</Badge>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DialogTitle className="text-lg font-bold text-white">
+                    Get paid to promote Creator AI
+                  </DialogTitle>
+                  <Badge className="shrink-0 bg-white/20 text-white hover:bg-white/20">20% recurring</Badge>
+                </div>
+                <p className="mt-2 text-sm text-purple-100">
+                  Share your link and earn 20% recurring commission on every subscription you refer.
+                </p>
+              </div>
             </div>
-            <p className="relative mt-2 text-sm text-purple-100">
-              Share your link and earn 20% recurring commission on every subscription you refer.
-            </p>
           </div>
 
           <div className="space-y-4 px-6 pb-6 pt-5">
@@ -564,7 +566,11 @@ function LinksSection({
               is generated for you automatically.
             </div>
 
-            <Button className="w-full gap-1.5" onClick={create} disabled={creating}>
+            <Button
+              className="w-full gap-1.5 border-0 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:from-purple-700 hover:to-indigo-700"
+              onClick={create}
+              disabled={creating}
+            >
               <Sparkles className="h-4 w-4" />
               {creating ? "Generating your code..." : "Apply and get my code"}
             </Button>
