@@ -354,6 +354,21 @@ export class AdminController {
     return this.adminService.deleteApplication(id);
   }
 
+  // ==================== SUBSCRIPTIONS ====================
+
+  @Get('subscriptions')
+  @ApiOperation({ summary: 'All subscriptions with owning user and plan' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  getSubscriptions(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getAllSubscriptions(Number(page) || 1, Number(limit) || 20, status);
+  }
+
   // ==================== AFFILIATES ====================
 
   @Get('affiliates/links')

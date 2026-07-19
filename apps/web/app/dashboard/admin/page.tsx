@@ -82,9 +82,9 @@ export default function AdminDashboardPage() {
       icon: DollarSign,
       gradient: "from-yellow-500 to-amber-500",
       accent: "text-yellow-400",
-      href: "/dashboard/admin/sales",
+      href: "/dashboard/admin/affiliates",
     },
-    { label: "Total Sales", value: stats?.totalSales ?? 0, icon: TrendingUp, gradient: "from-emerald-500 to-teal-500", accent: "text-emerald-400", href: "/dashboard/admin/sales" },
+    { label: "Total Sales", value: stats?.totalSales ?? 0, icon: TrendingUp, gradient: "from-emerald-500 to-teal-500", accent: "text-emerald-400", href: "/dashboard/admin/affiliates" },
     { label: "Affiliate Requests", value: stats?.pendingAffiliateRequests ?? 0, icon: Handshake, gradient: "from-indigo-500 to-violet-500", accent: "text-indigo-400", href: "/dashboard/admin/affiliates", hint: "pending review" },
     { label: "Published Blogs", value: stats?.publishedBlogs ?? 0, icon: FileText, gradient: "from-orange-500 to-red-500", accent: "text-orange-400", href: "/dashboard/admin/blogs" },
   ]

@@ -571,6 +571,37 @@ export class AdminService {
     return { success: true };
   }
 
+  // ==================== SUBSCRIPTIONS (Admin view) ====================
+
+  async getAllSubscriptions(page = 1, limit = 20, status?: string) {
+    let query = this.db
+      .from('subscriptions')
+      .select('*, plans(id, name, price_monthly, credits_monthly)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (status) query = query.eq('status', status);
+
+    const { data, error, count } = await query;
+    if (error) throw new BadRequestException(error.message);
+
+    // subscriptions.user_id -> auth.users, no FK to profiles, so it can't be
+    // embedded. Fetch the owning profiles separately and join in JS — same
+    // pattern as the affiliate admin queries.
+    const userIds = [...new Set((data ?? []).map((s) => s.user_id).filter(Boolean))];
+    const { data: profiles } = userIds.length
+      ? await this.db.from('profiles').select('user_id, full_name, name, email, avatar_url, credits').in('user_id', userIds)
+      : { data: [] };
+    const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+
+    const enriched = (data ?? []).map((s) => ({
+      ...s,
+      profiles: profileMap.get(s.user_id) ?? null,
+    }));
+
+    return { data: enriched, total: count ?? 0, page, limit };
+  }
+
   // ==================== AFFILIATES (Admin view) ====================
 
   async getAllAffiliateLinks(page = 1, limit = 20) {
