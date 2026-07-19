@@ -475,6 +475,20 @@ export class AdminService {
 
     if (wantAff) {
       tasks.push(
+        // Creating a link is the "activated affiliate" signal — surface it here.
+        recent('affiliate_links', 'id, sales_rep_id, created_at, code, label').then(({ data }) =>
+          ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
+            id: `affiliate_links:${r.id as string}`,
+            user_id: r.sales_rep_id as string,
+            category: 'affiliate',
+            label: r.label ? `Affiliate link · ${r.label as string}` : 'Affiliate link',
+            action: `created (${r.code as string})`,
+            status: null,
+            error_message: null,
+            credits_consumed: 0,
+            created_at: r.created_at as string,
+          })),
+        ),
         recent('affiliate_requests', 'id, user_id, created_at, status').then(({ data }) =>
           ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
             id: `affiliate_requests:${r.id as string}`,
