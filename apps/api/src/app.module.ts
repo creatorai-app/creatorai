@@ -25,6 +25,7 @@ import { AdminModule } from './admin/admin.module';
 import { AffiliateModule } from './affiliate/affiliate.module';
 import { VideoGenerationModule } from './video-generation/video-generation.module';
 import { HannahModule } from './hannah/hannah.module';
+import { EmailCampaignModule } from './email-campaign/email-campaign.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { HannahModule } from './hannah/hannah.module';
     AffiliateModule,
     VideoGenerationModule,
     HannahModule,
+    EmailCampaignModule,
   ],
   controllers: [AppController, HealthController],
   providers: [],

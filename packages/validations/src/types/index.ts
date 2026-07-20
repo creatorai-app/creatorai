@@ -181,7 +181,7 @@ export interface MailMessage {
 export interface ActivityFeedItem {
   id: string
   user_id: string
-  category: 'feature' | 'error' | 'subscription' | 'affiliate'
+  category: 'feature' | 'error' | 'subscription' | 'affiliate' | 'unsubscribe'
   label: string
   action: string
   status: string | null

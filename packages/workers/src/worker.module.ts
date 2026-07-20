@@ -13,6 +13,7 @@ import { IdeationProcessor } from './processor/ideation.processor';
 import { ScriptProcessor } from './processor/script.processor';
 import { VideoGenerationProcessor } from './processor/video-generation.processor';
 import { DubbingProcessor } from './processor/dubbing.processor';
+import { EmailCampaignProcessor } from './processor/email-campaign.processor';
 
 @Module({
   controllers: [HealthController],
@@ -46,8 +47,9 @@ import { DubbingProcessor } from './processor/dubbing.processor';
       { name: 'script' },
       { name: 'video-generation' },
       { name: 'dubbing' },
+      { name: 'email-campaign' },
     ),
   ],
-  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor, SubscriptionReminderService],
+  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor, EmailCampaignProcessor, SubscriptionReminderService],
 })
 export class WorkerModule {}

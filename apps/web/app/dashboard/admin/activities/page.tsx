@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   CreditCard,
   Handshake,
+  MailX,
 } from "lucide-react"
 import { AdminButton } from "@/components/admin/admin-button"
 import {
@@ -26,6 +27,7 @@ const CATEGORY = {
   error: { icon: AlertTriangle, color: "text-red-400", ring: "bg-red-500/10" },
   subscription: { icon: CreditCard, color: "text-cyan-400", ring: "bg-cyan-500/10" },
   affiliate: { icon: Handshake, color: "text-indigo-400", ring: "bg-indigo-500/10" },
+  unsubscribe: { icon: MailX, color: "text-amber-400", ring: "bg-amber-500/10" },
 } as const
 
 function statusColor(s: string | null) {
@@ -71,6 +73,7 @@ export default function AdminActivitiesPage() {
             <SelectItem value="error">Errors</SelectItem>
             <SelectItem value="subscription">Subscriptions</SelectItem>
             <SelectItem value="affiliate">Affiliate</SelectItem>
+            <SelectItem value="unsubscribe">Unsubscribes</SelectItem>
           </SelectContent>
         </Select>
       </div>

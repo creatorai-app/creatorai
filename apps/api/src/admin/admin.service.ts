@@ -6,7 +6,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 interface FeedEvent {
   id: string;
   user_id: string;
-  category: 'feature' | 'error' | 'subscription' | 'affiliate';
+  category: 'feature' | 'error' | 'subscription' | 'affiliate' | 'unsubscribe';
   label: string;
   action: string;
   status: string | null;
@@ -423,6 +423,7 @@ export class AdminService {
     const wantFeature = !category || category === 'feature' || category === 'error';
     const wantSub = !category || category === 'subscription';
     const wantAff = !category || category === 'affiliate';
+    const wantUnsub = !category || category === 'unsubscribe';
 
     const recent = (table: string, cols: string) =>
       this.db.from(table).select(cols).order('created_at', { ascending: false }).limit(cap);
@@ -513,6 +514,24 @@ export class AdminService {
             label: `Affiliate sale · $${Number(r.amount ?? 0).toFixed(2)}`,
             action: String(r.status),
             status: r.status as string,
+            error_message: null,
+            credits_consumed: 0,
+            created_at: r.created_at as string,
+          })),
+        ),
+      );
+    }
+
+    if (wantUnsub) {
+      tasks.push(
+        recent('email_unsubscribes', 'id, user_id, created_at').then(({ data }) =>
+          ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
+            id: `email_unsubscribes:${r.id as string}`,
+            user_id: r.user_id as string,
+            category: 'unsubscribe',
+            label: 'Email unsubscribe',
+            action: 'unsubscribed',
+            status: null,
             error_message: null,
             credits_consumed: 0,
             created_at: r.created_at as string,
