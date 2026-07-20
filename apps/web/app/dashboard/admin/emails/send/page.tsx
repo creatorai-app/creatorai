@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   adminApi,
@@ -48,7 +48,16 @@ const DEMO_RECIPIENT: RecipientRecord = {
 
 type Snapshot = { html: string; subject: string }
 
+// useSearchParams must sit inside a Suspense boundary or `next build` fails.
 export default function ComposeCampaignPage() {
+  return (
+    <Suspense fallback={<div className="h-64 rounded-xl bg-slate-800/50 animate-pulse" />}>
+      <ComposeCampaignInner />
+    </Suspense>
+  )
+}
+
+function ComposeCampaignInner() {
   const router = useRouter()
   const preselect = useSearchParams().get("template")
 
