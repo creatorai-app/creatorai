@@ -1,12 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 
 type State = "confirm" | "loading" | "done" | "error" | "invalid"
 
+// useSearchParams must sit inside a Suspense boundary or `next build` fails when
+// it tries to prerender this public route.
 export default function UnsubscribePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0f0a29]" />}>
+      <UnsubscribeInner />
+    </Suspense>
+  )
+}
+
+function UnsubscribeInner() {
   const userId = useSearchParams().get("u")
   const [state, setState] = useState<State>("confirm")
 
