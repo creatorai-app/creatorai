@@ -253,6 +253,67 @@ export function useAdminLsAffiliates() {
   return { affiliates, loading, refresh: fetchAffiliates };
 }
 
+export interface EmailTemplate {
+  id: string;
+  category: string;
+  name: string;
+  subject: string;
+  html: string;
+  default_segment: SegmentFilter | null;
+  default_from_address: string | null;
+  is_active: boolean;
+}
+
+export interface EmailFromAddress {
+  id: string;
+  email: string;
+  display_name: string;
+}
+
+export interface SegmentFilter {
+  channelConnected?: boolean;
+  modelTrained?: boolean;
+  planTier?: string;
+  signupBeforeDays?: number;
+}
+
+export interface RecipientRecord {
+  id: string;
+  email: string;
+  fullName: string | null;
+  planTier: string | null;
+  channelConnected: boolean;
+  channelName: string | null;
+  modelTrained: boolean;
+}
+
+export interface EmailSendHistoryItem {
+  id: string;
+  from_address: string;
+  recipient_count: number;
+  custom_html_used: boolean;
+  status: string;
+  sent_at: string;
+  email_templates: { name: string; category: string } | null;
+}
+
+export interface EmailCampaignDetail {
+  id: string;
+  from_address: string;
+  recipient_count: number;
+  recipient_ids: string[];
+  custom_html_used: boolean;
+  custom_html: string | null;
+  segment_filter: SegmentFilter | null;
+  resend_batch_ids: string[] | null;
+  status: string;
+  error_details: unknown;
+  sent_at: string;
+  sent_by: string | null;
+  email_templates: { name: string; category: string; subject: string } | null;
+  recipients: { id: string; email: string; fullName: string | null }[];
+}
+
 export const adminApi = {
   updateUser: (userId: string, updates: Record<string, unknown>) =>
     api.put(`/api/v1/admin/users/${userId}`, updates, AUTH),
@@ -321,4 +382,33 @@ export const adminApi = {
     api.put(`/api/v1/affiliate/admin/promo-codes/${id}`, updates, AUTH),
   updateWithdrawal: (id: string, status: 'approved' | 'paid' | 'rejected', admin_notes?: string) =>
     api.put(`/api/v1/affiliate/admin/withdrawals/${id}`, { status, admin_notes }, AUTH),
+  // ---- Bulk email ----
+  getEmailTemplates: (category?: string) =>
+    api.get<EmailTemplate[]>(`/api/v1/admin/email-templates${category ? `?category=${category}` : ''}`, AUTH),
+  createEmailTemplate: (body: {
+    category: string;
+    name?: string;
+    subject: string;
+    html: string;
+    defaultFromAddress?: string;
+  }) => api.post<EmailTemplate>('/api/v1/admin/email-templates', body, AUTH),
+  updateEmailTemplate: (id: string, body: { subject?: string; html?: string }) =>
+    api.put<EmailTemplate>(`/api/v1/admin/email-templates/${id}`, body, AUTH),
+  getEmailFromAddresses: () =>
+    api.get<EmailFromAddress[]>('/api/v1/admin/email-from-addresses', AUTH),
+  previewRecipients: (segmentFilter: SegmentFilter) =>
+    api.post<RecipientRecord[]>('/api/v1/admin/email-campaigns/preview-recipients', { segmentFilter }, AUTH),
+  sendCampaign: (body: {
+    templateId: string;
+    fromAddress: string;
+    recipientIds: string[];
+    subject?: string;
+    html?: string;
+    edited?: boolean;
+    segmentFilter?: SegmentFilter;
+  }) => api.post<{ jobId: string; recipientCount: number }>('/api/v1/admin/email-campaigns/send', body, AUTH),
+  getEmailHistory: (page = 1) =>
+    api.get<PaginatedResponse<EmailSendHistoryItem>>(`/api/v1/admin/email-campaigns/history?page=${page}`, AUTH),
+  getEmailCampaign: (id: string) =>
+    api.get<EmailCampaignDetail>(`/api/v1/admin/email-campaigns/${id}`, AUTH),
 };

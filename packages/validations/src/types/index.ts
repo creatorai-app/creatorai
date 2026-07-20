@@ -51,6 +51,7 @@ export interface AffiliateLink {
   click_count: number
   is_active: boolean
   ls_affiliate_id?: string
+  promotion_channel?: string | null
   created_at: string
   updated_at: string
 }
@@ -180,7 +181,7 @@ export interface MailMessage {
 export interface ActivityFeedItem {
   id: string
   user_id: string
-  category: 'feature' | 'error' | 'subscription' | 'affiliate'
+  category: 'feature' | 'error' | 'subscription' | 'affiliate' | 'unsubscribe'
   label: string
   action: string
   status: string | null

@@ -450,6 +450,7 @@ export class AffiliateService {
         label: input.label,
         target_url: input.target_url || '/',
         commission_rate: 20,
+        promotion_channel: input.promotion_channel || null,
       })
       .select()
       .single();

@@ -14,6 +14,7 @@ import {
   CreditCard,
   Activity,
   Mail,
+  Send,
   Link2,
   Briefcase,
   ClipboardList,
@@ -31,6 +32,7 @@ const adminLinks = [
   { label: "Subscriptions", href: "/dashboard/admin/subscriptions", icon: CreditCard },
   { label: "Activities", href: "/dashboard/admin/activities", icon: Activity },
   { label: "Mails", href: "/dashboard/admin/mails", icon: Mail },
+  { label: "Emails", href: "/dashboard/admin/emails", icon: Send },
   { label: "Affiliates", href: "/dashboard/admin/affiliates", icon: Link2 },
 ]
 

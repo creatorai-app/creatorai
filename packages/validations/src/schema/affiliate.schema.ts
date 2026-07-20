@@ -5,6 +5,7 @@ export const MIN_WITHDRAWAL_AMOUNT = 50;
 export const CreateAffiliateLinkSchema = z.object({
   label: z.string().trim().max(120).optional(),
   target_url: z.string().trim().max(512).optional(),
+  promotion_channel: z.string().trim().max(500).optional(),
 });
 export type CreateAffiliateLinkInput = z.infer<typeof CreateAffiliateLinkSchema>;
 
