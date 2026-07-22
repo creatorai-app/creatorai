@@ -39,6 +39,18 @@ export class AdminController {
     return this.adminService.getDashboardStats();
   }
 
+  @Get('revenue-by-tier')
+  @ApiOperation({ summary: 'Revenue, sales, failed payments and churn per plan' })
+  getRevenueByTier() {
+    return this.adminService.getRevenueByTier();
+  }
+
+  @Get('funnel')
+  @ApiOperation({ summary: 'Purchase-intent funnel: viewed -> clicked -> checkout -> completed' })
+  getFunnel() {
+    return this.adminService.getFunnel();
+  }
+
   // ==================== USERS ====================
 
   @Get('users')

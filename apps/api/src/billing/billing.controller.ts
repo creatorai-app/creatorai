@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
@@ -23,6 +24,47 @@ export class BillingController {
   @ApiOperation({ summary: 'List available billing plans (public)' })
   getPlans() {
     return this.billingService.getPlans();
+  }
+
+  @Post('funnel')
+  @ApiOperation({
+    summary: 'Record a purchase-intent funnel event (public, unauthenticated)',
+    description:
+      'Fired from the pricing page. checkout_started is recorded server-side by the checkout endpoint and is not accepted here.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['event', 'sessionId'],
+      properties: {
+        event: { type: 'string', enum: ['pricing_viewed', 'plan_clicked'] },
+        tier: { type: 'string' },
+        sessionId: { type: 'string' },
+        referrer: { type: 'string' },
+      },
+    },
+  })
+  async trackFunnelEvent(
+    @Body()
+    body: { event?: string; tier?: string; sessionId?: string; referrer?: string },
+  ) {
+    // Unauthenticated endpoint: only ever accept the two client-side steps, so
+    // a caller can't forge conversions or write arbitrary rows.
+    if (
+      body.event !== 'pricing_viewed' &&
+      body.event !== 'plan_clicked'
+    ) {
+      throw new BadRequestException('Unsupported funnel event');
+    }
+    if (!body.sessionId) throw new BadRequestException('sessionId is required');
+
+    await this.billingService.trackFunnelEvent({
+      event: body.event,
+      tier: body.tier,
+      sessionId: body.sessionId,
+      referrer: body.referrer,
+    });
+    return { tracked: true };
   }
 
   @Get('info')

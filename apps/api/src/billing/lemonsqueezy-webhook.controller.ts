@@ -65,6 +65,11 @@ export class LemonSqueezyWebhookController {
     const eventName = req.headers['x-event-name'] as string;
     const event: LsWebhookEvent = req.body;
 
+    // Record before dispatching so the audit trail captures events we don't act
+    // on (order_created, subscription_payment_failed) and survives a handler
+    // that throws. Never throws itself.
+    await this.billingService.recordWebhookEvent(eventName, event);
+
     try {
       switch (eventName) {
         case 'subscription_created':
