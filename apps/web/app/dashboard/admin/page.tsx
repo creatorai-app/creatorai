@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useAdminStats } from "@/hooks/useAdmin"
+import { useAdminStats, useAdminFunnel } from "@/hooks/useAdmin"
+import type { FunnelTierBreakdown } from "@repo/validation"
 import { useSupabase } from "@/components/supabase-provider"
 import { AdminButton } from "@/components/admin/admin-button"
 import {
@@ -19,6 +20,8 @@ import {
   Link2,
   ClipboardList,
   Sparkles,
+  Eye,
+  MousePointerClick,
 } from "lucide-react"
 
 type StatConfig = {
@@ -62,6 +65,75 @@ const QUICK_ACTIONS: Array<{ label: string; description: string; href: string; i
   { label: "Affiliates", description: "Requests, links and sales", href: "/dashboard/admin/affiliates", icon: Link2, gradient: "from-indigo-500 to-purple-500" },
   { label: "Activities", description: "Audit trail across the app", href: "/dashboard/admin/activities", icon: Activity, gradient: "from-amber-500 to-orange-500" },
 ]
+
+/**
+ * Purchase-intent funnel. The first three steps are tracked from our own
+ * frontend; Lemon Squeezy only ever sees people who reached its checkout.
+ */
+function FunnelSection() {
+  const { funnel, loading } = useAdminFunnel()
+
+  if (loading) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Conversion Funnel</h2>
+        <div className="h-32 rounded-2xl bg-slate-900 border border-slate-800 animate-pulse" />
+      </section>
+    )
+  }
+  if (!funnel) return null
+
+  const steps: StatConfig[] = [
+    { label: "Pricing Viewed", value: funnel.pricingViewed, icon: Eye, gradient: "from-slate-500 to-slate-400", accent: "text-slate-300" },
+    { label: "Plan Clicked", value: funnel.planClicked, icon: MousePointerClick, gradient: "from-blue-500 to-cyan-500", accent: "text-blue-400" },
+    { label: "Checkout Started", value: funnel.checkoutStarted, icon: CreditCard, gradient: "from-purple-500 to-fuchsia-500", accent: "text-purple-400" },
+    { label: "Completed", value: funnel.completed, icon: TrendingUp, gradient: "from-emerald-500 to-teal-500", accent: "text-emerald-400" },
+  ]
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Conversion Funnel</h2>
+        <span className="text-xs text-slate-500">unique sessions</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {steps.map((s) => <StatCard key={s.label} {...s} />)}
+      </div>
+
+      {funnel.byTier.length > 0 && (
+        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
+              <thead>
+                <tr className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
+                  <th className="text-left font-medium py-3 px-5">Tier</th>
+                  <th className="text-right font-medium py-3 px-5">Clicked</th>
+                  <th className="text-right font-medium py-3 px-5">Checkout</th>
+                  <th className="text-right font-medium py-3 px-5">Completed</th>
+                  <th className="text-right font-medium py-3 px-5">Abandoned</th>
+                  <th className="text-right font-medium py-3 px-5">Conv.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {funnel.byTier.map((t: FunnelTierBreakdown) => (
+                  <tr key={t.tier} className="border-b border-slate-800/60 last:border-0 hover:bg-slate-900">
+                    <td className="py-3 px-5 text-slate-100 font-medium">{t.tier}</td>
+                    <td className="py-3 px-5 text-right text-slate-300 tabular-nums">{t.clicked}</td>
+                    <td className="py-3 px-5 text-right text-slate-300 tabular-nums">{t.checkoutStarted}</td>
+                    <td className="py-3 px-5 text-right text-emerald-400 tabular-nums">{t.completed}</td>
+                    <td className="py-3 px-5 text-right text-amber-400 tabular-nums">{t.abandoned}</td>
+                    <td className="py-3 px-5 text-right text-slate-300 tabular-nums">{t.conversionRate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
 
 export default function AdminDashboardPage() {
   const { stats, loading } = useAdminStats()
@@ -157,6 +229,8 @@ export default function AdminDashboardPage() {
           {revenue.map((s) => <StatCard key={s.label} {...s} />)}
         </div>
       </section>
+
+      <FunnelSection />
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Needs Attention</h2>
