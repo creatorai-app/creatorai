@@ -37,4 +37,4 @@ We appreciate security researchers who:
 - Work with us to coordinate public disclosure
 - Follow responsible disclosure guidelines
 
-Thank you for helping keep ScriptAI secure! 🛡️
+Thank you for helping keep Creator AI secure! 🛡️
