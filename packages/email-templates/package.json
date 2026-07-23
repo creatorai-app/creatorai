@@ -20,6 +20,7 @@
   "scripts": {
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsup",
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsup --watch",
+    "render:supabase": "pnpm build && node scripts/render-supabase-templates.mjs",
     "lint": "echo 'No source JavaScript files to lint'"
   },
   "devDependencies": {
