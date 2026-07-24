@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api-client';
 import type {
   AdminDashboardStats,
+  AdminFunnel,
   BlogPost,
   MailMessage,
   ActivityFeedItem,
@@ -34,6 +35,26 @@ export function useAdminStats() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   return { stats, loading, refresh: fetchStats };
+}
+
+export function useAdminFunnel() {
+  const [funnel, setFunnel] = useState<AdminFunnel | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchFunnel = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await api.get<AdminFunnel>('/api/v1/admin/funnel', AUTH);
+      setFunnel(data);
+    } catch (err) {
+      console.error('Failed to fetch funnel:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchFunnel(); }, [fetchFunnel]);
+  return { funnel, loading, refresh: fetchFunnel };
 }
 
 export function useAdminUsers(page = 1, search?: string, role?: string) {

@@ -94,6 +94,101 @@ describe('BillingService', () => {
     });
   });
 
+  describe('recordWebhookEvent', () => {
+    const insertedRow = () => mockInsert.mock.calls[0][0];
+    let mockInsert: jest.Mock;
+
+    beforeEach(() => {
+      mockInsert = jest.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ insert: mockInsert });
+    });
+
+    it('maps a subscription payment to its amount, status and subscription', async () => {
+      await service.recordWebhookEvent('subscription_payment_success', {
+        meta: { event_name: 'subscription_payment_success' },
+        data: {
+          id: 'invoice-1',
+          type: 'subscription-invoices',
+          attributes: {
+            subscription_id: 555,
+            total: 2900,
+            currency: 'USD',
+            status: 'paid',
+            user_email: 'buyer@test.com',
+            created_at: '2026-07-01T00:00:00.000Z',
+          },
+        },
+      });
+
+      expect(mockFrom).toHaveBeenCalledWith('ls_webhook_events');
+      expect(insertedRow()).toMatchObject({
+        event_name: 'subscription_payment_success',
+        ls_id: 'invoice-1',
+        ls_subscription_id: '555',
+        amount_cents: 2900,
+        status: 'paid',
+        customer_email: 'buyer@test.com',
+      });
+    });
+
+    it('uses the subscription id itself when the event is the subscription', async () => {
+      await service.recordWebhookEvent('subscription_created', {
+        meta: { event_name: 'subscription_created' },
+        data: {
+          id: '777',
+          type: 'subscriptions',
+          attributes: { variant_id: 42, status: 'active' },
+        },
+      });
+
+      expect(insertedRow()).toMatchObject({
+        ls_subscription_id: '777',
+        variant_id: '42',
+        amount_cents: 0,
+      });
+    });
+
+    it('swallows duplicate-delivery errors so Lemon Squeezy is not retried', async () => {
+      mockInsert.mockResolvedValue({ error: { code: '23505', message: 'dup' } });
+
+      await expect(
+        service.recordWebhookEvent('subscription_created', {
+          meta: { event_name: 'subscription_created' },
+          data: { id: '777', type: 'subscriptions', attributes: {} },
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('trackFunnelEvent', () => {
+    it('truncates caller-supplied strings and never throws', async () => {
+      const mockInsert = jest.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ insert: mockInsert });
+
+      await service.trackFunnelEvent({
+        event: 'plan_clicked',
+        tier: 'x'.repeat(200),
+        sessionId: 's'.repeat(300),
+        referrer: 'r'.repeat(900),
+      });
+
+      const row = mockInsert.mock.calls[0][0];
+      expect(row.tier).toHaveLength(64);
+      expect(row.session_id).toHaveLength(128);
+      expect(row.referrer).toHaveLength(512);
+    });
+
+    it('does not throw when the insert blows up', async () => {
+      mockFrom.mockImplementation(() => {
+        throw new Error('db down');
+      });
+
+      await expect(
+        service.trackFunnelEvent({ event: 'pricing_viewed', sessionId: 'abc' }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('getUsageHistory', () => {
     it('should aggregate usage across tables', async () => {
       const mockData = [

@@ -14,6 +14,7 @@ import { MButton } from "@repo/ui/moving-border"
 import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react"
 import { useSupabase } from "@/components/supabase-provider"
 import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans"
+import { trackFunnel } from "@/lib/funnel"
 
 export default function PricingPage() {
   const { user } = useSupabase()
@@ -21,6 +22,10 @@ export default function PricingPage() {
   useEffect(() => {
     const lenis = new Lenis({ autoRaf: true })
     return () => lenis.destroy()
+  }, [])
+
+  useEffect(() => {
+    trackFunnel("pricing_viewed")
   }, [])
 
   const billingHref = (planId: string) =>
