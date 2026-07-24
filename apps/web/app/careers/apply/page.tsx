@@ -1,21 +1,19 @@
 "use client"
 
-import type React from "react"
-import { Suspense, useState, useEffect, useMemo, useRef } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { motion } from "motion/react"
-import { toast } from "sonner"
-import { ArrowLeft, Loader2, MapPin, Briefcase, Upload, FileCheck } from "lucide-react"
-
-import { Button } from "@repo/ui/button"
-import { Input } from "@repo/ui/input"
-import { Label } from "@repo/ui/label"
-import { Textarea } from "@repo/ui/textarea"
-import { SparklesCore } from "@repo/ui/sparkles"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
-import { createClient } from "@/lib/supabase/client"
+import type React from "react";
+import * as motion from "motion/react-m";
+import { Suspense, useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
+import { ArrowLeft, Loader2, MapPin, Briefcase, Upload, FileCheck } from "lucide-react";
+import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
+import { Textarea } from "@repo/ui/textarea";
+import { SparklesCore } from "@repo/ui/sparkles";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
 import type { JobPost } from "@repo/validation"
 
 const DEV_TEAMS = ["Engineering", "AI"]
@@ -66,12 +64,15 @@ function ApplyPageContent() {
 
   useEffect(() => {
     if (!jobPostId && !position) return
-    const supabase = createClient()
-    const base = supabase.from("job_posts").select("*").eq("status", "active")
-    const promise = jobPostId
-      ? base.eq("id", jobPostId).maybeSingle()
-      : base.ilike("title", position).maybeSingle()
-    promise.then(({ data }) => { if (data) setJob(data) })
+    // Imported here, not at module scope: the Supabase client is ~180kB and a
+    // static import put it in this page's first-load JS just to look up one job.
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const base = createClient().from("job_posts").select("*").eq("status", "active")
+      const promise = jobPostId
+        ? base.eq("id", jobPostId).maybeSingle()
+        : base.ilike("title", position).maybeSingle()
+      promise.then(({ data }) => { if (data) setJob(data) })
+    })
   }, [position, jobPostId])
 
   const isDev = useMemo(() => {

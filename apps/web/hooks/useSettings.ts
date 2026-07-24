@@ -24,7 +24,7 @@ export function useSettings() {
     avatar?: File | null;
     initialAvatar: string | null;
   }) => {
-    if (!user) return;
+    if (!user || !supabase) return;
     if (!name || name.length < 3) {
       toast.error("Name must be at least 3 characters long");
       return;

@@ -1,16 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSupabase } from "@/components/supabase-provider"
-import { DashboardHome } from "@/components/dashboard/main/DashboardHome"
-import { DashboardSkeleton } from "@/components/dashboard/main/skeleton/DashboardSkeleton"
-import { connectYoutubeChannel, isGoogleProvider } from "@/lib/connectYT"
-import { toast } from "sonner"
-import { GmailPromptDialog } from "@/components/dashboard/gmail-prompt-dialog"
-import { getScripts, type Script } from "@/lib/api/getScripts"
-import { getThumbnails, type ThumbnailJob } from "@/lib/api/getThumbnails"
-import { getDubbings, type DubbingProject } from "@/lib/api/getDubbings"
-import { api } from "@/lib/api-client"
+import { useState, useEffect } from "react";
+import { useSupabase } from "@/components/supabase-provider";
+import { DashboardHome } from "@/components/dashboard/main/DashboardHome";
+import { DashboardSkeleton } from "@/components/dashboard/main/skeleton/DashboardSkeleton";
+import { connectYoutubeChannel, isGoogleProvider } from "@/lib/connectYT";
+import { toast } from "sonner";
+import { GmailPromptDialog } from "@/components/dashboard/gmail-prompt-dialog";
+import { getScripts, type Script } from "@/lib/api/getScripts";
+import { getThumbnails, type ThumbnailJob } from "@/lib/api/getThumbnails";
+import { getDubbings, type DubbingProject } from "@/lib/api/getDubbings";
+import { api } from "@/lib/api-client";
 import type { IdeationJob, SubtitleResponse } from "@repo/validation"
 
 export interface DashboardData {
@@ -76,7 +76,7 @@ export default function Dashboard() {
   }
 
   const handleDisconnectYoutube = async () => {
-    if (!user) return
+    if (!user || !supabase) return
     setIsDisconnectingYoutube(true)
     try {
       const { error } = await supabase

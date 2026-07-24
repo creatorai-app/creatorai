@@ -1,22 +1,29 @@
 "use client"
 
-import type React from "react"
+import type React from "react";
 import {
   createContext,
   Dispatch,
   SetStateAction,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
-} from "react"
+} from "react";
 import { type SupabaseClient, type User, type Session } from "@supabase/supabase-js"
-import { createClient } from "@/lib/supabase/client"
-import { UserProfile } from "@repo/validation"
+// Type-only: a value import here dragged all of @repo/validation (zod, ~56kB)
+// into every page's first-load JS, including the marketing pages.
+import type { UserProfile } from "@repo/validation"
 
 type SupabaseContext = {
-  supabase: SupabaseClient
+  /**
+   * `null` until the auth client finishes loading. The client is ~210kB and is
+   * only needed once a real auth/data call happens, so it is code-split out of
+   * the first-load bundle and imported on mount. Anything that already gates on
+   * `user`/`session` is implicitly safe — those are only set after the client
+   * exists. Anything firing on a raw user event must null-check.
+   */
+  supabase: SupabaseClient | null
   user: User | null
   session: Session | null
   providerToken: string | null
@@ -37,7 +44,17 @@ const profilePromises = new Map<string, Promise<UserProfile | null>>() // keyed 
 const Context = createContext<SupabaseContext | undefined>(undefined)
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), [])
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      if (mounted) setSupabase(createClient())
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -57,6 +74,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
   // Profile fetch with suspense support
   const fetchUserProfile = async (userId: string): Promise<void> => {
+    if (!supabase) return
     if (!profile) setProfileLoading(true)
     try {
       let profilePromise = profilePromises.get(userId)
@@ -105,8 +123,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Initial session loader
-  const getInitialSession = async (): Promise<Session | null> => {
-    const { data, error } = await supabase.auth.getSession()
+  const getInitialSession = async (client: SupabaseClient): Promise<Session | null> => {
+    const { data, error } = await client.auth.getSession()
     if (error) {
       console.error("Error fetching session:", error.message)
       return null
@@ -124,10 +142,11 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (!supabase) return
     let mounted = true
 
     if (!sessionPromise) {
-      sessionPromise = getInitialSession()
+      sessionPromise = getInitialSession(supabase)
     }
 
     sessionPromise
@@ -159,6 +178,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   }, [supabase])
 
   const logout = async () => {
+    if (!supabase) return
     isLoggingOut.current = true
     await supabase.auth.signOut()
     setSession(null)

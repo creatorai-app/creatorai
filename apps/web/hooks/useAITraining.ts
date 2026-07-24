@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
-import { useSupabase } from "@/components/supabase-provider"
-import { toast } from "sonner"
-import { connectYoutubeChannel } from "@/lib/connectYT"
-import { api, getApiErrorMessage } from "@/lib/api-client"
-import { useSSE } from "./useSSE"
+import { useState, useCallback, useEffect } from "react";
+import { useSupabase } from "@/components/supabase-provider";
+import { toast } from "sonner";
+import { connectYoutubeChannel } from "@/lib/connectYT";
+import { api, getApiErrorMessage } from "@/lib/api-client";
+import { useSSE } from "./useSSE";
 import type { ChannelVideo } from "./useChannelVideos"
 
 interface TrainAiResponse {
@@ -33,7 +33,7 @@ export function useAITraining() {
   const [lastCreditsConsumed, setLastCreditsConsumed] = useState<number | null>(null)
 
   useEffect(() => {
-    if (!user?.id || !profile?.ai_trained) return
+    if (!user?.id || !profile?.ai_trained || !supabase) return
     supabase
       .from("user_style")
       .select("credits_consumed")
