@@ -1,5 +1,4 @@
-"use client";
-
+// Server Component — pure presentational table, no interactivity.
 import { Check, Star, X } from "lucide-react";
 import {
   countStars,
