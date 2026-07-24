@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { CardSpotlight } from "@repo/ui/card-spotlight";
 import { Video, Zap, CheckCircle, Target } from "lucide-react";
 

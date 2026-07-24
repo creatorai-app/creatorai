@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { Button } from "@repo/ui/button"
-import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react"
-
-import ScriptGenerationStepper from "./ScriptGenerationStepper"
-import FormStep1 from "./FormStep1"
-import FormStep2 from "./FormStep2"
+import { useState } from "react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import { Button } from "@repo/ui/button";
+import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
+import ScriptGenerationStepper from "./ScriptGenerationStepper";
+import FormStep1 from "./FormStep1";
+import FormStep2 from "./FormStep2";
 import FormStep3 from "./FormStep3"
 
 interface ScriptGenerationFormProps {

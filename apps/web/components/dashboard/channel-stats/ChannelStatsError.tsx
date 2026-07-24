@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import * as motion from "motion/react-m";
 import { Button } from "@repo/ui/button";
 import { AlertCircle, Youtube } from "lucide-react";
-import { motion } from "motion/react";
 import { useSupabase } from "@/components/supabase-provider";
 import { connectYoutubeChannel } from "@/lib/connectYT";
 import { itemVariants } from "./util";

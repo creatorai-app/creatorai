@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
-import { AnimatePresence, motion } from "motion/react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { ArrowLeft, History, Mic, Pause, Play, Send, SquarePen, Trash2, X } from "lucide-react"
-import { cn } from "@/lib/utils"
-import HannahLogo from "./HannahLogo"
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { ArrowLeft, History, Mic, Pause, Play, Send, SquarePen, Trash2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import HannahLogo from "./HannahLogo";
 import { useHannah, sessionTitle, type HannahSession } from "@/hooks/useHannah"
 
 const SUGGESTIONS: Record<"public" | "dashboard", string[]> = {
@@ -197,8 +198,15 @@ function pickMimeType(): string {
   return candidates.find((c) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) ?? ""
 }
 
-export default function HannahChat({ context }: { context: "public" | "dashboard" }) {
-  const [open, setOpen] = useState(false)
+export default function HannahChat({
+  context,
+  autoOpen = false,
+}: {
+  context: "public" | "dashboard"
+  /** Set when this component was itself lazy-loaded by a launcher click. */
+  autoOpen?: boolean
+}) {
+  const [open, setOpen] = useState(autoOpen)
   const [view, setView] = useState<"chat" | "history">("chat")
   const [input, setInput] = useState("")
   const { messages, sessions, isSending, freshIndex, send, sendVoice, newChat, openSession, deleteSession } =
@@ -281,6 +289,13 @@ export default function HannahChat({ context }: { context: "public" | "dashboard
     setView("chat")
     setOpen(true)
   }
+
+  // Mounting already-open means the placeholder launcher was clicked, which is
+  // the same intent as openFresh() — start clean.
+  useEffect(() => {
+    if (autoOpen) newChat()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const showSuggestions = messages.length === 1 && !isSending
 

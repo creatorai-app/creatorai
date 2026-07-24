@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { Play, XIcon } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
-
+import { useState } from "react";
+import { Play, XIcon } from "lucide-react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
 import { cn } from "./lib/utils"
 
 type AnimationStyle =

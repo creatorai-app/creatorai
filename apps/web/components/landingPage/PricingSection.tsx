@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
-import { Button } from "@repo/ui/button"
-import { WobbleCard } from "@repo/ui/wobble-card"
-import { motion } from "motion/react"
-import { Check } from "lucide-react"
-import { useSupabase } from "../supabase-provider"
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { Button } from "@repo/ui/button";
+import { WobbleCard } from "@repo/ui/wobble-card";
+import * as motion from "motion/react-m";
+import { Check } from "lucide-react";
+import { useSupabase } from "../supabase-provider";
 import { MARKETING_PLANS, type MarketingPlan } from "@/lib/pricing-plans"
 import { trackFunnel } from "@/lib/funnel"
 

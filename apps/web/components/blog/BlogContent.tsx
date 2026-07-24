@@ -1,5 +1,6 @@
-"use client";
-
+// Server Component: react-markdown + remark-gfm run at build/request time, so
+// those ~140kB never reach the browser. No "use client" — nothing here is
+// interactive.
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import BlogTable from "@/components/blog/BlogTable";

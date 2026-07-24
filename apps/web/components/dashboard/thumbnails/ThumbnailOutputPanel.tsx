@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "motion/react"
+import * as motion from "motion/react-m";
 import {
   Card,
   CardContent,
@@ -8,10 +8,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@repo/ui/card"
-import { Button } from "@repo/ui/button"
-import { Download, RefreshCw } from "lucide-react"
-import { ThumbnailProgress } from "./ThumbnailProgress"
+} from "@repo/ui/card";
+import { Button } from "@repo/ui/button";
+import { Download, RefreshCw } from "lucide-react";
+import { ThumbnailProgress } from "./ThumbnailProgress";
 import { GenerationPlaceholder } from "@/components/dashboard/common/GenerationPlaceholder"
 
 interface ThumbnailOutputPanelProps {

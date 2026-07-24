@@ -1,20 +1,19 @@
 "use client"
 
-import React, { useEffect } from "react"
-import { motion } from "motion/react"
-import Link from "next/link"
-import Lenis from "lenis"
-import "lenis/dist/lenis.css"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
-import { SparklesCore } from "@repo/ui/sparkles"
-import { ArrowRight, Bug, Plus, RefreshCw, Shield, Trash2 } from "lucide-react"
+import React, { useEffect } from "react";
+import * as motion from "motion/react-m";
+import Link from "next/link";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
+import { SparklesCore } from "@repo/ui/sparkles";
+import { ArrowRight, Bug, Plus, RefreshCw, Shield, Trash2 } from "lucide-react";
 import {
   releases,
   type ChangeType,
   type ChangelogRelease,
   type ReleaseTag,
-} from "@/lib/changelog-data"
+} from "@/lib/changelog-data";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 const TYPE_META: Record<
   ChangeType,
@@ -45,10 +44,7 @@ function groupChanges(release: ChangelogRelease) {
 }
 
 export default function ChangelogPage() {
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true })
-    return () => lenis.destroy()
-  }, [])
+  useSmoothScroll();
 
   const latest = releases[0]! // static, never empty
 

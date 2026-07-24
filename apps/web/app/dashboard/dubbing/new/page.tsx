@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import * as motion from "motion/react-m";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@repo/ui/card";

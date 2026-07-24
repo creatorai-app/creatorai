@@ -1,28 +1,24 @@
 "use client"
 
-import React, { useEffect } from "react"
-import { motion } from "motion/react"
-import Link from "next/link"
-import Lenis from "lenis"
-import "lenis/dist/lenis.css"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
-import PricingSection from "@/components/landingPage/PricingSection"
-import FAQSection from "@/components/landingPage/FAQSection"
-import { SparklesCore } from "@repo/ui/sparkles"
-import { MButton } from "@repo/ui/moving-border"
-import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react"
-import { useSupabase } from "@/components/supabase-provider"
-import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans"
-import { trackFunnel } from "@/lib/funnel"
+import React, { useEffect } from "react";
+import * as motion from "motion/react-m";
+import Link from "next/link";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
+import PricingSection from "@/components/landingPage/PricingSection";
+import FAQSection from "@/components/landingPage/FAQSection";
+import { SparklesCore } from "@repo/ui/sparkles";
+import { MButton } from "@repo/ui/moving-border";
+import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react";
+import { useSupabase } from "@/components/supabase-provider";
+import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll";
+import { trackFunnel } from "@/lib/funnel";
 
 export default function PricingPage() {
   const { user } = useSupabase()
 
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true })
-    return () => lenis.destroy()
-  }, [])
+  useSmoothScroll();
 
   useEffect(() => {
     trackFunnel("pricing_viewed")

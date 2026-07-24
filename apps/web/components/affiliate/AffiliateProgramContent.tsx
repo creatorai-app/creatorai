@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import * as motion from "motion/react-m";
 import Link from "next/link";
-import { motion, type Variants } from "motion/react";
+import { type Variants } from "motion/react";
 import { Repeat, CheckCircle2, ArrowRight } from "lucide-react";
-import Lenis from "lenis";
-import "lenis/dist/lenis.css";
 
 import { FAQ, STEPS, HIGHLIGHTS } from "./affiliate-program-data";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -29,10 +29,7 @@ const EARNINGS_POINTS = [
 ];
 
 export default function AffiliateProgramContent() {
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true });
-    return () => lenis.destroy();
-  }, []);
+  useSmoothScroll();
 
   return (
     <main className="bg-white dark:bg-slate-950">

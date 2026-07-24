@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { motion } from "motion/react"
-import { Button } from "@repo/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card"
-import { Label } from "@repo/ui/label"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip"
-import { toast } from "sonner"
+import { useState, useEffect, useCallback } from "react";
+import * as motion from "motion/react-m";
+import { useRouter, useParams } from "next/navigation";
+import { Button } from "@repo/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
+import { Label } from "@repo/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
+import { toast } from "sonner";
 import {
   ArrowLeft, Download, Loader2, Trash2, CheckCircle2, Languages, Video, Music,
   XCircle, RotateCw, Coins, CalendarDays, type LucideIcon,
-} from "lucide-react"
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +22,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
   AlertDialogFooter,
-} from "@repo/ui/alert-dialog"
-import { useSupabase } from "@/components/supabase-provider"
-import { getDubbing, deleteDubbing, regenerateDubbing } from "@/lib/api/getDubbings"
-import { DubResponse, supportedLanguages } from "@repo/validation"
-import { downloadFile } from "@/lib/download"
+} from "@repo/ui/alert-dialog";
+import { useSupabase } from "@/components/supabase-provider";
+import { getDubbing, deleteDubbing, regenerateDubbing } from "@/lib/api/getDubbings";
+import { DubResponse, supportedLanguages } from "@repo/validation";
+import { downloadFile } from "@/lib/download";
 import { DubbingMediaPlayer } from "@/components/dashboard/dubbing/DubbingMediaPlayer"
 
 function getLanguageLabel(code: string): string {

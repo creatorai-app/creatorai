@@ -1,10 +1,6 @@
 "use client";
-import {
-    useMotionValueEvent,
-    useScroll,
-    useTransform,
-    motion,
-} from "motion/react";
+import { useMotionValueEvent, useScroll, useTransform } from "motion/react";
+import * as motion from "motion/react-m";
 import React, { useEffect, useRef, useState } from "react";
 
 interface TimelineEntry {

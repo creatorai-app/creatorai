@@ -1,14 +1,12 @@
 "use client"
 
-import React, { useEffect } from "react"
-import { motion } from "motion/react"
-import Link from "next/link"
-import Lenis from "lenis"
-import "lenis/dist/lenis.css"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
-import { SparklesCore } from "@repo/ui/sparkles"
-import { MButton } from "@repo/ui/moving-border"
+import React, { useEffect } from "react";
+import * as motion from "motion/react-m";
+import Link from "next/link";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
+import { SparklesCore } from "@repo/ui/sparkles";
+import { MButton } from "@repo/ui/moving-border";
 import {
   ArrowRight,
   Video,
@@ -20,7 +18,8 @@ import {
   BookOpen,
   BarChart3,
   Gift,
-} from "lucide-react"
+} from "lucide-react";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 const coreFeatures = [
   {
@@ -137,10 +136,7 @@ const extraFeatures = [
 ]
 
 export default function FeaturesPage() {
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true })
-    return () => lenis.destroy()
-  }, [])
+  useSmoothScroll();
 
   return (
     <div className="flex flex-col min-h-screen">

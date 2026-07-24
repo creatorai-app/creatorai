@@ -1,14 +1,12 @@
 "use client"
-
-import { motion } from "motion/react"
-import { SuccessDialog } from "@/components/success-dialog"
-import { PenTool, Search, Volume2, ImageIcon, Subtitles, BookOpen } from "lucide-react"
-
-import { useAITraining } from "@/hooks/useAITraining"
-import { HowItWorksGuide } from "@/components/dashboard/train/HowItWorksGuide"
-import { TrainAIHeader } from "@/components/dashboard/train/TrainAIHeader"
-import { TrainAIPageSkeleton } from "@/components/dashboard/train/skeleton/TrainAIPageSkeleton"
-import { ChannelVideoGrid } from "@/components/dashboard/train/ChannelVideoGrid"
+import { SuccessDialog } from "@/components/success-dialog";
+import * as motion from "motion/react-m";
+import { PenTool, Search, Volume2, ImageIcon, Subtitles, BookOpen } from "lucide-react";
+import { useAITraining } from "@/hooks/useAITraining";
+import { HowItWorksGuide } from "@/components/dashboard/train/HowItWorksGuide";
+import { TrainAIHeader } from "@/components/dashboard/train/TrainAIHeader";
+import { TrainAIPageSkeleton } from "@/components/dashboard/train/skeleton/TrainAIPageSkeleton";
+import { ChannelVideoGrid } from "@/components/dashboard/train/ChannelVideoGrid";
 import { TrainingProgress } from "@/components/dashboard/train/TrainingProgress"
 
 const nextSteps = [

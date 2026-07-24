@@ -1,9 +1,9 @@
 "use client"
-import { motion } from "motion/react"
-import { Button } from "@repo/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/card"
-import { Loader2, CheckCircle, CircleDot, Youtube } from "lucide-react"
-import React from "react"
+import * as motion from "motion/react-m";
+import { Button } from "@repo/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@repo/ui/card";
+import { Loader2, CheckCircle, CircleDot, Youtube } from "lucide-react";
+import React from "react";
 import { UserProfile } from "@repo/validation"
 
 const itemVariants = {

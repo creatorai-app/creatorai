@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { cn } from "./lib/utils";
 
 export const WobbleCard = ({

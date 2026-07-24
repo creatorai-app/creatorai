@@ -1,8 +1,9 @@
-import { toast } from "sonner"
+import { toast } from "sonner";
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
 interface ConnectYoutubeProps {
-  supabase: SupabaseClient
+  /** Null while the code-split auth client is still loading — see supabase-provider. */
+  supabase: SupabaseClient | null
   user: User | null
   setIsConnectingYoutube: (value: boolean) => void
   loginHint?: string
@@ -22,6 +23,7 @@ export const connectYoutubeChannel = async ({
 }: ConnectYoutubeProps) => {
   setIsConnectingYoutube(true)
   try {
+    if (!supabase) throw new Error("Auth client not ready yet — please retry.")
     if (!user?.id) throw new Error("User not authenticated.")
 
     const queryParams: Record<string, string> = {

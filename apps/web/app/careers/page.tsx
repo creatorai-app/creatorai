@@ -1,14 +1,12 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
-import { motion } from "motion/react"
-import Link from "next/link"
-import Lenis from "lenis"
-import "lenis/dist/lenis.css"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
-import { SparklesCore } from "@repo/ui/sparkles"
-import { MButton } from "@repo/ui/moving-border"
+import React, { useEffect, useState } from "react";
+import * as motion from "motion/react-m";
+import Link from "next/link";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
+import { SparklesCore } from "@repo/ui/sparkles";
+import { MButton } from "@repo/ui/moving-border";
 import {
   ArrowRight,
   MapPin,
@@ -17,9 +15,9 @@ import {
   Rocket,
   Users,
   Globe,
-} from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import type { JobPost } from "@repo/validation"
+} from "lucide-react";
+import type { JobPost } from "@repo/validation";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 const values = [
   {
@@ -59,22 +57,23 @@ export default function CareersPage() {
   const [openings, setOpenings] = useState<JobPost[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true })
-    return () => lenis.destroy()
-  }, [])
+  useSmoothScroll();
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("job_posts")
-      .select("*")
-      .eq("status", "active")
-      .order("created_at", { ascending: true })
-      .then(({ data }) => {
-        setOpenings(data ?? [])
-        setLoading(false)
-      })
+    // Imported here, not at module scope: the Supabase client is ~180kB and a
+    // static import put it in this marketing page's first-load JS just to list
+    // job openings below the fold.
+    import("@/lib/supabase/client").then(({ createClient }) =>
+      createClient()
+        .from("job_posts")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .then(({ data }) => {
+          setOpenings(data ?? [])
+          setLoading(false)
+        })
+    )
   }, [])
 
   return (

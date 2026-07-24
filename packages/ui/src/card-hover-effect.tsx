@@ -1,6 +1,7 @@
 "use client"
 import { cn } from "./lib/utils";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
 import { useState } from "react";
 
 export const HoverEffect = ({

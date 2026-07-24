@@ -1,9 +1,8 @@
 "use client"
-
-import { motion } from "motion/react"
-import Link from "next/link"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
+import Link from "next/link";
+import * as motion from "motion/react-m";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
 import { Type, ImageIcon, Layers, Wand2, Camera, Lightbulb, ArrowRight } from "lucide-react"
 
 const formula = [

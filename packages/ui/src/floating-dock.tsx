@@ -1,13 +1,7 @@
 import { cn } from "./lib/utils";
 import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
-import {
-  AnimatePresence,
-  MotionValue,
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-} from "motion/react";
+import { AnimatePresence, MotionValue, useMotionValue, useSpring, useTransform } from "motion/react";
+import * as motion from "motion/react-m";
 
 import { useRef, useState } from "react";
 

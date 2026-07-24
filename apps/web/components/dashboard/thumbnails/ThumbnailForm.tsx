@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { Button } from "@repo/ui/button"
-import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react"
-
-import ScriptGenerationStepper from "@/components/dashboard/scripts/ScriptGenerationStepper"
-import ThumbnailStep1 from "./ThumbnailStep1"
-import ThumbnailStep2 from "./ThumbnailStep2"
-import ThumbnailStep3 from "./ThumbnailStep3"
+import { useState } from "react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import { Button } from "@repo/ui/button";
+import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
+import ScriptGenerationStepper from "@/components/dashboard/scripts/ScriptGenerationStepper";
+import ThumbnailStep1 from "./ThumbnailStep1";
+import ThumbnailStep2 from "./ThumbnailStep2";
+import ThumbnailStep3 from "./ThumbnailStep3";
 import type { ThumbnailRatio } from "@/hooks/useThumbnailGeneration"
 
 const formStepVariants = {

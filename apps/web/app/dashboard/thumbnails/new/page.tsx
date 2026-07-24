@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { AnimatePresence, motion } from "motion/react"
-import { useThumbnailGeneration } from "@/hooks/useThumbnailGeneration"
-import { useSupabase } from "@/components/supabase-provider"
-import { ThumbnailForm } from "@/components/dashboard/thumbnails/ThumbnailForm"
-import { ThumbnailOutputPanel } from "@/components/dashboard/thumbnails/ThumbnailOutputPanel"
-import { VideoFrameModal } from "@/components/dashboard/thumbnails/VideoFrameModal"
-import { useAISetupGate } from "@/hooks/useAISetupGate"
-import { Skeleton } from "@repo/ui/skeleton"
-import { Badge } from "@repo/ui/badge"
+import { useState, useEffect, Suspense } from "react";
+import * as motion from "motion/react-m";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence } from "motion/react";
+import { useThumbnailGeneration } from "@/hooks/useThumbnailGeneration";
+import { useSupabase } from "@/components/supabase-provider";
+import { ThumbnailForm } from "@/components/dashboard/thumbnails/ThumbnailForm";
+import { ThumbnailOutputPanel } from "@/components/dashboard/thumbnails/ThumbnailOutputPanel";
+import { VideoFrameModal } from "@/components/dashboard/thumbnails/VideoFrameModal";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
+import { Skeleton } from "@repo/ui/skeleton";
+import { Badge } from "@repo/ui/badge";
 import { FileText, Clapperboard } from "lucide-react"
 
 function NewThumbnailPageInner() {

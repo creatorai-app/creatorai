@@ -1,18 +1,17 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
-
-import { Button } from "@repo/ui/button"
-import { Input } from "@repo/ui/input"
-import { Label } from "@repo/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card"
-import { useSupabase } from "@/components/supabase-provider"
-import { toast } from "sonner"
-import { Eye, EyeOff, ShieldCheck } from "lucide-react"
-import { loginUserSchema } from "@repo/validation"
+import type React from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
+import { useSupabase } from "@/components/supabase-provider";
+import { toast } from "sonner";
+import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { loginUserSchema } from "@repo/validation";
 import { ZodError } from "zod"
 
 function isZodError(error: unknown): error is ZodError {
@@ -52,14 +51,15 @@ function AdminLoginContent() {
       if (profile.role === "admin") {
         router.replace(redirectedFrom?.startsWith("/dashboard/admin") ? redirectedFrom : "/dashboard/admin")
       } else {
-        supabase.auth.signOut()
+        supabase?.auth.signOut()
         toast.error("Access Denied", { description: "This portal is for administrators only." })
       }
     }
-  }, [user, profile, profileLoading, router, redirectedFrom, supabase.auth])
+  }, [user, profile, profileLoading, router, redirectedFrom, supabase])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) return // auth client still code-splitting in
     setErrors({})
     setLoading(true)
 
@@ -109,6 +109,7 @@ function AdminLoginContent() {
   }
 
   const handleGoogleLogin = async () => {
+    if (!supabase) return // auth client still code-splitting in
     try {
       const callbackUrl = new URL("/api/auth/callback", window.location.origin)
       if (redirectedFrom) callbackUrl.searchParams.set("next", redirectedFrom)

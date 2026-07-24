@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import * as motion from "motion/react-m";
 import Link from "next/link";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { Badge } from "@repo/ui/badge";
 import { toast } from "sonner";
 import { Plus, Search } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { ContentCard } from "@/components/dashboard/common/ContentCard";
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton";
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg";

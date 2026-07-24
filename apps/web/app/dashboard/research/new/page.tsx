@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as motion from "motion/react-m";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";

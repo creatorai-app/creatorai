@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
+import * as motion from "motion/react-m";
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
 import { useSupabase } from "@/components/supabase-provider";
 import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";

@@ -1,9 +1,9 @@
 "use client"
 
-import { motion } from "motion/react"
-import Link from "next/link"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion"
-import { Button } from "@repo/ui/button"
+import * as motion from "motion/react-m";
+import Link from "next/link";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion";
+import { Button } from "@repo/ui/button";
 import { Clapperboard, Camera, Sparkles, ArrowUpRight } from "lucide-react"
 
 // Two-to-three quick, paraphrased tips from Omni's prompting guidance — the full,

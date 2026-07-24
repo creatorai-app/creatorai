@@ -1,16 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { AnimatePresence, motion } from "motion/react"
-import { useStoryBuilder } from "@/hooks/useStoryBuilder"
-import { useSupabase } from "@/components/supabase-provider"
-import { StoryBuilderForm } from "@/components/dashboard/story-builder/StoryBuilderForm"
-import { StoryBuilderProgress } from "@/components/dashboard/story-builder/StoryBuilderProgress"
-import { StoryBuilderResults } from "@/components/dashboard/story-builder/StoryBuilderResults"
-import { useAISetupGate } from "@/hooks/useAISetupGate"
-import { Skeleton } from "@repo/ui/skeleton"
-import { Badge } from "@repo/ui/badge"
+import { useEffect, useState } from "react";
+import * as motion from "motion/react-m";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence } from "motion/react";
+import { useStoryBuilder } from "@/hooks/useStoryBuilder";
+import { useSupabase } from "@/components/supabase-provider";
+import { StoryBuilderForm } from "@/components/dashboard/story-builder/StoryBuilderForm";
+import { StoryBuilderProgress } from "@/components/dashboard/story-builder/StoryBuilderProgress";
+import { StoryBuilderResults } from "@/components/dashboard/story-builder/StoryBuilderResults";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
+import { Skeleton } from "@repo/ui/skeleton";
+import { Badge } from "@repo/ui/badge";
 import { Sparkles } from "lucide-react"
 
 export default function NewStoryBuilderPage() {

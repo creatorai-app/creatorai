@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import axios from "axios";
 import { UploadCloud, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";

@@ -1,24 +1,23 @@
 "use client"
 
-import Footer from "@/components/footer"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import { SparklesCore } from "@repo/ui/sparkles"
-import { TextGenerateEffect } from "@repo/ui/text-generate-effect"
-import { InfiniteMovingCards } from "@repo/ui/infinite-moving-cards"
-import { BackgroundBeams } from "@repo/ui/background-beams"
-import { MButton } from "@repo/ui/moving-border"
-import { motion } from "motion/react"
-import Link from "next/link"
+import Footer from "@/components/footer";
+import * as motion from "motion/react-m";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import { SparklesCore } from "@repo/ui/sparkles";
+import { TextGenerateEffect } from "@repo/ui/text-generate-effect";
+import { InfiniteMovingCards } from "@repo/ui/infinite-moving-cards";
+import { BackgroundBeams } from "@repo/ui/background-beams";
+import { MButton } from "@repo/ui/moving-border";
+import Link from "next/link";
 import {
   Zap, Heart, Users, TrendingUp, Lightbulb,
   Video, PenTool, Search, ImageIcon, BookOpen,
   FileText, Volume2, Gift, ArrowRight,
   Globe, MessageSquare, Settings, Sparkles,
-} from "lucide-react"
-import FeatureCard from "@/components/feature-card"
-import { useEffect } from "react"
-import Lenis from "lenis"
-import "lenis/dist/lenis.css"
+} from "lucide-react";
+import FeatureCard from "@/components/feature-card";
+import { useEffect } from "react";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 const benefits = [
   {
@@ -84,10 +83,7 @@ const niches = [
 ]
 
 export default function AboutPage() {
-  useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true })
-    return () => lenis.destroy()
-  }, [])
+  useSmoothScroll();
 
   return (
     <div className="flex flex-col min-h-screen">

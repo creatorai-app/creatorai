@@ -1,6 +1,6 @@
 "use client"
-import { motion } from "motion/react"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion"
+import * as motion from "motion/react-m";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion";
 import { PenTool, Bot, Youtube } from "lucide-react"
 
 const itemVariants = {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { Button } from "@repo/ui/button";
 import { Progress } from "@repo/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";

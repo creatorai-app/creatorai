@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense } from "react";
+import * as motion from "motion/react-m";
 import { useSearchParams } from "next/navigation";
 import { SubtitleUploader } from "@/components/dashboard/subtitles/subtitleUploader";
 import { UpgradePromoCard } from "@/components/dashboard/subtitles/UpgradePromoCard";
-import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { Sparkles, ArrowLeft, FileText } from "lucide-react";
 import Link from "next/link";

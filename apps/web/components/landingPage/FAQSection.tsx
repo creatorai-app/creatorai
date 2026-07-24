@@ -1,12 +1,12 @@
 "use client"
 
-import { motion } from "motion/react"
+import * as motion from "motion/react-m";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@repo/ui/accordion"
+} from "@repo/ui/accordion";
 import JsonLd from "@/components/JsonLd"
 
 const faqs = [

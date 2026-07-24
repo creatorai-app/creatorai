@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { TracingBeam } from "@repo/ui/tracing-beam";
 
 export default function HowItWorks() {

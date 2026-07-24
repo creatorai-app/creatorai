@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "motion/react"
+import * as motion from "motion/react-m";
 import {
   Video,
   PenTool,
@@ -13,7 +13,7 @@ import {
   BookOpen,
   Film,
   Volume2,
-} from "lucide-react"
+} from "lucide-react";
 import FeatureCard from "../feature-card"
 
 const features = [

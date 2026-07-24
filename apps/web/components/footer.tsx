@@ -4,16 +4,22 @@ import React from 'react';
 import Image from "next/image";
 import Link from 'next/link';
 import dynamic from "next/dynamic";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import logo from "@/public/dark-logo.png";
 import { IconBrandDiscordFilled as Discord, IconBrandLinkedin as Linkedin, IconBrandX as Twitter, IconBrandGithub as Github, IconBrandFacebook as Facebook } from '@tabler/icons-react';
 import { footerItems } from '@repo/ui';
 import { FloatingDock } from "@repo/ui/floating-dock";
-import ReportIssue from './issue/report-an-issue';
-
-const World = dynamic(() => import("@repo/ui/globe").then((m) => m.World), {
+// One footer link that opens a form, but it reaches the API client and the
+// shared validation package — axios + zod, ~90kB — which landed in the
+// first-load JS of every marketing page. Split it out; it loads after hydration.
+const ReportIssue = dynamic(() => import('./issue/report-an-issue'), {
   ssr: false,
+  loading: () => <span className="block h-5" aria-hidden />,
 });
+
+// The globe is mounted through FooterGlobe, which defers three.js until the
+// footer actually scrolls into view — see that file for why.
+import FooterGlobe from "@/components/FooterGlobe";
 
 const globeConfig = {
   pointSize: 4,
@@ -152,7 +158,7 @@ const Footer = () => {
           >
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-100 dark:to-slate-900 z-10 pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-slate-100 dark:to-slate-900 z-10 pointer-events-none lg:block hidden" />
-            <World data={sampleArcs} globeConfig={globeConfig} />
+            <FooterGlobe data={sampleArcs} globeConfig={globeConfig} />
           </motion.div>
         </div>
 
