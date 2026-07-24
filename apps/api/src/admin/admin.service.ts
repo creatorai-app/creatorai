@@ -277,15 +277,24 @@ export class AdminService {
       .single();
     if (subErr) throw new BadRequestException(subErr.message);
 
+    // Grant the plan allowance on top of any reset-protected bonus credits the
+    // user has earned (referrals, purchase bonuses) — see migration 20260723000000.
+    const { data: current } = await this.db
+      .from('profiles')
+      .select('bonus_credits')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const bonus = current?.bonus_credits ?? 0;
+
     const { data: profile, error: credErr } = await this.db
       .from('profiles')
-      .update({ credits: plan.credits_monthly })
+      .update({ credits: plan.credits_monthly + bonus })
       .eq('user_id', userId)
       .select()
       .single();
     if (credErr) throw new BadRequestException(credErr.message);
 
-    return { success: true, credits: plan.credits_monthly, subscription: newSub, profile };
+    return { success: true, credits: plan.credits_monthly + bonus, subscription: newSub, profile };
   }
 
   // Feature tables that record per-user credit usage — same set billing uses for

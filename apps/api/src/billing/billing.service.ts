@@ -368,6 +368,39 @@ export class BillingService {
     return { success: true };
   }
 
+  /**
+   * Set a user's balance to `allowance` while carrying their reset-protected
+   * bonus credits (referral rewards, purchase bonuses) across the reset.
+   * Mirrors the SQL crons — see migration 20260723000000.
+   *
+   * extraBonus grants a NEW bonus in the same write (used at purchase time).
+   */
+  private async applyAllowance(
+    userId: string,
+    allowance: number,
+    supabase: ReturnType<typeof this.supabaseService.getClient>,
+    extraBonus = 0,
+  ) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('bonus_credits')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const bonus = (profile?.bonus_credits ?? 0) + extraBonus;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ credits: allowance + bonus, bonus_credits: bonus })
+      .eq('user_id', userId);
+
+    if (error) {
+      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
+    } else {
+      this.logger.log(`Reset credits to ${allowance} (+${bonus} bonus) for ${userId}`);
+    }
+  }
+
   private async createFreePlanSubscription(userId: string) {
     const supabase = this.supabaseService.getClient();
     const starter = await this.getStarterPlan();
@@ -387,17 +420,8 @@ export class BillingService {
       current_period_end: null,
     });
 
-    // Downgrade the credit balance to the free plan allowance.
-    const { error } = await supabase
-      .from('profiles')
-      .update({ credits: starter.credits_monthly })
-      .eq('user_id', userId);
-
-    if (error) {
-      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
-    } else {
-      this.logger.log(`Reset credits to ${starter.credits_monthly} (free plan) for ${userId}`);
-    }
+    // Downgrade the credit balance to the free plan allowance, keeping bonuses.
+    await this.applyAllowance(userId, starter.credits_monthly, supabase);
   }
 
   /**
@@ -413,16 +437,7 @@ export class BillingService {
       this.logger.error(`Cannot reset credits for ${userId}: no free plan`);
       return;
     }
-    const { error } = await supabase
-      .from('profiles')
-      .update({ credits: starter.credits_monthly })
-      .eq('user_id', userId);
-
-    if (error) {
-      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
-    } else {
-      this.logger.log(`Reset credits to ${starter.credits_monthly} (free plan) for ${userId}`);
-    }
+    await this.applyAllowance(userId, starter.credits_monthly, supabase);
   }
 
   /**
@@ -551,10 +566,8 @@ export class BillingService {
         supabase,
       );
 
-      await supabase
-        .from('profiles')
-        .update({ credits: plan.credits_monthly + referralBonus })
-        .eq('user_id', userId);
+      // referralBonus is tagged as protected so the next renewal carries it.
+      await this.applyAllowance(userId, plan.credits_monthly, supabase, referralBonus);
     }
 
     const affiliateCode = event.meta.custom_data?.affiliate_code;
@@ -651,10 +664,7 @@ export class BillingService {
       .single();
 
     if (plan) {
-      await supabase
-        .from('profiles')
-        .update({ credits: plan.credits_monthly })
-        .eq('user_id', sub.user_id);
+      await this.applyAllowance(sub.user_id, plan.credits_monthly, supabase);
 
       await supabase
         .from('subscriptions')
