@@ -72,7 +72,7 @@ export default function ContactPage() {
             className="hidden flex-col justify-center gap-4 md:flex"
           >
             <Link href="/">
-              <Image src={logo} alt="Script AI" width={80} height={80} className="mb-4" />
+              <Image src={logo} alt="Creator AI" width={80} height={80} className="mb-4" />
             </Link>
             <h1 className="text-4xl lg:text-5xl font-bold text-slate-900">
               We'd Love to Hear From You.
@@ -92,7 +92,7 @@ export default function ContactPage() {
             <Card className="w-full max-w-md bg-white/20 dark:bg-black/20 backdrop-blur-lg border border-white/30 shadow-2xl rounded-2xl">
               <CardHeader className="space-y-1 pt-6">
                 <div className="flex justify-center md:hidden">
-                  <Image src={logo} alt="Script AI" width={60} height={60} />
+                  <Image src={logo} alt="Creator AI" width={60} height={60} />
                 </div>
                 <CardTitle className="text-2xl text-center text-slate-900 dark:text-white">
                   Send Us a Message

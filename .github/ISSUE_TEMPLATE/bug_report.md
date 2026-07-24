@@ -1,6 +1,6 @@
 ---
 name: 🐛 Bug Report
-about: Create a report to help us improve ScriptAI
+about: Create a report to help us improve Creator AI
 title: '[BUG] '
 labels: ['bug', 'needs-triage']
 assignees: ''

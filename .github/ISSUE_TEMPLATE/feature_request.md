@@ -1,6 +1,6 @@
 ---
 name: ✨ Feature Request
-about: Suggest an idea for ScriptAI
+about: Suggest an idea for Creator AI
 title: '[FEATURE] '
 labels: ['enhancement', 'needs-triage']
 assignees: ''
@@ -71,4 +71,4 @@ Add any other context, references, or examples about the feature request here.
 
 ---
 
-**Thank you for your feature request! We appreciate your ideas for making ScriptAI better! 🚀**
+**Thank you for your feature request! We appreciate your ideas for making Creator AI better! 🚀**

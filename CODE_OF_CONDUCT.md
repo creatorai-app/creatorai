@@ -136,7 +136,7 @@ different member than the one subject to the complaint.
 ## Addressing Grievances
 
 If you feel you have been falsely or unfairly accused of violating this Code of
-Conduct, you should notify the ScriptAI team with a concise description of your
+Conduct, you should notify the Creator AI team with a concise description of your
 grievance. Your grievance will be handled in accordance with our existing
 governing policies.
 
