@@ -39,6 +39,12 @@ const nextConfig = {
   },
   transpilePackages: ["@repo/ui"],
   poweredByHeader: false,
+  // Tree-shake barrel files so importing one icon/animation helper doesn't pull
+  // the package's whole module graph into a route's first-load JS. Next already
+  // does this for lucide-react, @tabler/icons-react, recharts and date-fns.
+  experimental: {
+    optimizePackageImports: ["motion", "@repo/ui", "@tsparticles/slim"],
+  },
   // 301s from the original blog slugs to the longer, keyword-rich SEO slugs.
   // Preserves rankings/backlinks after the 2026 SEO slug migration.
   async redirects() {
@@ -70,6 +76,16 @@ const nextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      {
+        // /public assets are served with no caching by default, which Lighthouse
+        // flags as an inefficient cache policy. They are not content-hashed, so
+        // 30 days rather than immutable — long enough for repeat visits, short
+        // enough that a replaced asset still rolls out.
+        source: "/:path*.(png|jpg|jpeg|webp|avif|svg|ico|woff2)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=2592000" },
         ],
       },
       {

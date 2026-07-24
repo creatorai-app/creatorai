@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
-import Lenis from "lenis"
-import { cn } from "@/lib/utils"
-import Footer from "@/components/footer"
-import { ArrowLeft } from "lucide-react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
+import React, { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import Footer from "@/components/footer";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 const sections = [
   { id: "overview", title: "1. Overview & Acceptance" },
@@ -30,18 +30,7 @@ const TermsPage = () => {
   const [activeSection, setActiveSection] = useState<string>("overview")
   const rafIdRef = useRef<number>(0)
 
-  useEffect(() => {
-    const lenis = new Lenis()
-    function raf(time: number) {
-      lenis.raf(time)
-      rafIdRef.current = requestAnimationFrame(raf)
-    }
-    rafIdRef.current = requestAnimationFrame(raf)
-    return () => {
-      cancelAnimationFrame(rafIdRef.current)
-      lenis.destroy()
-    }
-  }, [])
+  useSmoothScroll();
 
   useEffect(() => {
     const handleScroll = () => {
