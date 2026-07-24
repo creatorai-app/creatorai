@@ -9,6 +9,7 @@ import * as motion from "motion/react-m";
 import { Check } from "lucide-react";
 import { useSupabase } from "../supabase-provider";
 import { MARKETING_PLANS, type MarketingPlan } from "@/lib/pricing-plans"
+import { trackFunnel } from "@/lib/funnel"
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -187,7 +188,9 @@ function PlanCard({ plan, annual, href }: { plan: MarketingPlan; annual: boolean
                     )}
                     variant={isPopular ? "default" : "outline"}
                 >
-                    <Link href={href}>{isFree ? "Start Free" : "Get Started"}</Link>
+                    <Link href={href} onClick={() => trackFunnel("plan_clicked", plan.name)}>
+                        {isFree ? "Start Free" : "Get Started"}
+                    </Link>
                 </Button>
             </WobbleCard>
         </motion.div>

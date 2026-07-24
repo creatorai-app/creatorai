@@ -92,7 +92,7 @@ Any additional information or context that might be helpful for reviewers.
 
 ---
 
-**Thank you for contributing to ScriptAI! 🎬**
+**Thank you for contributing to Creator AI! 🎬**
 
 <!-- 
 Template adapted from best practices for open source projects.

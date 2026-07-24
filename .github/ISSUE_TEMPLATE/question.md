@@ -1,6 +1,6 @@
 ---
 name: ❓ Question
-about: Ask a question about ScriptAI
+about: Ask a question about Creator AI
 title: '[QUESTION] '
 labels: ['question', 'needs-triage']
 assignees: ''

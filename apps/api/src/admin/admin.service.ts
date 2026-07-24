@@ -53,14 +53,18 @@ export class AdminService {
       this.db.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
       this.db.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       this.db.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-      this.db.from('affiliate_sales').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
-      this.db.from('affiliate_sales').select('amount').in('status', ['confirmed', 'paid']),
+      this.db.from('ls_webhook_events').select('id', { count: 'exact', head: true }).eq('event_name', 'subscription_created'),
+      // ponytail: summed in JS like the affiliate queries below it. Move to a
+      // Postgres RPC if the payment count ever outgrows a single page.
+      this.db.from('ls_webhook_events').select('amount_cents').eq('event_name', 'subscription_payment_success').eq('status', 'paid'),
       this.db.from('mail_messages').select('id', { count: 'exact', head: true }).eq('status', 'unread'),
       this.db.from('job_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       this.db.from('affiliate_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 
-    const totalRevenue = revenueRes.data?.reduce((sum, r) => sum + Number(r.amount || 0), 0) ?? 0;
+    // Lemon Squeezy reports money in cents.
+    const totalRevenue =
+      (revenueRes.data?.reduce((sum, r) => sum + Number(r.amount_cents || 0), 0) ?? 0) / 100;
 
     return {
       totalUsers: usersRes.count ?? 0,
@@ -72,6 +76,88 @@ export class AdminService {
       unreadMails: mailsRes.count ?? 0,
       pendingApplications: applicationsRes.count ?? 0,
       pendingAffiliateRequests: affiliateRequestsRes.count ?? 0,
+    };
+  }
+
+  // ==================== REVENUE & FUNNEL ====================
+
+  /**
+   * Revenue, sales, failed payments and churn per plan, from the Lemon Squeezy
+   * webhook audit trail. Revenue counts subscription_payment_success only --
+   * order_created also fires for a subscription's first payment, so counting
+   * both would double every initial purchase.
+   */
+  async getRevenueByTier() {
+    const { data, error } = await this.db
+      .from('ls_revenue_by_tier')
+      .select('*')
+      .order('revenue_cents', { ascending: false });
+
+    if (error) throw new BadRequestException(error.message);
+
+    return (data ?? []).map((r) => ({
+      tier: r.tier as string,
+      revenue: Number(r.revenue_cents ?? 0) / 100,
+      payments: Number(r.payments ?? 0),
+      sales: Number(r.sales ?? 0),
+      failedPayments: Number(r.failed_payments ?? 0),
+      churned: Number(r.churned ?? 0),
+    }));
+  }
+
+  /**
+   * Purchase-intent funnel: viewed -> clicked -> checkout started -> completed.
+   * The first three steps come from our own frontend (Lemon Squeezy only sees
+   * people who already reached its checkout); completions come from the
+   * webhook trail, joined by plan name.
+   */
+  async getFunnel() {
+    const [funnelRes, tiers] = await Promise.all([
+      this.db.from('funnel_summary').select('*'),
+      this.getRevenueByTier(),
+    ]);
+
+    if (funnelRes.error) throw new BadRequestException(funnelRes.error.message);
+
+    const rows = funnelRes.data ?? [];
+    const sessionsFor = (event: string, tier?: string) =>
+      rows
+        .filter((r) => r.event === event && (tier ? r.tier === tier : true))
+        .reduce((sum, r) => sum + Number(r.sessions ?? 0), 0);
+
+    // Tiers people actually interacted with, plus any tier that has sold.
+    const tierNames = Array.from(
+      new Set([
+        ...rows.map((r) => r.tier as string).filter((t) => t && t !== 'all'),
+        ...tiers.map((t) => t.tier),
+      ]),
+    );
+
+    const completedByTier = new Map<string, number>(
+      tiers.map((t) => [t.tier, t.sales]),
+    );
+
+    return {
+      // pricing_viewed carries no tier, so it is the top of the whole funnel.
+      pricingViewed: sessionsFor('pricing_viewed'),
+      planClicked: sessionsFor('plan_clicked'),
+      checkoutStarted: sessionsFor('checkout_started'),
+      completed: tiers.reduce((sum, t) => sum + t.sales, 0),
+      byTier: tierNames
+        .map((tier) => {
+          const clicked = sessionsFor('plan_clicked', tier);
+          const started = sessionsFor('checkout_started', tier);
+          const completed = completedByTier.get(tier) ?? 0;
+          return {
+            tier,
+            clicked,
+            checkoutStarted: started,
+            completed,
+            abandoned: Math.max(started - completed, 0),
+            conversionRate: clicked ? Math.round((completed / clicked) * 1000) / 10 : 0,
+          };
+        })
+        .sort((a, b) => b.clicked - a.clicked),
     };
   }
 
@@ -191,15 +277,24 @@ export class AdminService {
       .single();
     if (subErr) throw new BadRequestException(subErr.message);
 
+    // Grant the plan allowance on top of any reset-protected bonus credits the
+    // user has earned (referrals, purchase bonuses) — see migration 20260723000000.
+    const { data: current } = await this.db
+      .from('profiles')
+      .select('bonus_credits')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const bonus = current?.bonus_credits ?? 0;
+
     const { data: profile, error: credErr } = await this.db
       .from('profiles')
-      .update({ credits: plan.credits_monthly })
+      .update({ credits: plan.credits_monthly + bonus })
       .eq('user_id', userId)
       .select()
       .single();
     if (credErr) throw new BadRequestException(credErr.message);
 
-    return { success: true, credits: plan.credits_monthly, subscription: newSub, profile };
+    return { success: true, credits: plan.credits_monthly + bonus, subscription: newSub, profile };
   }
 
   // Feature tables that record per-user credit usage — same set billing uses for

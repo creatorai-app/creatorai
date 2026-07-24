@@ -24,6 +24,33 @@ export interface AdminDashboardStats {
   pendingAffiliateRequests: number
 }
 
+export interface RevenueByTier {
+  tier: string
+  revenue: number
+  payments: number
+  sales: number
+  failedPayments: number
+  churned: number
+}
+
+export interface FunnelTierBreakdown {
+  tier: string
+  clicked: number
+  checkoutStarted: number
+  completed: number
+  abandoned: number
+  /** Completed / clicked, as a percentage rounded to one decimal. */
+  conversionRate: number
+}
+
+export interface AdminFunnel {
+  pricingViewed: number
+  planClicked: number
+  checkoutStarted: number
+  completed: number
+  byTier: FunnelTierBreakdown[]
+}
+
 export interface BlogPost {
   id: string
   author_id: string

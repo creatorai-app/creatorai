@@ -62,4 +62,4 @@ Any other information that would be helpful for contributors.
 
 ---
 
-**Thank you for considering this issue! We're excited to help you contribute to ScriptAI! 🎬**
+**Thank you for considering this issue! We're excited to help you contribute to Creator AI! 🎬**

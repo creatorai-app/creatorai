@@ -255,7 +255,50 @@ export class BillingService {
       throw new BadRequestException('Failed to create checkout');
     }
 
+    // Tracked here rather than in the frontend so every entry point into
+    // checkout (billing settings, upgrade promo cards) is counted once.
+    await this.trackFunnelEvent({
+      event: 'checkout_started',
+      tier: plan.name,
+      userId,
+      sessionId: `user:${userId}`,
+    });
+
     return { url: data?.data.attributes.url };
+  }
+
+  // --- Purchase-intent funnel ---
+
+  /**
+   * Record a step of the purchase funnel. Lemon Squeezy only ever sees people
+   * who already reached its checkout, so intent above that has to come from us.
+   * Never throws: analytics must not break a checkout or a page render.
+   */
+  async trackFunnelEvent(input: {
+    event: string;
+    tier?: string | null;
+    userId?: string | null;
+    sessionId: string;
+    referrer?: string | null;
+  }) {
+    const trim = (v: string | null | undefined, max: number) =>
+      v ? v.slice(0, max) : null;
+
+    try {
+      const { error } = await this.supabaseService
+        .getClient()
+        .from('funnel_events')
+        .insert({
+          event: input.event,
+          tier: trim(input.tier, 64),
+          user_id: input.userId ?? null,
+          session_id: input.sessionId.slice(0, 128),
+          referrer: trim(input.referrer, 512),
+        });
+      if (error) this.logger.warn(`Funnel event insert failed: ${error.message}`);
+    } catch (err) {
+      this.logger.warn(`Funnel event insert threw: ${err}`);
+    }
   }
 
   async getCustomerPortalUrl(userId: string) {
@@ -325,6 +368,39 @@ export class BillingService {
     return { success: true };
   }
 
+  /**
+   * Set a user's balance to `allowance` while carrying their reset-protected
+   * bonus credits (referral rewards, purchase bonuses) across the reset.
+   * Mirrors the SQL crons — see migration 20260723000000.
+   *
+   * extraBonus grants a NEW bonus in the same write (used at purchase time).
+   */
+  private async applyAllowance(
+    userId: string,
+    allowance: number,
+    supabase: ReturnType<typeof this.supabaseService.getClient>,
+    extraBonus = 0,
+  ) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('bonus_credits')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const bonus = (profile?.bonus_credits ?? 0) + extraBonus;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ credits: allowance + bonus, bonus_credits: bonus })
+      .eq('user_id', userId);
+
+    if (error) {
+      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
+    } else {
+      this.logger.log(`Reset credits to ${allowance} (+${bonus} bonus) for ${userId}`);
+    }
+  }
+
   private async createFreePlanSubscription(userId: string) {
     const supabase = this.supabaseService.getClient();
     const starter = await this.getStarterPlan();
@@ -344,17 +420,8 @@ export class BillingService {
       current_period_end: null,
     });
 
-    // Downgrade the credit balance to the free plan allowance.
-    const { error } = await supabase
-      .from('profiles')
-      .update({ credits: starter.credits_monthly })
-      .eq('user_id', userId);
-
-    if (error) {
-      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
-    } else {
-      this.logger.log(`Reset credits to ${starter.credits_monthly} (free plan) for ${userId}`);
-    }
+    // Downgrade the credit balance to the free plan allowance, keeping bonuses.
+    await this.applyAllowance(userId, starter.credits_monthly, supabase);
   }
 
   /**
@@ -370,16 +437,7 @@ export class BillingService {
       this.logger.error(`Cannot reset credits for ${userId}: no free plan`);
       return;
     }
-    const { error } = await supabase
-      .from('profiles')
-      .update({ credits: starter.credits_monthly })
-      .eq('user_id', userId);
-
-    if (error) {
-      this.logger.error(`Failed to reset credits for ${userId}: ${JSON.stringify(error)}`);
-    } else {
-      this.logger.log(`Reset credits to ${starter.credits_monthly} (free plan) for ${userId}`);
-    }
+    await this.applyAllowance(userId, starter.credits_monthly, supabase);
   }
 
   /**
@@ -508,10 +566,8 @@ export class BillingService {
         supabase,
       );
 
-      await supabase
-        .from('profiles')
-        .update({ credits: plan.credits_monthly + referralBonus })
-        .eq('user_id', userId);
+      // referralBonus is tagged as protected so the next renewal carries it.
+      await this.applyAllowance(userId, plan.credits_monthly, supabase, referralBonus);
     }
 
     const affiliateCode = event.meta.custom_data?.affiliate_code;
@@ -608,10 +664,7 @@ export class BillingService {
       .single();
 
     if (plan) {
-      await supabase
-        .from('profiles')
-        .update({ credits: plan.credits_monthly })
-        .eq('user_id', sub.user_id);
+      await this.applyAllowance(sub.user_id, plan.credits_monthly, supabase);
 
       await supabase
         .from('subscriptions')
@@ -693,6 +746,65 @@ export class BillingService {
     const totalUsed = rows.reduce((sum, r) => sum + (r.credits_consumed ?? 0), 0);
 
     return { usage: result, totalUsed, range };
+  }
+
+  // --- Webhook audit trail ---
+
+  /**
+   * Persist every verified Lemon Squeezy webhook, including ones we don't act
+   * on. This table is the source of truth for admin revenue/sales reporting.
+   * Never throws: a reporting write must not fail the webhook and trigger a
+   * pointless Lemon Squeezy retry of an event we already handled.
+   */
+  async recordWebhookEvent(eventName: string, event: LsWebhookEvent) {
+    const attrs = event.data?.attributes ?? {};
+    const str = (v: unknown) => (v == null ? null : String(v));
+
+    // Invoices carry subscription_id; the subscription_* events are the
+    // subscription itself. Either way this links a payment back to its plan.
+    const lsSubscriptionId =
+      attrs.subscription_id != null
+        ? String(attrs.subscription_id)
+        : event.data?.type === 'subscriptions'
+          ? String(event.data.id)
+          : null;
+
+    const firstItem = attrs.first_order_item as
+      | Record<string, unknown>
+      | undefined;
+
+    const rawOccurredAt = (attrs.updated_at ?? attrs.created_at) as
+      | string
+      | undefined;
+    const occurredAt = rawOccurredAt ? new Date(rawOccurredAt) : new Date();
+
+    try {
+      const { error } = await this.supabaseService
+        .getClient()
+        .from('ls_webhook_events')
+        .insert({
+          event_name: eventName,
+          ls_id: String(event.data?.id ?? ''),
+          ls_subscription_id: lsSubscriptionId,
+          customer_email: str(attrs.user_email),
+          variant_id: str(attrs.variant_id ?? firstItem?.variant_id),
+          amount_cents: Number(attrs.total ?? 0) || 0,
+          currency: str(attrs.currency),
+          status: str(attrs.status),
+          payload: event,
+          occurred_at: (
+            isNaN(occurredAt.getTime()) ? new Date() : occurredAt
+          ).toISOString(),
+        });
+
+      // 23505 = duplicate delivery of an identical payload. Lemon Squeezy
+      // retries, so this is expected and not worth logging as an error.
+      if (error && error.code !== '23505') {
+        this.logger.error(`Webhook event record failed: ${error.message}`);
+      }
+    } catch (err) {
+      this.logger.error(`Webhook event record threw: ${err}`);
+    }
   }
 
   // --- Webhook signature verification ---

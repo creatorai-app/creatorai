@@ -193,6 +193,14 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Signup confirmation. The HTML is GENERATED from @repo/email-templates
+# (pnpm --filter @repo/email-templates render:supabase) -- edit the package, not
+# the file. The hosted project reads its templates from the Supabase dashboard
+# (Authentication -> Emails), not from here, so paste the output there too.
+[auth.email.template.confirmation]
+subject = "Confirm your email for Creator AI"
+content_path = "./templates/confirmation.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

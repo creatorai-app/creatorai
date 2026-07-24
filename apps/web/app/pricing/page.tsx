@@ -12,12 +12,17 @@ import { MButton } from "@repo/ui/moving-border";
 import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react";
 import { useSupabase } from "@/components/supabase-provider";
 import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans";
-import { useSmoothScroll } from "@/hooks/useSmoothScroll"
+import { useSmoothScroll } from "@/hooks/useSmoothScroll";
+import { trackFunnel } from "@/lib/funnel";
 
 export default function PricingPage() {
   const { user } = useSupabase()
 
   useSmoothScroll();
+
+  useEffect(() => {
+    trackFunnel("pricing_viewed")
+  }, [])
 
   const billingHref = (planId: string) =>
     user
