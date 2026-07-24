@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Clock, AlertCircle, FileVideo, Edit, Download, Trash2, MoreVertical, Clapperboard } from "lucide-react";
 import { SubtitleResponse } from "@repo/validation";

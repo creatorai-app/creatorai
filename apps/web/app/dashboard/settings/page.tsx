@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useState, useMemo, useCallback, useEffect } from "react";
+import * as motion from "motion/react-m";
 import { useSearchParams, useRouter } from "next/navigation";
 import { BarChart3, Bell, CreditCard, UserCircle } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
 
 import { ProfileSettingsForm } from "@/components/dashboard/settings/ProfileSettingsForm";
 import { NotificationSettingsForm } from "@/components/dashboard/settings/NotificationSettingsForm";

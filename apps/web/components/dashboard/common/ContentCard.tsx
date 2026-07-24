@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import Link from "next/link";
 import { Card } from "@repo/ui/card";
 import { Button } from "@repo/ui/button";

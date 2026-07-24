@@ -1,6 +1,7 @@
 "use client"
 import { BrainCircuit, Mic, Type, Film } from "lucide-react";
-import { useMotionValue, useSpring, useTransform, motion } from "motion/react";
+import { useMotionValue, useSpring, useTransform } from "motion/react";
+import * as motion from "motion/react-m";
 
 const LandingPageSVG = () => {
     const x = useMotionValue(0);

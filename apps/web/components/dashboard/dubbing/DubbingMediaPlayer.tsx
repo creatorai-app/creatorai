@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Mic,
 } from "lucide-react";

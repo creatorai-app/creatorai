@@ -1,3 +1,3 @@
 "use client"
-import { motion } from "motion/react"
-export const MotionP = motion.p;
+import * as motion from "motion/react-m";
+export const MotionP: typeof motion.p = motion.p;

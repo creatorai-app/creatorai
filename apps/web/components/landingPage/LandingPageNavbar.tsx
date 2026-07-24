@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
-import { motion, AnimatePresence } from "motion/react"
-import { navItem } from "@repo/ui"
-import type { NavItemType } from "@repo/ui"
-import Image from "next/image"
-import Link from "next/link"
-import logo from "@/public/dark-logo.png"
+import React, { useState } from "react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import { navItem } from "@repo/ui";
+import type { NavItemType } from "@repo/ui";
+import Image from "next/image";
+import Link from "next/link";
+import logo from "@/public/dark-logo.png";
 import {
   Navbar,
   NavBody,
@@ -15,10 +16,10 @@ import {
   MobileNavHeader,
   MobileNavToggle,
   MobileNavMenu,
-} from "@repo/ui/resizable-navbar"
-import { ShimmerButton } from "@/components/magicui/shimmer-button"
-import { Gift, ChevronDown } from "lucide-react"
-import { useRouter } from "next/navigation"
+} from "@repo/ui/resizable-navbar";
+import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { Gift, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/button"
 
 const FEATURE_IMAGES: Record<string, string> = {

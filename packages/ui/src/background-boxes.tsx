@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { motion } from "motion/react"; // Note: The original used "motion/react", framer-motion is more common
+import * as motion from "motion/react-m"; // Note: The original used "motion/react", framer-motion is more common
 import { cn } from "./lib/utils";
 
 export const BoxesCore = ({ className, ...rest }: { className?: string }) => {

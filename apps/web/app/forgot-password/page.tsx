@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
+import * as motion from "motion/react-m";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
 
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";

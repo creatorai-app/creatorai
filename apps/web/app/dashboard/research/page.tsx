@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as motion from "motion/react-m";
 import Link from "next/link";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
@@ -10,7 +11,6 @@ import { Search, Plus, Trash2, Download, MoreHorizontal, ExternalLink, Loader2 }
 import { Card } from "@repo/ui/card";
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg";
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton";
-import { motion } from "motion/react";
 import { useSupabase } from "@/components/supabase-provider";
 import { downloadBlob } from "@/lib/download";
 import { api, ApiClientError } from "@/lib/api-client";

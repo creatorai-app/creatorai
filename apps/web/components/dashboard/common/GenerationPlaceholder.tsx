@@ -1,7 +1,6 @@
 "use client"
-
-import { motion } from "motion/react"
-import { Wand } from "lucide-react"
+import { Wand } from "lucide-react";
+import * as motion from "motion/react-m";
 
 interface GenerationPlaceholderProps {
   title?: string

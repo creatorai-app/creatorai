@@ -1,11 +1,16 @@
 "use client";
-import React, { useId, useMemo } from "react";
+import React, { useId, Suspense } from "react";
 import { useEffect, useState } from "react";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
 import type { Container, SingleOrMultiple } from "@tsparticles/engine";
-import { loadSlim } from "@tsparticles/slim";
 import { cn } from "./lib/utils";
-import { motion, useAnimation } from "motion/react";
+import { useAnimation } from "motion/react";
+import * as motion from "motion/react-m";
+
+// The tsparticles engine + slim bundle is ~140kB of JS that every marketing hero
+// pulled into its first-load chunk, where it competed with hydration and dragged
+// TBT/LCP down. It is purely decorative, so it now loads in its own chunk during
+// browser idle time, after the page is interactive. Rendered output is unchanged.
+const Particles = React.lazy(() => import("@tsparticles/react"));
 
 type ParticlesProps = {
     id?: string;
@@ -31,11 +36,31 @@ export const SparklesCore = (props: ParticlesProps) => {
     } = props;
     const [init, setInit] = useState(false);
     useEffect(() => {
-        initParticlesEngine(async (engine) => {
-            await loadSlim(engine);
-        }).then(() => {
-            setInit(true);
-        });
+        // Users who asked for reduced motion never get the animation, so never
+        // pay for the download either.
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+        let cancelled = false;
+        const start = async () => {
+            const [{ initParticlesEngine }, { loadSlim }] = await Promise.all([
+                import("@tsparticles/react"),
+                import("@tsparticles/slim"),
+            ]);
+            await initParticlesEngine((engine) => loadSlim(engine));
+            if (!cancelled) setInit(true);
+        };
+
+        // ponytail: requestIdleCallback where supported, 1s timer on Safari.
+        const hasRic = typeof window.requestIdleCallback === "function";
+        const handle = hasRic
+            ? window.requestIdleCallback(() => void start(), { timeout: 3000 })
+            : window.setTimeout(() => void start(), 1000);
+
+        return () => {
+            cancelled = true;
+            if (hasRic) window.cancelIdleCallback(handle);
+            else clearTimeout(handle);
+        };
     }, []);
     const controls = useAnimation();
 
@@ -54,6 +79,7 @@ export const SparklesCore = (props: ParticlesProps) => {
     return (
         <motion.div animate={controls} className={cn("opacity-0", className)}>
             {init && (
+                <Suspense fallback={null}>
                 <Particles
                     id={id || generatedId}
                     className={cn("h-full w-full")}
@@ -69,7 +95,9 @@ export const SparklesCore = (props: ParticlesProps) => {
                             zIndex: 1,
                         },
 
-                        fpsLimit: 120,
+                        // 60 instead of 120: halves the per-frame main-thread cost
+                        // of a background decoration nobody looks at directly.
+                        fpsLimit: 60,
                         interactivity: {
                             events: {
                                 onClick: {
@@ -428,6 +456,7 @@ export const SparklesCore = (props: ParticlesProps) => {
                         detectRetina: true,
                     }}
                 />
+                </Suspense>
             )}
         </motion.div>
     );

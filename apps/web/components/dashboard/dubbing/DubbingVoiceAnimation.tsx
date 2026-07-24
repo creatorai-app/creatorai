@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 
 /**
  * Animated voice/mic hero — the dubbing analogue of AI Studio's animated bot.

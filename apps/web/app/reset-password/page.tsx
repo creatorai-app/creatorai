@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import * as motion from "motion/react-m";
 import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
@@ -14,7 +15,7 @@ import { api } from "@/lib/api-client";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "@/public/dark-logo.png";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
 
 const passwordSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),

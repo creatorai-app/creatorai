@@ -1,8 +1,8 @@
 "use client"
 
-import { motion } from "motion/react"
-import { Type, ImageIcon, Layers, Lock } from "lucide-react"
-import { cn } from "@repo/ui/lib/utils"
+import * as motion from "motion/react-m";
+import { Type, ImageIcon, Layers, Lock } from "lucide-react";
+import { cn } from "@repo/ui/lib/utils";
 import type { VideoGenerationMode } from "@repo/validation"
 
 export const MODE_META: Record<

@@ -1,10 +1,9 @@
 "use client"
 
-import { Star } from "lucide-react"
-import { motion } from "motion/react"
-
-import { Marquee } from "@repo/ui/marquee"
-import { LANDING_DUMMY_REVIEWS } from "@/lib/landing-dummy-reviews"
+import { Star } from "lucide-react";
+import * as motion from "motion/react-m";
+import { Marquee } from "@repo/ui/marquee";
+import { LANDING_DUMMY_REVIEWS } from "@/lib/landing-dummy-reviews";
 import { cn } from "@/lib/utils"
 
 function ReviewCard({

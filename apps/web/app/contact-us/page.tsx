@@ -1,20 +1,19 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { motion } from "motion/react"
-import { toast } from "sonner"
-
-import { Button } from "@repo/ui/button"
-import { Input } from "@repo/ui/input"
-import { Label } from "@repo/ui/label"
-import { Textarea } from "@repo/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card"
-import { AuroraBackground } from "@repo/ui/aurora-background"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
-import Footer from "@/components/footer"
+import type React from "react";
+import * as motion from "motion/react-m";
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { toast } from "sonner";
+import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
+import { Textarea } from "@repo/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
+import { AuroraBackground } from "@repo/ui/aurora-background";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
+import Footer from "@/components/footer";
 import logo from "@/public/dark-logo.png"
 
 const formFields = [

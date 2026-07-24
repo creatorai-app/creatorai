@@ -1,12 +1,7 @@
 "use client";
 import React from "react";
-import {
-    motion,
-    useAnimationFrame,
-    useMotionTemplate,
-    useMotionValue,
-    useTransform,
-} from "motion/react";
+import { useAnimationFrame, useMotionTemplate, useMotionValue, useTransform } from "motion/react";
+import * as motion from "motion/react-m";
 import { useRef } from "react";
 import { cn } from "./lib/utils";
 

@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { motion } from "motion/react"
-import { toast } from "sonner"
-import { Plus, Search } from "lucide-react"
-import { Button } from "@repo/ui/button"
-import { Input } from "@repo/ui/input"
-import { api, getApiErrorMessage } from "@/lib/api-client"
-import { VideoGenerationHistory } from "@/components/dashboard/video-generation/VideoGenerationHistory"
+import { useState, useEffect } from "react";
+import * as motion from "motion/react-m";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Plus, Search } from "lucide-react";
+import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
+import { api, getApiErrorMessage } from "@/lib/api-client";
+import { VideoGenerationHistory } from "@/components/dashboard/video-generation/VideoGenerationHistory";
 import type { VideoGenerationJob } from "@/hooks/useVideoGeneration"
 
 export default function VideoGenerationHistoryPage() {

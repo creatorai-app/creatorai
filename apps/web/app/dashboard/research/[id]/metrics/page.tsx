@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as motion from "motion/react-m";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "@repo/ui/button";
 import { Skeleton } from "@repo/ui/skeleton";

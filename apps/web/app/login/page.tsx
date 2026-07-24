@@ -1,25 +1,23 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-
-import { Button } from "@repo/ui/button"
-import { Input } from "@repo/ui/input"
-import { Label } from "@repo/ui/label"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@repo/ui/card"
-import { useSupabase } from "@/components/supabase-provider"
-import { toast } from "sonner"
-import { Eye, EyeOff } from "lucide-react"
-import { loginUserSchema } from "@repo/validation"
-import { ZodError } from "zod"
-
-import logo from "@/public/dark-logo.png"
-import { AuroraBackground } from "@repo/ui/aurora-background"
-import { motion } from "motion/react"
-import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
+import type React from "react";
+import * as motion from "motion/react-m";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
+import { Label } from "@repo/ui/label";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@repo/ui/card";
+import { useSupabase } from "@/components/supabase-provider";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
+import { loginUserSchema } from "@repo/validation";
+import { ZodError } from "zod";
+import logo from "@/public/dark-logo.png";
+import { AuroraBackground } from "@repo/ui/aurora-background";
+import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
 import Footer from "@/components/footer"
 
 // IMPROVEMENT: More descriptive constant name and corrected placeholder.
@@ -73,6 +71,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) return // auth client still code-splitting in
     // Clear previous errors on a new submission attempt.
     setErrors({})
     setLoading(true)
@@ -135,6 +134,7 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    if (!supabase) return // auth client still code-splitting in
     try {
       const callbackUrl = new URL("/api/auth/callback", window.location.origin)
       if (redirectTo) callbackUrl.searchParams.set("next", redirectTo)

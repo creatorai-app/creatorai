@@ -1,16 +1,17 @@
-import type React from "react"
-import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import type React from "react";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@repo/ui/sonner"
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { SupabaseProvider } from "@/components/supabase-provider"
-import { Analytics } from "@vercel/analytics/next"
-import { siteConfig, createMetadata } from "@/lib/seo"
-import JsonLd from "@/components/JsonLd"
-import Script from "next/script"
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@repo/ui/sonner";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SupabaseProvider } from "@/components/supabase-provider";
+import { Analytics } from "@vercel/analytics/next";
+import { siteConfig, createMetadata } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import Script from "next/script";
 import PublicHannah from "@/components/hannah/PublicHannah"
+import MotionProvider from "@/components/MotionProvider"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -76,24 +77,31 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SupabaseProvider>
-            <main>{children}</main>
-            <PublicHannah />
-            <Toaster closeButton={true} richColors />
+            <MotionProvider>
+              <main>{children}</main>
+              <PublicHannah />
+              <Toaster closeButton={true} richColors />
+            </MotionProvider>
           </SupabaseProvider>
         </ThemeProvider>
+        {/* Third-party tags run `lazyOnload` (after window.onload) rather than
+            `afterInteractive` (right after hydration). Neither blocks rendering,
+            but afterInteractive lands inside the Lighthouse TBT window and
+            competes with hydration for the main thread. Analytics and affiliate
+            attribution both tolerate the delay. */}
         {process.env.NEXT_PUBLIC_LEMONSQUEEZY_STORE_SLUG && (
           <>
-            <Script id="ls-affiliate-config" strategy="afterInteractive">
+            <Script id="ls-affiliate-config" strategy="lazyOnload">
               {`window.lemonSqueezyAffiliateConfig = { store: "${process.env.NEXT_PUBLIC_LEMONSQUEEZY_STORE_SLUG}" }`}
             </Script>
-            <Script src="https://lmsqueezy.com/affiliate.js" strategy="afterInteractive" />
+            <Script src="https://lmsqueezy.com/affiliate.js" strategy="lazyOnload" />
           </>
         )}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-RVSYKESCPC"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}

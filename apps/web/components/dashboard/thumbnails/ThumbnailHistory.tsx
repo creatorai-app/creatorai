@@ -1,11 +1,11 @@
 "use client"
 
-import { motion } from "motion/react"
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card"
-import { Badge } from "@repo/ui/badge"
-import { Button } from "@repo/ui/button"
-import { Download, Clock, ImageIcon, AlertCircle } from "lucide-react"
-import { Skeleton } from "@repo/ui/skeleton"
+import * as motion from "motion/react-m";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
+import { Badge } from "@repo/ui/badge";
+import { Button } from "@repo/ui/button";
+import { Download, Clock, ImageIcon, AlertCircle } from "lucide-react";
+import { Skeleton } from "@repo/ui/skeleton";
 import type { ThumbnailJob } from "@/hooks/useThumbnailGeneration"
 
 interface ThumbnailHistoryProps {

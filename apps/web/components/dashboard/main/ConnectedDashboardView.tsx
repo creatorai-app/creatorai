@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { Button } from "@repo/ui/button";
 import { Youtube, Unlink, BarChart3, ChevronRight, LayoutTemplate, Users, Eye, Video } from "lucide-react";
 import { useChannelStats } from "@/hooks/useChannelStats";

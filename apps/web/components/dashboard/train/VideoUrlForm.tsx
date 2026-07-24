@@ -1,10 +1,10 @@
 "use client"
-import { motion } from "motion/react"
-import { Button } from "@repo/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@repo/ui/card"
-import { Input } from "@repo/ui/input"
-import { Progress } from "@repo/ui/progress"
-import { X, Loader2, RefreshCw, Upload, Plus } from "lucide-react"
+import * as motion from "motion/react-m";
+import { Button } from "@repo/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@repo/ui/card";
+import { Input } from "@repo/ui/input";
+import { Progress } from "@repo/ui/progress";
+import { X, Loader2, RefreshCw, Upload, Plus } from "lucide-react";
 import React from "react"
 
 type Video = {

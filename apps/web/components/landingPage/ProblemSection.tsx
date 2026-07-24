@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { AlertCircle, TrendingUp, Clock, Target } from "lucide-react";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 
 const ProblemSection = () => {
     const problems = [

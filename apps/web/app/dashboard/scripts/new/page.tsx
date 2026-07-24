@@ -1,18 +1,19 @@
 "use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { useScriptGeneration } from "@/hooks/useScriptGeneration"
-import { useSupabase } from "@/components/supabase-provider"
-import ScriptGenerationForm from "@/components/dashboard/scripts/ScriptGenerationForm"
-import ScriptOutputPanel from "@/components/dashboard/scripts/ScriptOutputPanel"
-import { ScriptHowItWorksGuide } from "@/components/dashboard/scripts/ScriptHowItWorksGuide"
-import { useAISetupGate } from "@/hooks/useAISetupGate"
-import { Skeleton } from "@repo/ui/skeleton"
-import { Badge } from "@repo/ui/badge"
-import { Sparkles } from "lucide-react"
-import { api } from "@/lib/api-client"
+import { useRouter, useSearchParams } from "next/navigation";
+import * as motion from "motion/react-m";
+import { useEffect, useState, Suspense } from "react";
+import { AnimatePresence } from "motion/react";
+import { useScriptGeneration } from "@/hooks/useScriptGeneration";
+import { useSupabase } from "@/components/supabase-provider";
+import ScriptGenerationForm from "@/components/dashboard/scripts/ScriptGenerationForm";
+import ScriptOutputPanel from "@/components/dashboard/scripts/ScriptOutputPanel";
+import { ScriptHowItWorksGuide } from "@/components/dashboard/scripts/ScriptHowItWorksGuide";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
+import { Skeleton } from "@repo/ui/skeleton";
+import { Badge } from "@repo/ui/badge";
+import { Sparkles } from "lucide-react";
+import { api } from "@/lib/api-client";
 import type { IdeationJob } from "@repo/validation"
 
 function NewScriptPageInner() {

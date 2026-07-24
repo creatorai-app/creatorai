@@ -9,7 +9,6 @@ import axios, {
   AxiosResponse,
   AxiosProgressEvent
 } from 'axios';
-import { createClient } from "@/lib/supabase/client";
 import { CREATOR_AI_CLIENT_HEADER, CREATOR_AI_USER_AGENT } from "@repo/validation";
 
 
@@ -107,8 +106,12 @@ axiosInstance.interceptors.request.use(
 
     if (customConfig.requireAuth) {
       try {
+        // Imported here rather than at module scope: @supabase/ssr is ~210kB and
+        // a static import put it in the first-load bundle of every page that
+        // touches this client, including marketing pages that never authenticate.
         const token = customConfig.accessToken
-          ?? (await createClient().auth.getSession()).data.session?.access_token;
+          ?? (await (await import("@/lib/supabase/client")).createClient().auth.getSession())
+            .data.session?.access_token;
 
         if (token) {
           config.headers['Authorization'] = `Bearer ${token}`;

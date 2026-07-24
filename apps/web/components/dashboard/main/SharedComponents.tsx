@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { Badge } from "@repo/ui/badge";
 import { Button } from "@repo/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";

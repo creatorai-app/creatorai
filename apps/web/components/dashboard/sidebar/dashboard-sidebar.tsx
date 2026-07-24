@@ -1,29 +1,28 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import Image from "next/image"
-import { motion, AnimatePresence } from "motion/react"
-
-import { Sheet, SheetContent } from "@repo/ui/sheet"
-import { Button } from "@repo/ui/button"
-import { cn } from "@/lib/utils"
-import { useMobile } from "@/hooks/use-mobile"
-import { Sidebar, SidebarBody, SidebarLink } from "@repo/ui/sidebar"
-import { Lock, Menu, PanelLeft } from "lucide-react"
-import { useSupabase } from "@/components/supabase-provider"
-
-import logo from "@/public/dark-logo.png"
-import HomeIcon from "./icons/HomeIcon"
-import SparklesIcon from "./icons/SparklesIcon"
-import SearchIcon from "./icons/SearchIcon"
-import FileTextIcon from "./icons/FileTextIcon"
-import ImageIcon from "./icons/ImageIcon"
-import MessageSquareIcon from "./icons/MessageSquareIcon"
-import BookOpenIcon from "./icons/BookopenIcon"
-import MicIcon from "./icons/MicIcon"
+import type React from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import { Sheet, SheetContent } from "@repo/ui/sheet";
+import { Button } from "@repo/ui/button";
+import { cn } from "@/lib/utils";
+import { useMobile } from "@/hooks/use-mobile";
+import { Sidebar, SidebarBody, SidebarLink } from "@repo/ui/sidebar";
+import { Lock, Menu, PanelLeft } from "lucide-react";
+import { useSupabase } from "@/components/supabase-provider";
+import logo from "@/public/dark-logo.png";
+import HomeIcon from "./icons/HomeIcon";
+import SparklesIcon from "./icons/SparklesIcon";
+import SearchIcon from "./icons/SearchIcon";
+import FileTextIcon from "./icons/FileTextIcon";
+import ImageIcon from "./icons/ImageIcon";
+import MessageSquareIcon from "./icons/MessageSquareIcon";
+import BookOpenIcon from "./icons/BookopenIcon";
+import MicIcon from "./icons/MicIcon";
 import { Clapperboard, Video } from "lucide-react"
 
 interface NavLink {

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { motion, type Variants } from "motion/react";
+import { type Variants } from "motion/react";
+import * as motion from "motion/react-m";
 import { Gift, CheckCircle2, ArrowRight } from "lucide-react";
 
 import { FAQ, STEPS, HIGHLIGHTS } from "./referral-program-data";

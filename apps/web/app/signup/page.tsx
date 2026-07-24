@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import * as motion from "motion/react-m";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,7 +19,7 @@ import { api } from "@/lib/api-client";
 import { AuroraBackground } from "@repo/ui/aurora-background";
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
 import Footer from "@/components/footer";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import logo from "@/public/dark-logo.png";
 import * as z from "zod";
 
@@ -127,6 +128,7 @@ function SignupForm() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return; // auth client still code-splitting in
     setErrors({});
     setTermsError(null);
 
@@ -177,6 +179,7 @@ function SignupForm() {
 
 
   const handleGoogleSignup = async () => {
+    if (!supabase) return; // auth client still code-splitting in
     if (!acceptedTerms) {
       setTermsError("You must accept the Terms of Service and Privacy Policy to continue.");
       return;

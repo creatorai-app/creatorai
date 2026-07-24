@@ -1,21 +1,21 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "motion/react"
+import { useState } from "react";
+import * as motion from "motion/react-m";
 import {
   Card, CardContent, CardHeader, CardTitle,
-} from "@repo/ui/card"
-import { Button } from "@repo/ui/button"
+} from "@repo/ui/card";
+import { Button } from "@repo/ui/button";
 import {
   Copy, Check, Download, RefreshCw, Save, CreditCard, Plus,
   Loader2, Sparkles, PenTool, Upload, CheckCircle2,
-} from "lucide-react"
-import { ScriptContentEditor } from "@/components/dashboard/scripts/ScriptContentEditor"
-import { toast } from "sonner"
-import { updateScript } from "@/lib/api/getScripts"
-import { api } from "@/lib/api-client"
-import { downloadBlob } from "@/lib/download"
-import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress"
+} from "lucide-react";
+import { ScriptContentEditor } from "@/components/dashboard/scripts/ScriptContentEditor";
+import { toast } from "sonner";
+import { updateScript } from "@/lib/api/getScripts";
+import { api } from "@/lib/api-client";
+import { downloadBlob } from "@/lib/download";
+import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress";
 import { GenerationPlaceholder } from "@/components/dashboard/common/GenerationPlaceholder"
 
 const SCRIPT_STEPS: GenerationProgressStep[] = [

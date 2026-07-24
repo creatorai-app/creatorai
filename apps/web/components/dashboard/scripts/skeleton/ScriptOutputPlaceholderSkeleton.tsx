@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "motion/react"
+import * as motion from "motion/react-m";
 import { Wand } from "lucide-react"
 
 interface ScriptOutputPlaceholderProps {

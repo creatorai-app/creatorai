@@ -1,23 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "motion/react"
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card"
-import { Button } from "@repo/ui/button"
-import { Badge } from "@repo/ui/badge"
-import { Progress } from "@repo/ui/progress"
+import { useState } from "react";
+import * as motion from "motion/react-m";
+import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
+import { Button } from "@repo/ui/button";
+import { Badge } from "@repo/ui/badge";
+import { Progress } from "@repo/ui/progress";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@repo/ui/accordion"
+} from "@repo/ui/accordion";
 import {
   RefreshCw, Zap, Target, Repeat, Shuffle, Heart, Megaphone,
   Timer, FileText, Copy, Check, TrendingUp, BarChart3,
   AlertTriangle, Layers, Flame, Eye, ArrowUpRight, ChevronRight, Loader2,
-} from "lucide-react"
-import { toast } from "sonner"
+} from "lucide-react";
+import { toast } from "sonner";
 import type { StoryBuilderResult, TensionMapping, SectionScore } from "@repo/validation"
 
 interface StoryBuilderResultsProps {

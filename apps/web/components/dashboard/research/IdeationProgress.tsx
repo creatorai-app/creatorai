@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { Progress } from "@repo/ui/progress";
 import { Loader2, CheckCircle2, Brain, TrendingUp, Lightbulb, Shield, Save } from "lucide-react";

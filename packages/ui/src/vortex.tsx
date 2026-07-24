@@ -1,7 +1,7 @@
 import { cn } from "./lib/utils";
 import React, { useEffect, useRef } from "react";
 import { createNoise3D } from "simplex-noise";
-import { motion } from "motion/react";
+import * as motion from "motion/react-m";
 
 interface VortexProps {
     children?: any;

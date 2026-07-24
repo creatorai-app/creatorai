@@ -1,21 +1,22 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
-import Link from "next/link"
-import { motion, AnimatePresence } from "motion/react"
-import { Button } from "@repo/ui/button"
-import { Card, CardContent } from "@repo/ui/card"
-import { Textarea } from "@repo/ui/textarea"
-import { Label } from "@repo/ui/label"
-import { cn } from "@repo/ui/lib/utils"
-import { Sparkles, Loader2, Wand2, Lock, UploadCloud, X, Pencil, Ban } from "lucide-react"
+import { useRef, useEffect, useState } from "react";
+import Link from "next/link";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import { Button } from "@repo/ui/button";
+import { Card, CardContent } from "@repo/ui/card";
+import { Textarea } from "@repo/ui/textarea";
+import { Label } from "@repo/ui/label";
+import { cn } from "@repo/ui/lib/utils";
+import { Sparkles, Loader2, Wand2, Lock, UploadCloud, X, Pencil, Ban } from "lucide-react";
 import {
   VIDEO_ASPECT_RATIOS,
   VIDEO_DURATION_SECONDS,
   VIDEO_INPUT_IMAGE_MIME_TYPES,
   MAX_VIDEO_INPUT_IMAGE_BASE64_BYTES,
   requiredImageRange,
-} from "@repo/validation"
+} from "@repo/validation";
 import type { useVideoGeneration } from "@/hooks/useVideoGeneration"
 
 type Vm = ReturnType<typeof useVideoGeneration>
