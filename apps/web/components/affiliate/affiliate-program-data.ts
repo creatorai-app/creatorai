@@ -40,7 +40,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: "How are referrals tracked?",
     answer:
-      "Each affiliate gets a unique link (tryscriptai.com/?ref=YOURCODE). When someone signs up through your link and subscribes to a paid plan, the sale is automatically attributed to you. The referral is remembered in the visitor's browser for 30 days, so they don't have to buy on the same visit.",
+      "Each affiliate gets a unique link (trycreatorai.com/?ref=YOURCODE). When someone signs up through your link and subscribes to a paid plan, the sale is automatically attributed to you. The referral is remembered in the visitor's browser for 30 days, so they don't have to buy on the same visit.",
   },
   {
     question: "What is a promo code and how do I get one?",
@@ -50,7 +50,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: "How does the promo code discount work at checkout?",
     answer:
-      "Share the code itself, or the link version (tryscriptai.com/?promo=YOURCODE) which applies the discount automatically at checkout so nobody has to remember to type it. Unless stated otherwise on the code, the discount applies to the buyer's first payment — your commission still runs across their renewals, up to 12 payments.",
+      "Share the code itself, or the link version (trycreatorai.com/?promo=YOURCODE) which applies the discount automatically at checkout so nobody has to remember to type it. Unless stated otherwise on the code, the discount applies to the buyer's first payment — your commission still runs across their renewals, up to 12 payments.",
   },
   {
     question: "Do I get anything on Creator AI itself for being an affiliate?",

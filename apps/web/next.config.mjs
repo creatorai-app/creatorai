@@ -147,7 +147,7 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          { key: "Server", value: "CreatorAI/1.0 (+https://tryscriptai.com)" },
+          { key: "Server", value: "CreatorAI/1.0 (+https://trycreatorai.com)" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

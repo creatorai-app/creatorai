@@ -4,7 +4,7 @@ import { createSupabaseClient, getSupabaseServiceEnv } from "@repo/supabase";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ADMIN_EMAIL = process.env.CAREERS_ADMIN_EMAIL || "afrinxnahar@gmail.com";
-const FROM_EMAIL = process.env.CAREERS_FROM_EMAIL || "Creator AI Careers <notifications@tryscriptai.com>";
+const FROM_EMAIL = process.env.CAREERS_FROM_EMAIL || "Creator AI Careers <notifications@trycreatorai.com>";
 
 function escapeHtml(str: string): string {
   return str

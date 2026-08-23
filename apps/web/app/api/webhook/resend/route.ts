@@ -3,8 +3,12 @@ import { Resend } from "resend";
 import { Webhook } from "svix";
 import { createSupabaseClient, getSupabaseServiceEnv } from "@repo/supabase";
 
-const OWN_DOMAIN = "tryscriptai.com";
-const SUPPORT_INBOX = "support@tryscriptai.com";
+// Both domains stay listed through the tryscriptai.com → trycreatorai.com move:
+// mail sent to the old support address still arrives addressed to it, and old
+// automated senders are still in flight, so neither of these can be a single
+// value until the old domain is retired.
+const OWN_DOMAINS = ["trycreatorai.com", "tryscriptai.com"];
+const SUPPORT_INBOXES = ["support@trycreatorai.com", "support@tryscriptai.com"];
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
@@ -54,13 +58,13 @@ export async function POST(request: NextRequest) {
   const sender = parseAddress(from);
   const recipients = (to ?? []).map((a) => parseAddress(a).email).filter(Boolean);
 
-  // Loop guard: drop anything originating from our own domain (self-sent / forward artifacts).
-  if (!sender.email || sender.email.endsWith(`@${OWN_DOMAIN}`)) {
+  // Loop guard: drop anything originating from our own domains (self-sent / forward artifacts).
+  if (!sender.email || OWN_DOMAINS.some((d) => sender.email.endsWith(`@${d}`))) {
     console.warn(`[resend-webhook] dropped self-origin email id=${email_id} from=${sender.email}`);
     return NextResponse.json({ received: true, skipped: "self-origin" });
   }
 
-  if (!recipients.includes(SUPPORT_INBOX)) {
+  if (!recipients.some((r) => SUPPORT_INBOXES.includes(r))) {
     return NextResponse.json({ received: true, skipped: "not-support" });
   }
 

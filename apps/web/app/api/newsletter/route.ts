@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
     const { error } = await resend.emails.send({
-      from: "Creator AI <notifications@tryscriptai.com>",
-      to: "support@tryscriptai.com",
+      from: "Creator AI <notifications@trycreatorai.com>",
+      to: "support@trycreatorai.com",
       replyTo: email,
       subject: "📰 New Newsletter Subscription",
       html: `<div style="font-family: Arial, sans-serif; color: #333; background: #f9f9f9; padding: 20px;">

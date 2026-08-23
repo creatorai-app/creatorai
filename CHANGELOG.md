@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **MINOR** – new features, non-breaking enhancements.
 - **PATCH** – backwards-compatible bug fixes, perf, docs, chores.
 
-The canonical version lives in the root [`package.json`](./package.json) and is mirrored in `apps/web` and `apps/api`. Every release gets a tag `vX.Y.Z` and a GitHub Release. The public-facing changelog page ([/changelog](https://tryscriptai.com/changelog)) is sourced from `apps/web/lib/changelog-data.ts` — keep it in sync with this file.
+The canonical version lives in the root [`package.json`](./package.json) and is mirrored in `apps/web` and `apps/api`. Every release gets a tag `vX.Y.Z` and a GitHub Release. The public-facing changelog page ([/changelog](https://trycreatorai.com/changelog)) is sourced from `apps/web/lib/changelog-data.ts` — keep it in sync with this file.
 
 How to cut a release:
 
@@ -29,6 +29,33 @@ How to cut a release:
 
 ### Added
 - Placeholder for upcoming features.
+
+---
+
+## [1.5.0] – 2026-08-23
+
+The blog stops being a TypeScript file and becomes a real CMS: posts live in the database, are written in the admin dashboard against a live SEO audit, and can be scheduled. The product also moves to its own domain, trycreatorai.com.
+
+### Added
+- **Blog CMS** — `blog_posts` carries the full content model (SEO title/description, focus keyword, supporting keywords, FAQs, videos, read time, author), with every rule of the SEO checklist enforced as a CHECK constraint on publish. The 44 live posts were seeded out of `lib/blog-data.ts`.
+- **One blog editor** for create and edit, covering all 18 fields plus repeatable FAQ and video rows, with a live SEO panel running the same `auditPost` rules as `pnpm seo:audit` and a publish-blocker summary before saving.
+- **Post scheduling** — `published_at` is settable directly, so posts can be backdated or dated forward; a future date holds the post out of the live blog, sitemap, and feeds until then. The admin list shows a scheduled badge, focus keyword, and SEO pass/gap state.
+- **Named author byline** — posts are bylined from `lib/authors.ts` with an avatar, role, bio, and socials, and the page emits `Person` author schema with `sameAs` instead of a faceless Organization.
+- **Rotating quote footer** on the dashboard, picked client-side so it can't trip a hydration mismatch.
+- Blog coverage grew with comparison, alternatives, and workflow posts, plus a YouTube-algorithm category.
+
+### Changed
+- **Domain migration** — tryscriptai.com → trycreatorai.com across the app, emails, Caddy, docs, and `llms.txt`; the X handle becomes `@joincreatorai`. Seeded database rows that the code can't reach (sender pool, email template HTML, self-linking post content) move in an idempotent migration, since email clients don't follow a 301 for a logo image.
+- **Public blog reads from the database** via `lib/blog-source.ts` — the anon key plus the published-only RLS policy keeps the pages statically renderable.
+- **Blog consolidation, 55 posts to 44** — cannibalising clusters merged into hubs with 301s and no redirect chains, head terms retargeted to winnable ones, first-party pricing and performance data added, and publish dates respaced from same-day clusters to 1–2 per week.
+- The SEO audit now flags em dashes and over-length meta descriptions.
+
+### Fixed
+- **Dubs failed after ElevenLabs had already run.** The precheck only covered one second of audio, and a stale `DUBBING_CREDIT_MULTIPLIER=15` in `.env.example` overrode the code default of 3, billing 5×. Cost is now checked for the full duration up front and reported with real numbers.
+- **Every admin blog list load 400'd** on a PostgREST embed naming a constraint that leads to `auth.users`, which isn't exposed for embedding. The byline now comes from `blog_posts.author_name`.
+- **Mass assignment on blog create/update** — request bodies were spread straight into the Supabase write, letting an admin set `id`, `author_id`, or `created_at`. Both paths now go through a writable-field whitelist.
+- Blog post pages each emitted the whole blog's schema instead of their own.
+- `author_id` was `NOT NULL ... ON DELETE CASCADE`, so deleting one admin account would have deleted the entire blog. Now nullable, `ON DELETE SET NULL`.
 
 ---
 

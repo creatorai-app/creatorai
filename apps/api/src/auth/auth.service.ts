@@ -44,7 +44,7 @@ export class AuthService implements OnModuleInit {
 
     try {
       await this.resend.emails.send({
-        from: 'Creator AI <no-reply@tryscriptai.com>',
+        from: 'Creator AI <no-reply@trycreatorai.com>',
         to: email,
         subject: 'Your Password Reset Code',
         html,

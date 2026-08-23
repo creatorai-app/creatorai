@@ -569,7 +569,7 @@ function RequestsTab() {
                   <div className="border-t border-slate-800 pt-4 space-y-2">
                     <label className="text-sm font-medium text-slate-300">Admin notes</label>
                     <p className="text-xs text-slate-500">
-                      On approval, this message is emailed to the applicant from <span className="text-slate-400">support@tryscriptai.com</span>.
+                      On approval, this message is emailed to the applicant from <span className="text-slate-400">support@trycreatorai.com</span>.
                     </p>
                     <Textarea
                       value={adminNotes}

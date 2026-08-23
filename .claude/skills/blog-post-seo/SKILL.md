@@ -46,7 +46,7 @@ phrase the post ranks for and the thing every check below measures.
 8. Keyword **density ≥ 0.90%** AND the `focusKeyword` appears **≥ 7 times**,
    placed naturally (intro, a subheading, body, a FAQ, conclusion). Do NOT stuff —
    if 7 reads unnatural, the focus keyword is too narrow; broaden it.
-9. **URL ≥ 70 chars** (`https://tryscriptai.com/blog/<slug>`). Only applies to NEW
+9. **URL ≥ 70 chars** (`https://trycreatorai.com/blog/<slug>`). Only applies to NEW
    posts — never rename a published slug without a 301 redirect (breaks rankings).
 10. Link out to ≥ 1 **external** authority (YouTube docs, research, news) with a
     real dofollow `[text](https://…)` — our markdown renders external links as

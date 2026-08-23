@@ -19,7 +19,7 @@ import { config } from "dotenv";
 import { loadPublishedPosts } from "../lib/blog-source.ts";
 import type { BlogPost } from "../lib/blog-types.ts";
 
-const SITE = "https://tryscriptai.com";
+const SITE = "https://trycreatorai.com";
 const here = dirname(fileURLToPath(import.meta.url));
 const pub = resolve(here, "../public");
 
@@ -31,7 +31,7 @@ config({ path: resolve(here, "../../../.env") });
 const blogPosts = await loadPublishedPosts();
 
 // --- Static, human-curated site facts (entity clarity + E-E-A-T for AI) ------
-const HEADER = `# Creator AI (tryscriptai.com)
+const HEADER = `# Creator AI (trycreatorai.com)
 
 > Creator AI is an AI-powered production platform for YouTube creators. It learns
 > your voice from your existing videos and generates scripts, thumbnails,
@@ -48,7 +48,7 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 
 - Website: ${SITE}
 - Product name: Creator AI
-- Also known as: Script AI, tryscriptai
+- Also known as: Script AI, tryscriptai.com (former domain, now redirects here)
 - Free tier: ${SITE}/signup (no credit card)
 
 ## Key Features

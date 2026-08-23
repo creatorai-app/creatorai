@@ -1,7 +1,21 @@
-tryscriptai.com, www.tryscriptai.com {
+trycreatorai.com, www.trycreatorai.com {
 	reverse_proxy web:3000
 }
 
+# Old domain: kept for a year so existing links, email logos and search results
+# keep resolving. 301 preserves path and query, so /blog/x?ref=y lands on the
+# same page on the new domain and passes the ranking signal across.
+tryscriptai.com, www.tryscriptai.com {
+	redir https://trycreatorai.com{uri} permanent
+}
+
+api.trycreatorai.com {
+	reverse_proxy api:8000
+}
+
+# The old API host is proxied, not redirected: a browser drops the body of a
+# POST across a 301 and blocks credentialed CORS requests that redirect, so any
+# still-cached bundle pointing here would break. It serves the same API instead.
 api.tryscriptai.com {
 	reverse_proxy api:8000
 }

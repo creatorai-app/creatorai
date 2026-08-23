@@ -4,7 +4,7 @@ This guide walks you through deploying CreatorAI (Next.js frontend + NestJS API 
 
 > **Why US East (us-east-1)?** It's AWS's largest, lowest-latency region for the bulk of US users (and fine for Canada/EU too), and US regions get the **full data-transfer allowance** — unlike Mumbai, which effectively halves it. If your users skew to the West Coast, pick **US West (Oregon, us-west-2)** instead; everything in this guide is identical, just swap the region name when you create the instance. Lightsail bundle pricing is the same across US regions. Your Vertex AI location stays `global`, so the region change doesn't affect generation.
 
-> **Prerequisites**: A domain name (e.g. tryscriptai.com), a Supabase project, your `.env` values ready, and a GCP service account JSON for Vertex AI.
+> **Prerequisites**: A domain name (e.g. trycreatorai.com), a Supabase project, your `.env` values ready, and a GCP service account JSON for Vertex AI.
 
 ---
 
@@ -105,8 +105,8 @@ Go to your domain registrar (Namecheap, GoDaddy, Cloudflare, etc.) and add these
 
 Wait for DNS propagation (usually 5–30 minutes, up to 48 hours).
 
-- `tryscriptai.com` → your frontend (Next.js)
-- `api.tryscriptai.com` → your backend (NestJS)
+- `trycreatorai.com` → your frontend (Next.js)
+- `api.trycreatorai.com` → your backend (NestJS)
 
 ---
 
@@ -204,11 +204,11 @@ REDIS_URL=redis://:abcd1234@redis:6379
 GOOGLE_APPLICATION_CREDENTIALS=/app/vertex-sa.json
 
 # Real domain (apps/web/.env)
-NEXT_PUBLIC_BACKEND_URL=https://api.tryscriptai.com
-NEXT_PUBLIC_BASE_URL=https://tryscriptai.com
+NEXT_PUBLIC_BACKEND_URL=https://api.trycreatorai.com
+NEXT_PUBLIC_BASE_URL=https://trycreatorai.com
 
 # Real domain + prod mode (apps/api/.env)
-FRONTEND_PROD_URL=https://tryscriptai.com
+FRONTEND_PROD_URL=https://trycreatorai.com
 NODE_ENV=production
 ```
 
@@ -231,7 +231,7 @@ Paste the **entire** JSON contents (copied from the file on your PC), then **Ctr
 > ✅ **You do not need to create these files.** `docker-compose.prod.yml`, `Dockerfile.web`, `Dockerfile.api`, `Dockerfile.worker`, and `Caddyfile` all ship in the repo. The sections below are kept for **reference only** so you know what each file does. Skip straight to **Part 10 — Build and Launch** unless you want to understand or customize them.
 >
 > Two things you *may* want to edit:
-> - `Caddyfile` — change `tryscriptai.com` to your domain if different.
+> - `Caddyfile` — change `trycreatorai.com` to your domain if different.
 > - `docker-compose.prod.yml` — the Redis password defaults to `abcd1234`; change it for production (and match it in your `REDIS_URL`).
 
 ### Reference: `docker-compose.prod.yml`
@@ -390,8 +390,21 @@ nano Caddyfile
 Paste:
 
 ```caddyfile
-tryscriptai.com, www.tryscriptai.com {
+trycreatorai.com, www.trycreatorai.com {
     reverse_proxy web:3000
+}
+
+api.trycreatorai.com {
+    reverse_proxy api:8000
+}
+```
+
+If you are migrating from an older domain, keep it pointed at the same static IP
+and add these two blocks so old links keep working (see the repo `Caddyfile`):
+
+```caddyfile
+tryscriptai.com, www.tryscriptai.com {
+    redir https://trycreatorai.com{uri} permanent
 }
 
 api.tryscriptai.com {
@@ -404,7 +417,7 @@ That's it. Caddy handles:
 - HTTP → HTTPS redirect
 - Certificate renewal
 
-> Replace `tryscriptai.com` with your actual domain if different.
+> Replace `trycreatorai.com` with your actual domain if different.
 
 ---
 
@@ -437,8 +450,8 @@ docker compose -f docker-compose.prod.yml logs caddy
 
 ### Test it
 
-- Open `https://tryscriptai.com` — you should see your app with a valid SSL certificate.
-- Open `https://api.tryscriptai.com` — should respond (or show a Nest welcome).
+- Open `https://trycreatorai.com` — you should see your app with a valid SSL certificate.
+- Open `https://api.trycreatorai.com` — should respond (or show a Nest welcome).
 
 ---
 

@@ -236,10 +236,10 @@ const PrivacyPage = () => {
                 </Link>{" "}
                 page or email us at{" "}
                 <Link
-                  href="mailto:support@tryscriptai.com"
+                  href="mailto:support@trycreatorai.com"
                   className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors"
                 >
-                  support@tryscriptai.com
+                  support@trycreatorai.com
                 </Link>
               </p>
             </PolicySection>

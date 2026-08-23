@@ -204,7 +204,7 @@ async function sendAlert(input: {
 
   try {
     await resend.emails.send({
-      from: 'Creator AI <notifications@tryscriptai.com>',
+      from: 'Creator AI <notifications@trycreatorai.com>',
       to: alertRecipient(),
       subject: `[Creator AI error] ${scope}: ${input.name} — ${input.message.slice(0, 90)}`,
       html: `<div style="font-family:Arial,sans-serif;color:#0f172a;background:#f8fafc;padding:20px;">

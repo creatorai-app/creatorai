@@ -165,7 +165,7 @@ export class AffiliateService {
       (s ?? '—').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     await this.resend.emails.send({
-      from: 'Creator AI <notifications@tryscriptai.com>',
+      from: 'Creator AI <notifications@trycreatorai.com>',
       to: this.adminEmail,
       subject: `New Affiliate Application from ${data.full_name}`,
       html: `<div style="font-family:Arial,sans-serif;color:#333;background:#f9f9f9;padding:20px">
@@ -276,9 +276,9 @@ export class AffiliateService {
 
     try {
       await this.resend.emails.send({
-        from: 'Creator AI Support <support@tryscriptai.com>',
+        from: 'Creator AI Support <support@trycreatorai.com>',
         to: input.recipientEmail,
-        replyTo: 'support@tryscriptai.com',
+        replyTo: 'support@trycreatorai.com',
         subject: 'Your affiliate application was approved',
         html: `<div style="font-family:Arial,sans-serif;color:#333;line-height:1.6;max-width:600px;margin:auto;padding:20px">
           <h2 style="color:#4F46E5;margin-top:0">You're approved as a Creator AI affiliate</h2>

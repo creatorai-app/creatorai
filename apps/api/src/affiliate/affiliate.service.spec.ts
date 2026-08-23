@@ -200,7 +200,7 @@ describe('AffiliateService', () => {
       );
       expect(sendMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: expect.stringContaining('support@tryscriptai.com'),
+          from: expect.stringContaining('support@trycreatorai.com'),
           to: 'applicant@test.com',
           subject: expect.stringContaining('approved'),
           html: expect.stringContaining('Welcome aboard!'),

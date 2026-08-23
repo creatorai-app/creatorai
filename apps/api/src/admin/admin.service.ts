@@ -901,9 +901,9 @@ export class AdminService {
     if (error || !mail) throw new NotFoundException('Mail not found');
 
     const { error: sendErr } = await this.resend.emails.send({
-      from: 'Creator AI <notifications@tryscriptai.com>',
+      from: 'Creator AI <notifications@trycreatorai.com>',
       to: mail.from_email,
-      replyTo: 'support@tryscriptai.com',
+      replyTo: 'support@trycreatorai.com',
       subject,
       html: `<div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">${html}</div>`,
     });

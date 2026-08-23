@@ -51,7 +51,7 @@ const webSiteJsonLd = {
   name: siteConfig.name,
   alternateName: ["Creator AI App", "Script AI"],
   url: siteConfig.url,
-  sameAs: ["https://trycreatorai.com/"],
+  sameAs: ["https://tryscriptai.com/"],
 }
 
 const webAppJsonLd = {
