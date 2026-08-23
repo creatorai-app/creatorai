@@ -137,30 +137,32 @@ export class DubbingProcessor extends WorkerHost {
       //    bytes never touch this worker on the way in.
       await job.log(`Sending to ElevenLabs for ${languageLabel} dubbing...`);
       let handle: DubHandle;
+      // The two backends report the source duration at different moments: the legacy
+      // endpoint returns it from the create call, the project API only once it has
+      // probed the media, mid-poll. Both have to re-price, so the value is settled
+      // per path rather than once here.
+      let expectedDurationSec: number | null = null;
       if (usesDubbingV1(targetLanguage)) {
         handle = await this.createDubbingV1Project(apiKey, inputUrl, targetLanguage);
       } else {
-        const { dubbingId, expectedDurationSec } = await this.createElevenLabsDub(
+        const legacy = await this.createElevenLabsDub(
           apiKey, inputUrl, targetLanguage, targetAccent,
         );
-        handle = { kind: 'legacy', dubbingId };
+        handle = { kind: 'legacy', dubbingId: legacy.dubbingId };
+        expectedDurationSec = legacy.expectedDurationSec;
 
         // durationSeconds came from the browser and set both the price and the plan cap.
         // This is the first independent reading of it, so check before the expensive
         // part runs rather than after. (The project API reports it a step later, once
         // the source is probed — see waitForDubbingV1Project.)
         this.assertDurationWithinPlan(planName, expectedDurationSec);
-      }
 
-      // Re-price against the vendor's reading too, not just the cap. The browser sets
-      // the reservation and a tampered `durationSeconds` would otherwise buy a
-      // 45-minute dub for one second's worth of credits.
-      if (expectedDurationSec) {
-        chargedCredits = await this.settleCredits(userId, chargedCredits, expectedDurationSec, job);
-        await this.updateJob(projectId, { credits_consumed: chargedCredits });
-      } else {
-        // No independent reading available: the browser's number stands as the price.
-        this.logger.warn(`Dub ${projectId}: ElevenLabs returned no duration — priced on the client's ${durationSeconds}s.`);
+        // Re-price against the vendor's reading too, not just the cap. The browser sets
+        // the reservation and a tampered `durationSeconds` would otherwise buy a
+        // 45-minute dub for one second's worth of credits.
+        chargedCredits = await this.reprice(
+          userId, chargedCredits, expectedDurationSec, job, projectId, durationSeconds,
+        );
       }
 
       await this.throwIfCancelled(job.id!);
@@ -169,7 +171,12 @@ export class DubbingProcessor extends WorkerHost {
 
       // 2. Poll until it reports done.
       if (handle.kind === 'project') {
-        await this.waitForDubbingV1Project(apiKey, handle, job, planName);
+        expectedDurationSec = await this.waitForDubbingV1Project(apiKey, handle, job, planName);
+        // Same re-pricing the legacy path does up front, just at the first moment the
+        // project API has actually read the source. Still before the dub is handed over.
+        chargedCredits = await this.reprice(
+          userId, chargedCredits, expectedDurationSec, job, projectId, durationSeconds,
+        );
       } else {
         await this.waitForElevenLabsDub(apiKey, handle.dubbingId, job);
       }
@@ -392,10 +399,10 @@ export class DubbingProcessor extends WorkerHost {
     handle: Extract<DubHandle, { kind: 'project' }>,
     job: Job<DubJobData>,
     planName?: string | null,
-  ): Promise<void> {
+  ): Promise<number | null> {
     const base = `${ELEVENLABS_API}/dubbing/project/${handle.projectId}`;
     const deadline = Date.now() + ELEVENLABS_TIMEOUT_MS;
-    let durationChecked = false;
+    let probedDurationSec: number | null = null;
 
     while (Date.now() < deadline) {
       await this.throwIfCancelled(job.id!);
@@ -412,9 +419,9 @@ export class DubbingProcessor extends WorkerHost {
 
       // Available as soon as the source has been probed, which is before any
       // synthesis runs — the same "check it early" window the legacy path gets.
-      if (!durationChecked && project.media?.duration_s) {
-        this.assertDurationWithinPlan(planName, project.media.duration_s);
-        durationChecked = true;
+      if (probedDurationSec === null && project.media?.duration_s) {
+        probedDurationSec = project.media.duration_s;
+        this.assertDurationWithinPlan(planName, probedDurationSec);
       }
 
       if (project.status === 'ready') {
@@ -422,7 +429,7 @@ export class DubbingProcessor extends WorkerHost {
           `${base}/language/${handle.languageId}`,
           apiKey,
         );
-        if (language.status === 'completed') return;
+        if (language.status === 'completed') return probedDurationSec;
         if (language.status === 'failed') {
           throw new Error(`Dubbing failed: ${language.error?.message ?? 'ElevenLabs did not say why'}`);
         }
@@ -514,6 +521,28 @@ export class DubbingProcessor extends WorkerHost {
       const detail = await upload.text().catch(() => '');
       throw new Error(`Failed to store the dubbed file (${upload.status}): ${detail.slice(0, 300)}`);
     }
+  }
+
+  /**
+   * Charge what the vendor's own reading of the source says, not what the browser
+   * claimed. Shared by both backends because each learns the real duration at a
+   * different point in the run; a null reading means the client's number stands.
+   */
+  private async reprice(
+    userId: string,
+    chargedCredits: number,
+    vendorDurationSec: number | null,
+    job: Job<DubJobData>,
+    projectId: string,
+    clientDurationSec: number,
+  ): Promise<number> {
+    if (!vendorDurationSec) {
+      this.logger.warn(`Dub ${projectId}: ElevenLabs returned no duration — priced on the client's ${clientDurationSec}s.`);
+      return chargedCredits;
+    }
+    const settled = await this.settleCredits(userId, chargedCredits, vendorDurationSec, job);
+    await this.updateJob(projectId, { credits_consumed: settled });
+    return settled;
   }
 
   /** Poll until the dub reports `dubbed`. Bounded so a stuck job cannot pin a slot. */
