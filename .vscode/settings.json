@@ -1,0 +1,8 @@
+{
+  // Use the TypeScript the repo actually compiles with, not the newer one VS Code
+  // bundles. Without this the editor reports TS 6 deprecations (baseUrl,
+  // moduleResolution=node10) that no build in this repo produces, and the
+  // suggested fixes for them do not compile on TS 5.9.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

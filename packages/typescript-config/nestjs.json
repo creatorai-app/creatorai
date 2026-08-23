@@ -8,6 +8,9 @@
     "forceConsistentCasingInFileNames": false,
     "incremental": true,
     "module": "commonjs",
+    // Deprecated in TS 6, removed in TS 7, but it cannot move yet: "bundler"
+    // needs TS >= 6 to pair with "commonjs" (TS5095 on 5.9), and node16/nodenext
+    // force "module" to match, which changes Nest's emit. Change with the TS upgrade.
     "moduleResolution": "Node10",
     "noFallthroughCasesInSwitch": false,
     "noImplicitAny": false,
