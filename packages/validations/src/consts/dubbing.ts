@@ -37,16 +37,19 @@ export function isDubDurationAllowed(planName: string | null | undefined, durati
 export const DUBBING_CANCEL_PREFIX = 'dubbing:cancel:';
 
 /**
- * The 29 target languages the ElevenLabs dubbing API accepts — it synthesises with
- * eleven_multilingual_v2, so this is that model's coverage. Offering anything outside
- * the list produces audio in the wrong language rather than an error, so the dropdown
- * must mirror it exactly.
+ * Every language the dubbing UI offers. Two backends serve this one list:
  *
- * Norwegian was dropped when dubbing moved to ElevenLabs: it only exists on
- * eleven_flash_v2_5, which dubbing does not use.
+ *  - the default: POST /v1/dubbing, which accepts 32 languages and is the only route
+ *    that takes `target_accent` and renders video for us;
+ *  - DUBBING_V1_LANGUAGES below: POST /v1/dubbing/project with `model_id=dubbing_v1`,
+ *    whose coverage is Eleven v3's ~85 languages.
+ *
+ * A language the chosen backend does not accept is rejected outright (400
+ * `unsupported_target_language`), so every entry here must be reachable by one of them.
  */
 export const supportedLanguages = [
   { value: 'ar', label: 'Arabic' },
+  { value: 'bn', label: 'Bengali' },
   { value: 'bg', label: 'Bulgarian' },
   { value: 'cs', label: 'Czech' },
   { value: 'da', label: 'Danish' },
@@ -78,6 +81,26 @@ export const supportedLanguages = [
 ] as const;
 
 export type SupportedLanguage = typeof supportedLanguages[number]['value'];
+
+export function isSupportedDubLanguage(code: string): boolean {
+  return supportedLanguages.some((l) => l.value === code);
+}
+
+/**
+ * Languages the default /v1/dubbing endpoint refuses — it has no model selector and
+ * tops out at its own 32. These route through the dubbing *project* API pinned to
+ * `model_id=dubbing_v1`, which reaches everything Eleven v3 speaks.
+ *
+ * Adding one is two lines: the entry in `supportedLanguages` above and its code here.
+ * The cost is that dubbing_v1 renders audio only (the worker muxes it back over the
+ * source video) and ignores `target_accent`, so a language with accents worth offering
+ * is better left on the default route.
+ */
+export const DUBBING_V1_LANGUAGES: readonly string[] = ['bn'];
+
+export function usesDubbingV1(code: string): boolean {
+  return DUBBING_V1_LANGUAGES.includes(code);
+}
 
 /**
  * Accents the dubbing API can aim for, per language. `target_accent` is marked

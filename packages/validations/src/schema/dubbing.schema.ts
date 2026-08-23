@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isSupportedDubLanguage } from '../consts/dubbing';
 
 // Step 1: ask the API for a signed URL to PUT the source media straight to GCS.
 // The API plan-gates and enforces size before issuing the URL.
@@ -19,7 +20,12 @@ export const SignDubUploadSchema = z.object({
 // verified object. No raw URL from the client — the API derives it from objectName.
 export const CreateDubSchema = z.object({
   objectName: z.string().min(1, { message: 'objectName is required' }),
-  targetLanguage: z.string().min(1, { message: 'Target language is required' }),
+  // Checked against the offered list, not just non-empty: the language decides which
+  // ElevenLabs backend the worker uses, and an unknown code would pick the wrong one.
+  targetLanguage: z
+    .string()
+    .min(1, { message: 'Target language is required' })
+    .refine(isSupportedDubLanguage, { message: 'Unsupported target language' }),
   targetAccent: z.string().max(40).optional(),
   isVideo: z.boolean(),
   mediaName: z.string().min(1, { message: 'Media name is required' }).max(100),

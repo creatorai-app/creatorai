@@ -11,6 +11,10 @@ import {
   maxDubSecondsForPlan,
   isDubDurationAllowed,
   supportedLanguages,
+  isSupportedDubLanguage,
+  DUBBING_V1_LANGUAGES,
+  usesDubbingV1,
+  accentsFor,
 } from './dubbing';
 import {
   calculateDubbingCreditsByDuration,
@@ -115,15 +119,28 @@ assert.equal(CreateDubSchema.safeParse({ targetLanguage: 'es', isVideo: false, m
 // Cancel prefix is stable — the API sets it, the worker polls it.
 assert.equal(DUBBING_CANCEL_PREFIX, 'dubbing:cancel:');
 
-// The dropdown must mirror what the dubbing API accepts. A language it does not
-// support comes back as audio in the WRONG language rather than an error, so an
-// extra entry here is silently broken output.
-assert.equal(supportedLanguages.length, 29);
+// The dropdown must mirror what the dubbing API accepts: a language neither backend
+// takes is a 400 the user cannot act on.
+assert.equal(supportedLanguages.length, 30);
 const languageCodes = supportedLanguages.map((l) => l.value);
 assert.equal(new Set(languageCodes).size, languageCodes.length, 'duplicate language code');
 assert.equal(languageCodes.includes('no' as never), false, 'Norwegian is flash-v2.5 only');
-for (const code of ['en', 'es', 'ar', 'uk', 'ta', 'fil', 'ms', 'sv', 'zh']) {
+for (const code of ['en', 'es', 'ar', 'uk', 'ta', 'fil', 'ms', 'sv', 'zh', 'bn']) {
   assert.equal(languageCodes.includes(code as never), true, `missing ${code}`);
+}
+assert.equal(isSupportedDubLanguage('bn'), true);
+assert.equal(isSupportedDubLanguage('xx'), false);
+
+// Routing: only the listed languages take the project/dubbing_v1 route, and every one
+// of them must be offered in the dropdown — a code in one list and not the other is a
+// language that either cannot be picked or gets sent to the endpoint that refuses it.
+assert.equal(usesDubbingV1('bn'), true);
+assert.equal(usesDubbingV1('es'), false);
+assert.equal(usesDubbingV1('hi'), false);
+for (const code of DUBBING_V1_LANGUAGES) {
+  assert.equal(languageCodes.includes(code as never), true, `${code} routes via v1 but is not offered`);
+  // dubbing_v1 has no target_accent, so an accent menu there would be a lie.
+  assert.deepEqual(accentsFor(code), [], `${code} routes via v1 and cannot offer accents`);
 }
 for (const { value, label } of supportedLanguages) {
   assert.equal(/^[a-z]{2,3}$/.test(value), true, `not an ISO code: ${value}`);

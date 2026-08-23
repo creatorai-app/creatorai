@@ -390,7 +390,12 @@ export default function NewDubbing() {
                           <Languages className="h-4 w-4" />
                           Target Language
                         </Label>
-                        <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                        {/* Clear the accent too: it belongs to the old language, and
+                            most languages (Bengali included) offer none at all. */}
+                        <Select
+                          value={targetLanguage}
+                          onValueChange={(value) => { setTargetLanguage(value); setTargetAccent(""); }}
+                        >
                           <SelectTrigger id="target-language">
                             <SelectValue placeholder="Select a language" />
                           </SelectTrigger>
