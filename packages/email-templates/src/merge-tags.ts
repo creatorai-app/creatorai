@@ -27,7 +27,7 @@ export const MERGE_TAGS: { tag: string; description: string; fallback: string }[
   { tag: 'planTier', description: 'Current plan (Starter, Creator, …)', fallback: 'Starter' },
   { tag: 'channelName', description: 'Connected channel name', fallback: 'your channel' },
   { tag: 'email', description: "Recipient's email address", fallback: '' },
-  { tag: 'unsubscribeUrl', description: 'Unsubscribe link', fallback: 'mailto:support@tryscriptai.com?subject=Unsubscribe' },
+  { tag: 'unsubscribeUrl', description: 'Unsubscribe link', fallback: 'mailto:support@trycreatorai.com?subject=Unsubscribe' },
 ];
 
 // Replaces every {{tag}} with the recipient's value (or the documented fallback).
@@ -39,7 +39,7 @@ export function resolveMergeTags(html: string, user: RecipientMergeData): string
     planTier: user.planTier || 'Starter',
     channelName: (user.channelConnected && user.channelName) || 'your channel',
     email: user.email,
-    unsubscribeUrl: user.unsubscribeUrl || 'mailto:support@tryscriptai.com?subject=Unsubscribe',
+    unsubscribeUrl: user.unsubscribeUrl || 'mailto:support@trycreatorai.com?subject=Unsubscribe',
   };
   return html.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, tag: string) =>
     tag in values ? values[tag] : match,

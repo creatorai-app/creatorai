@@ -44,8 +44,8 @@ export class SupportService {
     const safeBody = escapeHtml(body);
 
     const { data, error } = await this.resend.emails.send({
-      from: 'Creator AI <notifications@tryscriptai.com>',
-      to: 'support@tryscriptai.com',
+      from: 'Creator AI <notifications@trycreatorai.com>',
+      to: 'support@trycreatorai.com',
       replyTo: email,
       subject,
       html: `<div style="font-family: Arial, sans-serif; color: #333; background: #f9f9f9; padding: 20px;">

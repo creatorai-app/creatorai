@@ -168,8 +168,8 @@ export default async function BlogDetailPage({
               </Link>
               <p className="text-purple-100/90 text-sm mt-5">
                 Questions? Reach us at{" "}
-                <a href="mailto:support@tryscriptai.com" className="underline hover:text-white">
-                  support@tryscriptai.com
+                <a href="mailto:support@trycreatorai.com" className="underline hover:text-white">
+                  support@trycreatorai.com
                 </a>
               </p>
             </div>

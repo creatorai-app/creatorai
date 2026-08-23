@@ -28,6 +28,25 @@ export interface ChangelogRelease {
  */
 export const releases: ChangelogRelease[] = [
   {
+    version: "1.5.0",
+    date: "2026-08-23",
+    tag: "minor",
+    title: "New home, and a real blog behind the scenes",
+    summary:
+      "Creator AI moves to trycreatorai.com. The blog gets a proper editor with a live SEO check, scheduled publishing and a named author, and dubbing now tells you what a dub costs before it runs.",
+    changes: [
+      { type: "added", description: "Blog posts are now written and edited in one place, with a live SEO check while you write instead of a report afterwards." },
+      { type: "added", description: "Scheduled publishing: give a post a future date and it goes live on its own; past dates place it correctly in the archive." },
+      { type: "added", description: "Posts now carry a named author with a photo, bio and links, so you can see who is behind a recommendation." },
+      { type: "added", description: "A small footer on every dashboard page with a rotating creator quote." },
+      { type: "added", description: "New guides covering tool comparisons, alternatives and end-to-end workflows." },
+      { type: "changed", description: "Creator AI now lives at trycreatorai.com, with @joincreatorai on X. Old links redirect." },
+      { type: "changed", description: "The blog was consolidated from 55 posts to 44 hubs, with real pricing and performance numbers from our own usage. Every retired URL redirects to its replacement." },
+      { type: "fixed", description: "Dubbing could fail with \"Insufficient credits\" partway through. The full cost is now checked and shown up front, and a pricing mistake that overcharged some dubs is corrected." },
+      { type: "fixed", description: "Each blog post now describes only itself to search engines, instead of the entire blog." },
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-08-15",
     tag: "minor",

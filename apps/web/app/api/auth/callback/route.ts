@@ -24,10 +24,10 @@ async function sendWelcomeEmail(
   if (!resend) return;
   try {
     await resend.emails.send({
-      from: 'Creator AI <onboarding@tryscriptai.com>',
+      from: 'Creator AI <onboarding@trycreatorai.com>',
       to: email,
       subject: 'Welcome to Creator AI!',
-      replyTo: 'support@tryscriptai.com',
+      replyTo: 'support@trycreatorai.com',
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: auto; padding: 20px;">
           <h1 style="color: #4F46E5; margin-bottom: 10px;">Welcome aboard, ${escapeHtml(full_name)}! 🎉</h1>
@@ -35,13 +35,13 @@ async function sendWelcomeEmail(
           <p>We're excited to have you join <strong>Creator AI</strong>. 🚀</p>
           <p>
             Open your dashboard:
-            <a href="https://tryscriptai.com/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">
+            <a href="https://trycreatorai.com/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">
               Go to Dashboard
             </a>
           </p>
 
           <p style="margin-top: 30px;">Have any questions? Just reply to this email or reach us at 
-            <a href="mailto:support@tryscriptai.com" style="color: #4F46E5; text-decoration: none;">support@tryscriptai.com</a>.
+            <a href="mailto:support@trycreatorai.com" style="color: #4F46E5; text-decoration: none;">support@trycreatorai.com</a>.
           </p>
 
           <p style="margin-top: 20px;">Cheers,<br/>The Creator AI Team</p>
@@ -56,8 +56,8 @@ async function sendAdminNotification(full_name: string, email: string, resend: R
   if (!resend) return;
   try {
     await resend.emails.send({
-      from: 'Creator AI <notifications@tryscriptai.com>',
-      to: 'support@tryscriptai.com',
+      from: 'Creator AI <notifications@trycreatorai.com>',
+      to: 'support@trycreatorai.com',
       subject: 'New User Sign Up Notification',
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: auto; padding: 20px;">

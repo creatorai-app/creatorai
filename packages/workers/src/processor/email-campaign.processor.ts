@@ -29,7 +29,7 @@ interface Recipient {
 
 function frontendBaseUrl(): string {
   return process.env.NODE_ENV === 'production'
-    ? process.env.FRONTEND_PROD_URL || 'https://tryscriptai.com'
+    ? process.env.FRONTEND_PROD_URL || 'https://trycreatorai.com'
     : process.env.FRONTEND_DEV_URL || 'http://localhost:3000';
 }
 

@@ -98,8 +98,8 @@ export default function ContactPage() {
                 </CardTitle>
                 <p className="text-sm text-center text-slate-600 dark:text-slate-300">
                   Or email us directly at{" "}
-                  <a href="mailto:support@tryscriptai.com" className="text-purple-600 dark:text-purple-400 hover:underline">
-                    support@tryscriptai.com
+                  <a href="mailto:support@trycreatorai.com" className="text-purple-600 dark:text-purple-400 hover:underline">
+                    support@trycreatorai.com
                   </a>
                 </p>
               </CardHeader>

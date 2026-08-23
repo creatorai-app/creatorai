@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/blog-source";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://tryscriptai.com";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://trycreatorai.com";
 
 export const revalidate = 3600;
 

@@ -69,9 +69,9 @@ const AffiliateTermsPage = () => (
     <PolicySection id="tracking" title="3. Links, Promo Codes & Attribution">
       <p>
         You can promote Creator AI in two ways: a tracking link
-        (<code>tryscriptai.com/?ref=YOURCODE</code>) that you generate yourself, and a promo
+        (<code>trycreatorai.com/?ref=YOURCODE</code>) that you generate yourself, and a promo
         code issued to you by our team, which gives your audience a discount and is shared
-        as a code or as a link (<code>tryscriptai.com/?promo=YOURCODE</code>).
+        as a code or as a link (<code>trycreatorai.com/?promo=YOURCODE</code>).
       </p>
       <p>
         Both are stored in the visitor&apos;s browser for <strong>30 days</strong> from the
@@ -281,8 +281,8 @@ const AffiliateTermsPage = () => (
     <PolicySection id="contact" title="14. Contact">
       <p>
         Questions about the program, a payout, or a promo code? Email us at{" "}
-        <Link href="mailto:support@tryscriptai.com" className={linkClass}>
-          support@tryscriptai.com
+        <Link href="mailto:support@trycreatorai.com" className={linkClass}>
+          support@trycreatorai.com
         </Link>{" "}
         or use our{" "}
         <Link href="/contact-us" className={linkClass}>

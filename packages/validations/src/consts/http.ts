@@ -1,4 +1,4 @@
-export const CREATOR_AI_USER_AGENT = 'CreatorAI/1.0 (+https://tryscriptai.com)';
+export const CREATOR_AI_USER_AGENT = 'CreatorAI/1.0 (+https://trycreatorai.com)';
 export const CREATOR_AI_CLIENT_HEADER = 'X-Creator-AI-Agent';
 
 export function mergeCreatorAiHeaders(headers?: HeadersInit): Headers {

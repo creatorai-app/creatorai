@@ -123,7 +123,7 @@ export class SubscriptionReminderService {
     if (!this.resend) return;
     const baseUrl =
       process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_PROD_URL || 'https://tryscriptai.com'
+        ? process.env.FRONTEND_PROD_URL || 'https://trycreatorai.com'
         : process.env.FRONTEND_DEV_URL || 'http://localhost:3000';
     const expiresOn = new Date(periodEnd).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -138,7 +138,7 @@ export class SubscriptionReminderService {
     });
     try {
       await this.resend.emails.send({
-        from: 'Creator AI <no-reply@tryscriptai.com>',
+        from: 'Creator AI <no-reply@trycreatorai.com>',
         to,
         subject: `Your ${planName} plan expires in ${timeLeft}`,
         html,

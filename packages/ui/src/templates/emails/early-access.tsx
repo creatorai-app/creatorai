@@ -30,7 +30,7 @@ const EarlyAccessEmail = () => {
             We'll email you once your access is ready. Get ready to create amazing content with Creator AI!
           </p>
           <a
-            href="https://v0-script-ai-app.vercel.app/"
+            href="https://trycreatorai.com/"
             target='_blank'
             className="inline-block bg-purple-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-purple-700"
           >
@@ -45,8 +45,8 @@ const EarlyAccessEmail = () => {
           </p>
           <p className="text-gray-600 text-sm">
             Questions? Reach out to us at{' '}
-            <a href="mailto:support@tryscriptai.com" className="text-purple-600 hover:underline">
-              support@tryscriptai.com
+            <a href="mailto:support@trycreatorai.com" className="text-purple-600 hover:underline">
+              support@trycreatorai.com
             </a>
           </p>
         </div>

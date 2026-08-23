@@ -3,11 +3,11 @@
 // on purpose: Outlook ignores <style> blocks, flexbox and most modern CSS.
 
 export const BRAND_NAME = 'Creator AI';
-export const BRAND_URL = 'https://tryscriptai.com';
+export const BRAND_URL = 'https://trycreatorai.com';
 
 // Transparent-background PNG, so it sits on the dark header band without the
 // black box the old asset had.
-export const LOGO_URL = 'https://tryscriptai.com/lighter%20email%20logo.png';
+export const LOGO_URL = 'https://trycreatorai.com/lighter%20email%20logo.png';
 
 const FONT_STACK =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";

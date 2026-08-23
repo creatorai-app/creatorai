@@ -147,8 +147,8 @@ export default function AboutPage() {
                 <p>
                   <strong className="text-slate-800">Creator AI</strong> is an AI-powered production
                   platform for YouTube creators, available at{" "}
-                  <a href="https://tryscriptai.com" className="text-purple-600 hover:text-purple-700">
-                    tryscriptai.com
+                  <a href="https://trycreatorai.com" className="text-purple-600 hover:text-purple-700">
+                    trycreatorai.com
                   </a>
                   . Founded to solve the gap between generic AI tools and YouTube-specific content
                   creation, Creator AI learns each creator&apos;s unique voice from their existing
@@ -169,7 +169,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Website</dt>
-                  <dd className="text-slate-600">tryscriptai.com</dd>
+                  <dd className="text-slate-600">trycreatorai.com</dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-800 mb-1">Core capability</dt>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL || "https://tryscriptai.com";
+  process.env.NEXT_PUBLIC_BASE_URL || "https://trycreatorai.com";
 
 export const siteConfig = {
   name: "Creator AI",
@@ -22,7 +22,7 @@ export const siteConfig = {
     "content creation tool",
   ],
   author: "Creator AI",
-  twitterHandle: "@tryscriptai",
+  twitterHandle: "@joincreatorai",
   locale: "en_US",
 } as const;
 

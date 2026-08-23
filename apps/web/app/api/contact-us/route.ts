@@ -28,8 +28,8 @@ async function sendContactMail(
   const safeMessage = escapeHtml(message);
 
   return resend.emails.send({
-    from: 'Creator AI <notifications@tryscriptai.com>',
-    to: 'support@tryscriptai.com',
+    from: 'Creator AI <notifications@trycreatorai.com>',
+    to: 'support@trycreatorai.com',
     replyTo: email,
     subject: 'New Contact Message',
     html: `<div style="font-family: Arial, sans-serif; color: #333; background: #f9f9f9; padding: 20px;">

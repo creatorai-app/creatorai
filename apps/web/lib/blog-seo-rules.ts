@@ -6,7 +6,7 @@
  * script, so both need the same rules, and one implementation keeps them honest.
  */
 
-const SITE = "https://tryscriptai.com";
+const SITE = "https://trycreatorai.com";
 
 export interface AuditablePost {
   slug: string;
@@ -51,7 +51,9 @@ export function auditPost(p: AuditablePost): AuditResult {
   const keywordCount = countOcc(c, fk);
   const density = words ? ((keywordCount * fk.split(/\s+/).length) / words) * 100 : 0;
   const externalLinks = [...c.matchAll(/\]\((https?:\/\/[^)]+)\)/g)].filter(
-    (m) => !/tryscriptai\.com/.test(m[1]!),
+    // Both domains: posts written before the move link to themselves absolutely
+    // on tryscriptai.com, and those are still our own pages, not external ones.
+    (m) => !/(trycreatorai|tryscriptai)\.com/.test(m[1]!),
   ).length;
   const internalLinks = [...c.matchAll(/\]\((\/[^)]+)\)/g)].length;
   const url = `${SITE}/blog/${p.slug}`;
