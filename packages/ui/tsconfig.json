@@ -14,7 +14,6 @@
     "declarationMap": true,
     "incremental": false,
     "target": "ES2022",
-    "baseUrl": ".",
     "paths": {
       "@repo/ui/*": ["./src/*"]
     }
