@@ -1,10 +1,27 @@
-trycreatorai.com, www.trycreatorai.com {
+trycreatorai.com {
 	reverse_proxy web:3000
 }
 
-# Old domain: kept for a year so existing links, email logos and search results
-# keep resolving. 301 preserves path and query, so /blog/x?ref=y lands on the
-# same page on the new domain and passes the ranking signal across.
+# www folds into the apex so only one hostname serves the site. Listing http://
+# explicitly turns off Caddy's automatic HTTP-to-HTTPS redirect for this host,
+# so port 80 reaches the apex in a single hop instead of two.
+http://www.trycreatorai.com, https://www.trycreatorai.com {
+	redir https://trycreatorai.com{uri} permanent
+}
+
+# Old domain on port 80. Without this block Caddy's automatic HTTPS sends
+# http://tryscriptai.com to https://tryscriptai.com first, which loops back to
+# the old domain before crossing over. Search Console's Change of Address check
+# fetches the http:// homepage and fails on that extra hop, so it is handled
+# here directly. ACME challenges are served ahead of routes, so certificates
+# for the old domain still renew normally.
+http://tryscriptai.com, http://www.tryscriptai.com {
+	redir https://trycreatorai.com{uri} permanent
+}
+
+# Old domain over TLS: kept for a year so existing links, email logos and search
+# results keep resolving. 301 preserves path and query, so /blog/x?ref=y lands on
+# the same page on the new domain and passes the ranking signal across.
 tryscriptai.com, www.tryscriptai.com {
 	redir https://trycreatorai.com{uri} permanent
 }
