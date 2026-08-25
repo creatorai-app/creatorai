@@ -32,5 +32,6 @@ jobs:
             git reset --hard origin/main
             docker compose -f docker-compose.prod.yml build
             docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
             docker image prune -f
             docker compose -f docker-compose.prod.yml ps
