@@ -11,10 +11,13 @@ import Link from "next/link";
 import { Button } from "@repo/ui/button";
 import { Badge } from "@repo/ui/badge";
 import { Skeleton } from "@repo/ui/skeleton";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
 
 function NewSubtitlePageInner() {
     const searchParams = useSearchParams();
     const scriptId = searchParams.get("scriptId") ?? undefined;
+    // Banner only — the uploader owns the blocked-click modal, since it owns submit.
+    const gate = useAISetupGate();
 
     return (
         <div className="min-h-screen bg-[#f8fafc]">
@@ -45,6 +48,8 @@ function NewSubtitlePageInner() {
                         )}
                     </motion.div>
                 </div>
+
+                {gate.banner && <div className="mb-8">{gate.banner}</div>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-8 space-y-8">

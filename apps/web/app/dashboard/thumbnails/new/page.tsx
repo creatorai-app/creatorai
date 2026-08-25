@@ -80,6 +80,8 @@ function NewThumbnailPageInner() {
         )}
       </div>
 
+      {gate.banner && <div className="mb-8">{gate.banner}</div>}
+
       <div className="max-w-full mx-auto">
           <AnimatePresence mode="wait">
             {showOutput ? (

@@ -80,6 +80,8 @@ function NewScriptPageInner() {
         )}
       </div>
 
+      {gate.banner && <div className="mb-8">{gate.banner}</div>}
+
       <AnimatePresence mode="wait">
           {hook.showOutput ? (
             <motion.div

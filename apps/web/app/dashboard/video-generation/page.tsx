@@ -11,21 +11,29 @@ import { VideoHowItWorksGuide } from "@/components/dashboard/video-generation/Vi
 import { VideoUpgradeCard } from "@/components/dashboard/video-generation/VideoUpgradeCard"
 import { Button } from "@repo/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog"
+import { useAISetupGate } from "@/hooks/useAISetupGate"
 
 export default function VideoGenerationPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const vm = useVideoGeneration()
+  const gate = useAISetupGate()
 
   useEffect(() => {
     getVideoGenerationAccess().then((a) => setAllowed(a.allowed))
   }, [])
 
-  // UI is fully unlocked so everyone can explore the modes; the plan gate fires on
-  // Generate. The server still enforces the plan authoritatively regardless.
-  const locked = allowed === false
+  // UI is fully unlocked so everyone can explore the modes; the gates fire on
+  // Generate. Setup is checked before the plan because that's the order the API
+  // enforces. The server still enforces both authoritatively regardless.
+  const planLocked = allowed === false
+  const locked = gate.locked || planLocked
   const handleGenerate = async () => {
-    if (locked) {
+    if (gate.locked) {
+      gate.requestUnlock()
+      return
+    }
+    if (planLocked) {
       setShowUpgrade(true)
       return
     }
@@ -51,6 +59,8 @@ export default function VideoGenerationPage() {
         </Link>
       </div>
 
+      {gate.banner && <div className="mb-8">{gate.banner}</div>}
+
       <div className="mb-8">
         <VideoModeCards mode={vm.mode} onSelect={vm.setMode} locked={locked} disabled={vm.isGenerating} />
       </div>
@@ -71,6 +81,8 @@ export default function VideoGenerationPage() {
           <VideoUpgradeCard />
         </DialogContent>
       </Dialog>
+
+      {gate.modal}
     </div>
   )
 }
