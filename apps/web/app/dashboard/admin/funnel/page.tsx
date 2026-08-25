@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { api } from "@/lib/api-client"
+import { adminApi } from "@/hooks/useAdmin"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { AdminButton } from "@/components/admin/admin-button"
 import {
@@ -32,8 +33,6 @@ interface AdminSubscription {
   profiles: { user_id: string; full_name: string | null; name: string | null; email: string | null; credits: number | null } | null
 }
 
-const STATUSES = ["active", "on_trial", "past_due", "canceled", "expired", "unpaid"]
-
 function statusColor(s: string) {
   switch (s) {
     case "active": return "bg-green-900/40 text-green-400"
@@ -51,7 +50,8 @@ const userName = (s: AdminSubscription) => s.profiles?.full_name || s.profiles?.
 
 export default function AdminSubscriptionsPage() {
   const [page, setPage] = useState(1)
-  const [status, setStatus] = useState<string>("all")
+  const [planId, setPlanId] = useState<string>("all")
+  const [plans, setPlans] = useState<Array<{ id: string; name: string }>>([])
   const [data, setData] = useState<PaginatedResponse<AdminSubscription> | null>(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<AdminSubscription | null>(null)
@@ -60,7 +60,7 @@ export default function AdminSubscriptionsPage() {
     try {
       setLoading(true)
       const params = new URLSearchParams({ page: String(page), limit: "20" })
-      if (status !== "all") params.set("status", status)
+      if (planId !== "all") params.set("planId", planId)
       const res = await api.get<PaginatedResponse<AdminSubscription>>(
         `/api/v1/admin/subscriptions?${params}`,
         { requireAuth: true }
@@ -71,9 +71,13 @@ export default function AdminSubscriptionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, status])
+  }, [page, planId])
 
   useEffect(() => { fetchSubs() }, [fetchSubs])
+
+  useEffect(() => {
+    adminApi.getPlans().then(setPlans).catch(() => setPlans([]))
+  }, [])
 
   const totalPages = Math.ceil((data?.total || 0) / 20)
 
@@ -84,13 +88,13 @@ export default function AdminSubscriptionsPage() {
           <h1 className="text-2xl font-bold text-slate-100">Subscriptions</h1>
           <p className="text-slate-400 mt-1">Every user subscription with its plan and billing period</p>
         </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1) }}>
-          <SelectTrigger className="w-40 bg-slate-800 border-slate-700 text-slate-300">
-            <SelectValue placeholder="All statuses" />
+        <Select value={planId} onValueChange={(v) => { setPlanId(v); setPage(1) }}>
+          <SelectTrigger className="w-44 bg-slate-800 border-slate-700 text-slate-300">
+            <SelectValue placeholder="All plans" />
           </SelectTrigger>
           <SelectContent className="bg-slate-800 border-slate-700">
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            <SelectItem value="all">All plans</SelectItem>
+            {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
