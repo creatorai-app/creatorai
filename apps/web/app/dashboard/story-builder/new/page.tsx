@@ -66,6 +66,8 @@ export default function NewStoryBuilderPage() {
         )}
       </div>
 
+      {gate.banner && <div className="mb-8">{gate.banner}</div>}
+
       <AnimatePresence mode="wait">
           {hook.generatedResult ? (
             <motion.div

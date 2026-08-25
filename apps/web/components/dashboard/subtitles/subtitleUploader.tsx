@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as motion from "motion/react-m";
 import axios from "axios";
-import { UploadCloud, Loader2, Zap } from "lucide-react";
+import { UploadCloud, Loader2, Zap, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 // UI Components
@@ -16,6 +16,7 @@ import { Label } from "@repo/ui/label";
 // Hooks & Utils
 import { api, getApiErrorMessage } from "@/lib/api-client";
 import { formatUploadLimit, SUBTITLE_PAID_UPLOAD_BYTES, SUBTITLE_PAID_MAX_DURATION_SECONDS } from "@repo/validation";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
 
 type SubtitleUploaderProps = {
     onUploadSuccess: () => void;
@@ -23,6 +24,7 @@ type SubtitleUploaderProps = {
 };
 
 export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploaderProps) {
+    const gate = useAISetupGate();
     const [file, setFile] = useState<File | null>(null);
     const [title, setTitle] = useState("");
     const [duration, setDuration] = useState<number | null>(null);
@@ -79,6 +81,10 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        // Setup gate first — the API checks OnboardedGuard before the plan and
+        // upload limits, so a blocked user should see the setup modal, not a
+        // signed-URL failure after picking a file.
+        if (gate.locked) return gate.requestUnlock();
         if (!file || !duration) return toast.warning("Please select a valid file.");
 
         setIsUploading(true);
@@ -227,10 +233,17 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
 
                     <Button
                         type="submit"
-                        disabled={!file || !duration || isUploading}
+                        // Stays clickable while gated so the modal can explain why,
+                        // rather than leaving a dead button with no feedback.
+                        disabled={!gate.locked && (!file || !duration || isUploading)}
                         className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-10 h-12 rounded-xl text-base font-bold shadow-lg shadow-slate-200 transition-all active:scale-95"
                     >
-                        {isUploading ? (
+                        {gate.locked ? (
+                            <>
+                                <Lock className="mr-2 h-4 w-4" />
+                                {gate.step === "connect" ? "Connect your channel first" : "Train your AI first"}
+                            </>
+                        ) : isUploading ? (
                             <>
                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                 {progress > 0 && progress < 100 ? `Uploading ${progress}%` : "Processing..."}
@@ -239,6 +252,8 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
                     </Button>
                 </div>
             </form>
+
+            {gate.modal}
         </Card>
     );
 }

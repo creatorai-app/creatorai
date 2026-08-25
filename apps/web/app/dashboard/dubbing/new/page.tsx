@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { useDubbing } from "@/hooks/useDubbing";
+import { useAISetupGate } from "@/hooks/useAISetupGate";
 import { supportedLanguages, accentsFor } from "@repo/validation";
 import { downloadFile } from "@/lib/download";
 import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress";
@@ -122,11 +123,19 @@ export default function NewDubbing() {
   const [isDragging, setIsDragging] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const gate = useAISetupGate();
 
-  // UI stays explorable; the plan gate fires on the Dub action. Server enforces authoritatively.
-  const locked = allowed === false;
+  // Two independent gates. Setup (channel + training) is checked first because
+  // that's the order the API enforces — OnboardedGuard runs before the plan and
+  // credit checks, so showing the upgrade card first would be a lie.
+  const planLocked = allowed === false;
+  const locked = gate.locked || planLocked;
   const handleGenerate = () => {
-    if (locked) {
+    if (gate.locked) {
+      gate.requestUnlock();
+      return;
+    }
+    if (planLocked) {
       setShowUpgrade(true);
       return;
     }
@@ -207,6 +216,8 @@ export default function NewDubbing() {
           </p>
         </div>
       </motion.div>
+
+      {gate.banner && <div className="mb-8">{gate.banner}</div>}
 
       {accessLoading ? (
         <motion.div variants={itemVariants} className="flex justify-center py-24">
@@ -435,7 +446,9 @@ export default function NewDubbing() {
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all active:scale-[0.98]"
                         disabled={!locked && (!mediaFile || !targetLanguage || !mediaName.trim())}
                       >
-                        {locked ? (
+                        {gate.locked ? (
+                          <><Lock className="mr-2 h-4 w-4" /> {gate.step === "connect" ? "Connect your channel to dub" : "Train your AI to dub"}</>
+                        ) : planLocked ? (
                           <><Lock className="mr-2 h-4 w-4" /> Unlock audio dubbing</>
                         ) : (
                           <><Play className="mr-2 h-4 w-4" /> Dub {selectedLanguageLabel ? `to ${selectedLanguageLabel}` : "Media"}</>
@@ -456,6 +469,8 @@ export default function NewDubbing() {
           <DubbingUpgradeCard />
         </DialogContent>
       </Dialog>
+
+      {gate.modal}
     </motion.div>
   );
 }

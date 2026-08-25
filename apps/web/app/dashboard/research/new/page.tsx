@@ -262,6 +262,8 @@ export default function NewIdeationPage() {
         </p>
       </div>
 
+      {gate.banner && <div className="mb-8">{gate.banner}</div>}
+
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
         initial={{ opacity: 0 }}
