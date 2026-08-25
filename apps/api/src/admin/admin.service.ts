@@ -189,6 +189,61 @@ export class AdminService {
     };
   }
 
+  /**
+   * Raw purchase-intent event feed: who did what, when, on which tier and from
+   * which referrer. funnel_events.user_id has no FK to profiles, so the owning
+   * profile is joined in JS -- same pattern as getAllSubscriptions.
+   */
+  async getFunnelEvents(
+    page = 1,
+    limit = 25,
+    event?: string,
+    tier?: string,
+    search?: string,
+  ) {
+    let query = this.db
+      .from('funnel_events')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (event) query = query.eq('event', event);
+    if (tier) query = query.eq('tier', tier);
+
+    if (search) {
+      const sanitized = search.replace(/[%_\\]/g, '\\$&');
+      // Anonymous sessions have no profile, so the only text we can match
+      // server-side is the session id and the referrer.
+      query = query.or(
+        `session_id.ilike.%${sanitized}%,referrer.ilike.%${sanitized}%`,
+      );
+    }
+
+    const { data, error, count } = await query;
+    if (error) throw new BadRequestException(error.message);
+
+    const userIds = [
+      ...new Set((data ?? []).map((e) => e.user_id).filter(Boolean)),
+    ];
+    const { data: profiles } = userIds.length
+      ? await this.db
+          .from('profiles')
+          .select('user_id, full_name, name, email, avatar_url, credits')
+          .in('user_id', userIds)
+      : { data: [] };
+    const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+
+    return {
+      data: (data ?? []).map((e) => ({
+        ...e,
+        profile: e.user_id ? (profileMap.get(e.user_id) ?? null) : null,
+      })),
+      total: count ?? 0,
+      page,
+      limit,
+    };
+  }
+
   // ==================== USERS CRUD ====================
 
   async getUsers(page = 1, limit = 20, search?: string, role?: string) {
@@ -1078,14 +1133,14 @@ export class AdminService {
 
   // ==================== SUBSCRIPTIONS (Admin view) ====================
 
-  async getAllSubscriptions(page = 1, limit = 20, status?: string) {
+  async getAllSubscriptions(page = 1, limit = 20, planId?: string) {
     let query = this.db
       .from('subscriptions')
       .select('*, plans(id, name, price_monthly, credits_monthly)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
 
-    if (status) query = query.eq('status', status);
+    if (planId) query = query.eq('plan_id', planId);
 
     const { data, error, count } = await query;
     if (error) throw new BadRequestException(error.message);

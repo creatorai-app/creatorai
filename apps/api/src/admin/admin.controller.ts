@@ -51,6 +51,29 @@ export class AdminController {
     return this.adminService.getFunnel();
   }
 
+  @Get('funnel/events')
+  @ApiOperation({ summary: 'Raw purchase-intent events with the user, tier, referrer and time' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'event', required: false, enum: ['pricing_viewed', 'plan_clicked', 'checkout_started'] })
+  @ApiQuery({ name: 'tier', required: false })
+  @ApiQuery({ name: 'search', required: false, description: 'Matches session id or referrer' })
+  getFunnelEvents(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('event') event?: string,
+    @Query('tier') tier?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminService.getFunnelEvents(
+      Number(page) || 1,
+      Number(limit) || 25,
+      event,
+      tier,
+      search,
+    );
+  }
+
   // ==================== USERS ====================
 
   @Get('users')
@@ -459,13 +482,13 @@ export class AdminController {
   @ApiOperation({ summary: 'All subscriptions with owning user and plan' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'planId', required: false })
   getSubscriptions(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('status') status?: string,
+    @Query('planId') planId?: string,
   ) {
-    return this.adminService.getAllSubscriptions(Number(page) || 1, Number(limit) || 20, status);
+    return this.adminService.getAllSubscriptions(Number(page) || 1, Number(limit) || 20, planId);
   }
 
   // ==================== AFFILIATES ====================

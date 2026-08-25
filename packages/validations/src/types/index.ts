@@ -103,6 +103,29 @@ export interface AdminFunnel {
   byTier: FunnelTierBreakdown[]
 }
 
+export type FunnelEventName = 'pricing_viewed' | 'plan_clicked' | 'checkout_started'
+
+/** One raw purchase-intent event, with the owning profile when the visitor was signed in. */
+export interface AdminFunnelEvent {
+  id: string
+  event: FunnelEventName
+  /** Null for pricing_viewed — that step is not tied to a plan. */
+  tier: string | null
+  user_id: string | null
+  /** Anonymous per-tab id for logged-out visitors, `user:<id>` for checkout_started. */
+  session_id: string
+  referrer: string | null
+  created_at: string
+  profile: {
+    user_id: string
+    full_name: string | null
+    name: string | null
+    email: string | null
+    avatar_url: string | null
+    credits: number | null
+  } | null
+}
+
 export interface BlogFaq {
   question: string
   answer: string
