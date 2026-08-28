@@ -26,6 +26,7 @@ import { AdminModule } from './admin/admin.module';
 import { AffiliateModule } from './affiliate/affiliate.module';
 import { VideoGenerationModule } from './video-generation/video-generation.module';
 import { HannahModule } from './hannah/hannah.module';
+import { FreeToolsModule } from './free-tools/free-tools.module';
 import { EmailCampaignModule } from './email-campaign/email-campaign.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
@@ -71,6 +72,7 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
     AffiliateModule,
     VideoGenerationModule,
     HannahModule,
+    FreeToolsModule,
     EmailCampaignModule,
   ],
   controllers: [AppController, HealthController],
