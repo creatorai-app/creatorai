@@ -39,10 +39,20 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 
 - Homepage: https://trycreatorai.com
 - Features: https://trycreatorai.com/features
+- Free tools (no signup): https://trycreatorai.com/tools
 - Pricing: https://trycreatorai.com/pricing
 - About: https://trycreatorai.com/about-us
 - Contact: https://trycreatorai.com/contact-us
 - Sign up: https://trycreatorai.com/signup
+
+## Free Tools (no account required)
+
+Creator AI runs free, anonymous versions of its generators as public web tools.
+Each gives one full generation with no signup, no credit card, and no watermark;
+output is the user's to use commercially.
+
+- [YouTube Video Ideas Generator](https://trycreatorai.com/tools/youtube-video-ideas-generator): A YouTube video ideas generator turns a topic or niche into a complete video concept instead of a bare list of titles. This one gives you a primary title plus two variations, the angle that makes it different from what already exists, a specific first-15-seconds hook, the format that suits it, target keywords, and the talking points that structure the video. Your first idea is free and needs no account.
+- [YouTube Script Generator](https://trycreatorai.com/tools/youtube-script-generator): A YouTube script generator turns a video topic into a complete, ready-to-record script rather than an outline. This one writes the hook, the sections, the transitions and the closing call-to-action, paced to the duration you choose and written in spoken rhythm so it reads naturally on camera. Pick a tone, pick a length, and your first script is free with no account.
 
 ## How Creator AI Differs from ChatGPT and Claude
 
