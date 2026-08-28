@@ -1,5 +1,8 @@
 "use client";
-import { Link, ArrowRight } from "lucide-react";
+// `Link` here used to come from lucide-react, the chain-link icon, so the
+// primary landing-page CTA rendered as <svg href="/signup"> and never navigated.
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { BackgroundBeams } from "@repo/ui/background-beams";
 import { MButton } from "@repo/ui/moving-border";
 
