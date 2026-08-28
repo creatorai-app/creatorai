@@ -21,7 +21,7 @@ import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 
 /**
  * Metadata-only shape passed from the server page. The full post `content` and
- * `faqs` deliberately never cross to the client — the listing only ever needs
+ * `faqs` deliberately never cross to the client, the listing only ever needs
  * these fields, so shipping the bodies (~250kB) as JS was pure waste.
  */
 export interface BlogPostMeta {
@@ -163,6 +163,16 @@ export default function BlogListing({ posts }: { posts: BlogPostMeta[] }) {
               </h1>
               <p className="text-lg md:text-xl text-slate-600 max-w-xl mx-auto">
                 Tips, guides, and insights to help you create better content and grow your channel.
+              </p>
+              <p className="mt-5 text-slate-600">
+                Prefer to skip the reading?{" "}
+                <Link
+                  href="/tools"
+                  className="font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
+                >
+                  Try our free AI tools
+                </Link>
+                . No signup required.
               </p>
             </motion.div>
           </div>

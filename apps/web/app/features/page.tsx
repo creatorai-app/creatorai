@@ -170,6 +170,16 @@ export default function FeaturesPage() {
               <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
                 From brainstorming ideas to publishing your video, Creator AI helps you at every step of the content creation process.
               </p>
+              <p className="mt-6 text-slate-600">
+                Want to try before signing up?{" "}
+                <Link
+                  href="/tools"
+                  className="font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
+                >
+                  Use our free AI tools
+                </Link>
+                . No account needed.
+              </p>
             </motion.div>
           </div>
         </section>

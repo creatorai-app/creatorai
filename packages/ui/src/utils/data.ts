@@ -23,6 +23,7 @@ export const navItem: NavItemType[] = [
       { name: "Subtitles", href: "/features#subtitles", description: "Auto-generate video subtitles" },
     ],
   },
+  { name: "Free Tools", href: "/tools" },
   { name: "Pricing", href: "/pricing" },
   { name: "Blog", href: "/blog" },
   { name: "Contact Us", href: "/contact-us" },
@@ -33,6 +34,7 @@ type FooterSection = Record<string, { name: string; href: string }[]>
 export const footerItems: FooterSection = {
   "Product": [
     { name: "Features", href: "/features" },
+    { name: "Free Tools", href: "/tools" },
     { name: "Pricing", href: "/pricing" },
     { name: "Blog", href: "/blog" },
     { name: "Changelog", href: "/changelog" },
@@ -48,6 +50,11 @@ export const footerItems: FooterSection = {
   "Account": [
     { name: "Login", href: "/login" },
     { name: "Sign Up", href: "/signup" },
+  ],
+  "Free Tools": [
+    { name: "YouTube Script Generator", href: "/tools/youtube-script-generator" },
+    { name: "Video Ideas Generator", href: "/tools/youtube-video-ideas-generator" },
+    { name: "All free tools", href: "/tools" },
   ],
   "Legal": [
     { name: "Terms & Conditions", href: "/terms" },

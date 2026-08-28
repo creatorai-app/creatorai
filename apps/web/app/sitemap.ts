@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/blog-source";
+import { FREE_TOOLS } from "@/lib/free-tools";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://trycreatorai.com";
 
@@ -21,6 +22,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${BASE_URL}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/tools`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.9,
@@ -111,6 +118,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Free tool pages are top-of-funnel landing pages and rank on their own, so
+  // they carry the same priority as the other primary marketing routes.
+  const toolPages: MetadataRoute.Sitemap = FREE_TOOLS.map((tool) => ({
+    url: `${BASE_URL}/tools/${tool.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.9,
+  }));
+
   // lastModified is the last edit, not the publish date: an admin fixing a post
   // in the dashboard is exactly the signal a sitemap is meant to carry.
   const blogPages: MetadataRoute.Sitemap = (await getPublishedPosts()).map((post) => ({
@@ -120,5 +136,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...blogPages];
+  return [...staticPages, ...toolPages, ...blogPages];
 }

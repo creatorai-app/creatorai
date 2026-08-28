@@ -29,6 +29,16 @@ export default function CTASection() {
                         </MButton>
                     </Link>
 
+                    <p className="text-sm text-slate-400">
+                        Or{" "}
+                        <Link
+                            href="/tools"
+                            className="font-medium text-purple-300 underline underline-offset-2 hover:text-purple-200"
+                        >
+                            try the free tools first
+                        </Link>
+                        . No account needed.
+                    </p>
                 </div>
             </div>
 
