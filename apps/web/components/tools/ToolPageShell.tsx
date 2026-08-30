@@ -7,6 +7,7 @@ import SmoothScroll from "@/components/SmoothScroll"
 import BlogFaqAccordion from "@/components/blog/BlogFaqAccordion"
 import FeatureCard from "@/components/feature-card"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
+import ConnectChannelCta from "@/components/tools/ConnectChannelCta"
 import { FREE_TOOLS, type FreeTool } from "@/lib/free-tools"
 
 /**
@@ -109,7 +110,12 @@ export default function ToolPageShell({
             </p>
           </div>
 
-          <div className="relative z-10 mx-auto mt-10 max-w-3xl px-6">{children}</div>
+          <div className="relative z-10 mx-auto mt-10 max-w-3xl px-6">
+            {children}
+            <div className="mt-6 flex justify-center">
+              <ConnectChannelCta label={tool.connectLabel} />
+            </div>
+          </div>
         </section>
 
         {/* AEO: the direct answer, first thing after the tool */}

@@ -67,6 +67,8 @@ export interface FreeTool {
   sections: ToolSection[];
   /** Rendered as cards under the generator, the "why this one" pitch. */
   benefits: ToolBenefit[];
+  /** Label for the quiet "connect your channel" link under the generator. */
+  connectLabel: string;
   useCases: { title: string; description: string }[];
   faqs: ToolFaq[];
   /** Related blog posts by slug, rendered as internal links. */
@@ -161,6 +163,7 @@ export const FREE_TOOLS: FreeTool[] = [
         ],
       },
     ],
+    connectLabel: "Connect your channel for personalized ideas",
     benefits: [
       {
         icon: Layers,
@@ -331,6 +334,7 @@ export const FREE_TOOLS: FreeTool[] = [
         ],
       },
     ],
+    connectLabel: "Connect your channel for scripts in your own voice",
     benefits: [
       {
         icon: Wand2,

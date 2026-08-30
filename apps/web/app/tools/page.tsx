@@ -5,6 +5,7 @@ import Footer from "@/components/footer"
 import SmoothScroll from "@/components/SmoothScroll"
 import FeatureCard from "@/components/feature-card"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
+import ConnectChannelCta from "@/components/tools/ConnectChannelCta"
 import { FREE_TOOLS } from "@/lib/free-tools"
 import { CORE_FEATURES, EXTRA_FEATURES } from "@/lib/product-features"
 
@@ -62,6 +63,9 @@ export default function ToolsPage() {
             </p>
             <div className="mt-8 flex justify-center">
               <GoogleSignupCta source="tools-hub-hero" label="Get started free" />
+            </div>
+            <div className="mt-5 flex justify-center">
+              <ConnectChannelCta label="Connect your channel and train the model for a personalized experience" />
             </div>
           </div>
 
