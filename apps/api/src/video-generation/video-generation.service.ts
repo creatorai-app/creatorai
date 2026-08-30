@@ -249,7 +249,14 @@ export class VideoGenerationService {
       const result = await ai.models.generateContent({
         model: GEMINI_TEXT_MODEL,
         contents: [{ role: 'user', parts: [{ text: 'Give me one fresh, surprising video prompt idea.' }] }],
-        config: { systemInstruction: system, temperature: 1.1, maxOutputTokens: 200 } as any,
+        // thinkingLevel minimal: Gemini 3 otherwise spends the whole maxOutputTokens
+        // budget on thoughts and returns a truncated fragment. A one-line prompt needs none.
+        config: {
+          systemInstruction: system,
+          temperature: 1.1,
+          maxOutputTokens: 200,
+          thinkingConfig: { thinkingLevel: 'minimal' },
+        } as any,
       });
       const prompt =
         ((result as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? result?.text ?? '')

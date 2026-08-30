@@ -81,9 +81,7 @@ export class YoutubeService {
       params: searchParams,
       headers: { Authorization: `Bearer ${accessToken}` },
       timeout: 15000,
-    }).catch(() => {
-      throw new InternalServerErrorException('Failed to fetch videos from YouTube');
-    });
+    }).catch(ytFailure('videos'));
 
     const items = searchRes.data.items;
     if (!items?.length) {
@@ -156,9 +154,6 @@ export class YoutubeService {
   }
 
   async getChannelStats(userId: string, forceSync?: boolean): Promise<ChannelStats> {
-
-    console.log('forceSync', forceSync);
-
     if (forceSync) {
       const { data: usageData, error: usageError } = await this.supabase.rpc('use_feature', {
         p_user_id: userId,
@@ -187,9 +182,7 @@ export class YoutubeService {
         params: { part: 'snippet,statistics', mine: 'true' },
         headers: { Authorization: `Bearer ${accessToken}` },
         timeout: 15000,
-      }).catch(() => {
-        throw new InternalServerErrorException('Failed to fetch channel info from YouTube');
-      });
+      }).catch(ytFailure('channel info'));
 
       const channelItem = channelRes.data.items?.[0];
       if (!channelItem) {
@@ -210,9 +203,7 @@ export class YoutubeService {
         },
         headers: { Authorization: `Bearer ${accessToken}` },
         timeout: 15000,
-      }).catch(() => {
-        throw new InternalServerErrorException('Failed to fetch top videos from YouTube');
-      });
+      }).catch(ytFailure('top videos'));
 
       // Fetch recent videos (up to 5)
       const recentSearchRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
@@ -406,4 +397,18 @@ export class YoutubeService {
       throw new BadRequestException('YouTube connection expired. Please reconnect your channel.');
     }
   }
+}
+
+/**
+ * Google puts the actionable part ('quotaExceeded', 'authError') in the response
+ * body; swallowing it left every failure as an indistinguishable 500.
+ */
+function ytFailure(what: string): (error: unknown) => never {
+  return (error) => {
+    const res = axios.isAxiosError(error) ? error.response : undefined;
+    const detail = res?.data?.error?.errors?.[0]?.reason ?? res?.data?.error?.message;
+    throw new InternalServerErrorException(
+      `Failed to fetch ${what} from YouTube${detail ? ` (${res?.status} ${detail})` : ''}`,
+    );
+  };
 }

@@ -100,17 +100,30 @@ Use this to personalize answers ("you have X credits left", "your last script wa
         config: {
           systemInstruction,
           temperature: 0.7,
-          maxOutputTokens: 600,
+          maxOutputTokens: 1000,
+          // Gemini 3 thinks at 'high' unless told otherwise, and thought tokens come out
+          // of maxOutputTokens — at 600 it spent ~573 thinking and cut every answer off
+          // mid-sentence. Hannah reads a fixed knowledge base; she needs none of it.
+          thinkingConfig: { thinkingLevel: 'minimal' },
         },
       });
     } catch {
       throw new InternalServerErrorException('Hannah is unavailable right now. Please try again.');
     }
 
-    const reply =
-      (result as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? result?.text ?? '';
-    if (!reply) throw new InternalServerErrorException('Hannah returned an empty response.');
+    const candidate = (result as any)?.candidates?.[0];
+    const reply = candidate?.content?.parts?.[0]?.text ?? result?.text ?? '';
+    if (reply) return { reply };
 
-    return { reply };
+    // A blocked candidate comes back with no parts at all. That is the safety filter
+    // doing its job on someone baiting the public bot, not an outage — answer in band
+    // rather than 500ing and paging ourselves.
+    const finishReason: string | undefined = candidate?.finishReason;
+    if (finishReason && finishReason !== 'STOP' && finishReason !== 'MAX_TOKENS') {
+      return { reply: "I can't help with that one — but ask me anything about Creator AI and I'm all yours 🙂" };
+    }
+    throw new InternalServerErrorException(
+      `Hannah returned an empty response (finishReason: ${finishReason ?? 'none'}).`,
+    );
   }
 }

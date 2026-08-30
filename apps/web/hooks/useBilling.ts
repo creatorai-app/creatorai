@@ -6,32 +6,13 @@ import { toast } from "sonner";
 import { useSupabase } from "@/components/supabase-provider";
 import { trackFunnel } from "@/lib/funnel";
 import { readAttribution } from "@/lib/attribution";
-
-interface Plan {
-  id: string;
-  name: string;
-  price_monthly: number;
-  price_annual_monthly: number | null;
-  credits_monthly: number;
-  features: string[];
-  is_active: boolean;
-  tagline: string | null;
-  ls_variant_id: string | null;
-  ls_variant_id_annual: string | null;
-}
-
-interface SubscriptionInfo {
-  id: string;
-  status: string;
-  currentPeriodEnd: string | null;
-  lsSubscriptionId: string | null;
-}
-
-interface BillingInfo {
-  currentPlan: Plan | null;
-  subscription: SubscriptionInfo | null;
-  credits: number;
-}
+import {
+  getPlans,
+  getBillingInfo,
+  invalidateBilling,
+  type Plan,
+  type BillingInfo,
+} from "@/lib/api/billing";
 
 export function useBilling() {
   const { user, fetchUserProfile } = useSupabase();
@@ -42,31 +23,22 @@ export function useBilling() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
 
-  const fetchPlans = useCallback(async () => {
-    try {
-      const data = await api.get<Plan[]>("/api/v1/billing/plans");
-      setPlans(data);
-    } catch {
-      toast.error("Failed to load plans");
-    }
-  }, []);
-
-  const fetchBillingInfo = useCallback(async () => {
-    try {
-      const data = await api.get<BillingInfo>("/api/v1/billing/info", {
-        requireAuth: true,
-      });
-      setBillingInfo(data);
-    } catch {
-      toast.error("Failed to load billing info");
-    }
-  }, []);
-
   const loadAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchPlans(), fetchBillingInfo()]);
+    const [plansRes, infoRes] = await Promise.allSettled([getPlans(), getBillingInfo()]);
+    if (plansRes.status === "fulfilled") setPlans(plansRes.value);
+    if (infoRes.status === "fulfilled") setBillingInfo(infoRes.value);
+    if (plansRes.status === "rejected" || infoRes.status === "rejected") {
+      toast.error("Failed to load billing details");
+    }
     setLoading(false);
-  }, [fetchPlans, fetchBillingInfo]);
+  }, []);
+
+  /** Re-read from the server rather than the cached window — billing just changed. */
+  const refresh = useCallback(async () => {
+    invalidateBilling();
+    await loadAll();
+  }, [loadAll]);
 
   useEffect(() => {
     loadAll();
@@ -113,7 +85,7 @@ export function useBilling() {
       toast.success("Subscription cancelled", {
         description: "You have been switched to the free plan.",
       });
-      await loadAll();
+      await refresh();
       // Refresh the shared profile so the header credit badge updates immediately.
       if (user?.id) await fetchUserProfile(user.id);
     } catch (err: unknown) {
@@ -123,7 +95,7 @@ export function useBilling() {
     } finally {
       setCancelLoading(false);
     }
-  }, [loadAll, user?.id, fetchUserProfile]);
+  }, [refresh, user?.id, fetchUserProfile]);
 
   return {
     plans,
@@ -134,6 +106,6 @@ export function useBilling() {
     cancelLoading,
     subscribe,
     cancelSubscription,
-    refresh: loadAll,
+    refresh,
   };
 }
