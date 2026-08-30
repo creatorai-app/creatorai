@@ -1,54 +1,36 @@
 import Link from "next/link"
-import {
-  ArrowRight,
-  Check,
-  Clapperboard,
-  ImageIcon,
-  Languages,
-  Sparkles,
-  Subtitles,
-  Video,
-} from "lucide-react"
+import { ArrowRight, Sparkles, Zap, Lock, Wand2 } from "lucide-react"
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
 import Footer from "@/components/footer"
+import FeatureCard from "@/components/feature-card"
+import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
 import { FREE_TOOLS } from "@/lib/free-tools"
+import { CORE_FEATURES, EXTRA_FEATURES } from "@/lib/product-features"
 
 /**
- * The /tools hub. Two jobs: rank for "free ai tools for youtube", and pass link
- * equity down to each tool page. Everything above the fold is a link into a
- * tool, because a hub nobody clicks through is just a list.
+ * The /tools hub. The tools themselves are the first thing under the hero,
+ * because someone landing here came to use one, not to read about them. The
+ * pitch comes after, once they have seen what is on offer.
  */
 
-const IN_APP_TOOLS = [
+const WHY_FREE_TOOLS = [
   {
-    icon: Video,
-    name: "AI Studio",
-    description: "Train the AI on your own videos so everything after it sounds like you.",
-    href: "/features#ai-studio",
+    icon: Wand2,
+    title: "Real generators, not demos",
+    description:
+      "Each tool runs the same engine as the paid feature, trimmed to one generation. What you get here is the quality you get inside the app.",
   },
   {
-    icon: ImageIcon,
-    name: "Thumbnail generator",
-    description: "Thumbnails from a prompt, a video frame, or a reference image.",
-    href: "/features#thumbnails",
+    icon: Zap,
+    title: "Nothing to set up",
+    description:
+      "No account, no card, no onboarding. Type one line, get a finished result in about ten seconds, and use it however you like.",
   },
   {
-    icon: Subtitles,
-    name: "Subtitle generator",
-    description: "Accurate subtitles from your video, exported as SRT or VTT.",
-    href: "/features#subtitles",
-  },
-  {
-    icon: Clapperboard,
-    name: "Story builder",
-    description: "Structured outlines with hooks, escalation points and a retention score.",
-    href: "/features#story-builder",
-  },
-  {
-    icon: Languages,
-    name: "AI dubbing",
-    description: "Dub your videos into other languages, in your own voice.",
-    href: "/features#dubbing",
+    icon: Lock,
+    title: "Yours to keep",
+    description:
+      "Everything you generate is yours commercially, with no attribution and no watermark. Copy it out and put it on your channel.",
   },
 ]
 
@@ -77,132 +59,117 @@ export default function ToolsPage() {
               script in seconds, no account, no card, and what you generate is yours to use.
             </p>
           </div>
-        </section>
 
-        {/* The free tools */}
-        <section className="border-t border-slate-200 bg-white py-16">
-          <div className="mx-auto max-w-5xl px-6">
-            <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-              Try them right now, free
-            </h2>
-            <p className="mt-3 max-w-2xl text-slate-600">
-              Each one runs the same engine as the feature inside Creator AI, trimmed to a single
-              generation so you can judge the quality before you sign up for anything.
-            </p>
-
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
-              {FREE_TOOLS.map((tool) => (
-                <Link
-                  key={tool.slug}
-                  href={`/tools/${tool.slug}`}
-                  className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:border-purple-300 hover:shadow-md"
-                >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500">
-                    <Sparkles className="h-5 w-5 text-white" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-4 text-lg font-semibold text-slate-900 group-hover:text-purple-700">
-                    {tool.name}
-                  </h3>
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
-                    {tool.cardDescription}
-                  </p>
-                  <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-purple-600">
-                    Use it free
-                    <ArrowRight
-                      className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </Link>
-              ))}
-            </div>
+          {/* The tools, immediately */}
+          <div className="relative z-10 mx-auto mt-12 grid max-w-5xl gap-6 px-6 md:grid-cols-2">
+            {FREE_TOOLS.map((tool) => (
+              <Link
+                key={tool.slug}
+                href={`/tools/${tool.slug}`}
+                className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:border-purple-300 hover:shadow-lg"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500">
+                  <Sparkles className="h-5 w-5 text-white" aria-hidden="true" />
+                </span>
+                <h2 className="mt-4 text-lg font-semibold text-slate-900 group-hover:text-purple-700">
+                  {tool.name}
+                </h2>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+                  {tool.cardDescription}
+                </p>
+                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-purple-600">
+                  Try it free
+                  <ArrowRight
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Link>
+            ))}
           </div>
         </section>
 
-        {/* Why free */}
-        <section className="bg-slate-50 py-16">
-          <div className="mx-auto max-w-3xl px-6">
-            <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-              Why these are free
-            </h2>
-            <p className="mt-4 text-[1.05rem] leading-relaxed text-slate-700">
-              Because the hard part of our product is not generating text, it is generating text
-              that sounds like <em>you</em>. These pages show you the quality of the engine. What
-              they cannot show you is the thing that makes it worth an account: Creator AI reads
-              your existing videos and builds a style profile from your tone, pacing, vocabulary
-              and structure, then writes everything against it.
-            </p>
-            <p className="mt-4 text-[1.05rem] leading-relaxed text-slate-700">
-              So use these as much as they are useful. If the output is close but not quite your
-              voice, that gap is exactly what the free account fixes.
-            </p>
+        {/* Why creators use them */}
+        <section className="border-t border-slate-200 bg-white py-20">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="mb-12 flex flex-col items-center text-center">
+              <h2 className="text-3xl font-bold text-slate-900 md:text-4xl">
+                Why creators use Creator AI&apos;s free tools
+              </h2>
+              <p className="mt-4 max-w-2xl text-slate-600 md:text-lg">
+                Most free generators are a taste of a demo. These are the real thing, capped at one
+                run so you can judge the output before deciding anything.
+              </p>
+            </div>
 
-            <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-              {[
-                "No signup for your first generation",
-                "No credit card, ever, on the free plan",
-                "Everything you generate is yours commercially",
-                "500 free credits a month once you sign up",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-slate-700">
-                  <Check className="mt-1 h-4 w-4 shrink-0 text-purple-600" aria-hidden="true" />
-                  <span className="text-[0.98rem]">{item}</span>
+            <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {WHY_FREE_TOOLS.map((item) => (
+                <li key={item.title}>
+                  <FeatureCard
+                    title={item.title}
+                    icon={<item.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
+                    description={item.description}
+                  />
                 </li>
               ))}
             </ul>
+
+            <div className="mt-12 flex justify-center">
+              <GoogleSignupCta source="tools-hub-why" label="Sign up free with Google" />
+            </div>
           </div>
         </section>
 
-        {/* In-app tools */}
-        <section className="bg-white py-16">
-          <div className="mx-auto max-w-5xl px-6">
-            <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
-              Inside the free account
-            </h2>
-            <p className="mt-3 max-w-2xl text-slate-600">
-              The Starter plan unlocks every feature, the limit is credits, not capability.
-            </p>
-
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {IN_APP_TOOLS.map((tool) => (
-                <Link
-                  key={tool.name}
-                  href={tool.href}
-                  className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-purple-300 hover:shadow-md"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100">
-                    <tool.icon className="h-5 w-5 text-purple-600" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3 className="font-semibold text-slate-800 group-hover:text-purple-700">
-                      {tool.name}
-                    </h3>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                      {tool.description}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+        {/* Everything in the free account */}
+        <section className="bg-slate-50 py-20">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <div className="mb-12 flex flex-col items-center text-center">
+              <h2 className="text-3xl font-bold text-slate-900 md:text-4xl">
+                Inside the free account
+              </h2>
+              <p className="mt-4 max-w-2xl text-slate-600 md:text-lg">
+                The Starter plan unlocks every feature. The limit is credits, not capability, and
+                there is no card required to start.
+              </p>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-4">
+            <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {CORE_FEATURES.map((feature) => (
+                <li key={feature.id}>
+                  <Link href={`/features#${feature.id}`} className="block h-full">
+                    <FeatureCard
+                      title={feature.title}
+                      icon={
+                        <feature.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      }
+                      description={feature.tagline}
+                    />
+                  </Link>
+                </li>
+              ))}
+              {EXTRA_FEATURES.map((feature) => (
+                <li key={feature.title}>
+                  <Link href="/features" className="block h-full">
+                    <FeatureCard
+                      title={feature.title}
+                      icon={
+                        <feature.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      }
+                      description={feature.description}
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
+              <GoogleSignupCta source="tools-hub-features" label="Get 500 free credits" />
               <Link
                 href="/features"
-                className="text-sm font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition hover:border-purple-300 hover:text-purple-700 sm:text-base"
               >
-                See all features →
-              </Link>
-              <Link
-                href="/pricing"
-                className="text-sm font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
-              >
-                Compare plans →
-              </Link>
-              <Link
-                href="/blog"
-                className="text-sm font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
-              >
-                Read the blog →
+                See all features
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </div>
           </div>
@@ -216,13 +183,9 @@ export default function ToolsPage() {
               Connect your channel, train the AI on a few of your videos, and every script, idea
               and thumbnail after that is personalized. 500 credits a month, free, no card.
             </p>
-            <Link
-              href="/signup?ref=tools-hub"
-              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 px-6 py-3 font-medium text-white transition hover:brightness-110"
-            >
-              Start free
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            <div className="mt-8 flex justify-center">
+              <GoogleSignupCta source="tools-hub-footer" label="Start free with Google" />
+            </div>
           </div>
         </section>
       </main>

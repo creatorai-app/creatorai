@@ -4,6 +4,8 @@ import { ArrowRight, BookOpen, Check, Sparkles } from "lucide-react"
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
 import Footer from "@/components/footer"
 import BlogFaqAccordion from "@/components/blog/BlogFaqAccordion"
+import FeatureCard from "@/components/feature-card"
+import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
 import { FREE_TOOLS, type FreeTool } from "@/lib/free-tools"
 
 /**
@@ -117,6 +119,32 @@ export default function ToolPageShell({
           </div>
         </section>
 
+        {/* Why this tool */}
+        <section className="bg-white py-20">
+          <div className="container mx-auto max-w-6xl px-4 md:px-6">
+            <h2 className="mb-12 text-center text-3xl font-bold text-slate-900 md:text-4xl">
+              Why creators choose Creator AI&apos;s {tool.name}
+            </h2>
+            <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {tool.benefits.map((benefit) => (
+                <li key={benefit.title}>
+                  <FeatureCard
+                    title={benefit.title}
+                    icon={<benefit.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />}
+                    description={benefit.description}
+                  />
+                </li>
+              ))}
+            </ul>
+            <div className="mt-12 flex justify-center">
+              <GoogleSignupCta
+                source={`tool-${tool.slug}-why`}
+                label="Sign up free with Google"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* How it works */}
         <section className="bg-slate-50 py-16">
           <div className="mx-auto max-w-5xl px-6">
@@ -194,13 +222,11 @@ export default function ToolPageShell({
                 {tool.upgrade.blurb}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={`/signup?ref=tool-${tool.slug}`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-110"
-                >
-                  Get 500 free credits
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
+                <GoogleSignupCta
+                  source={`tool-${tool.slug}`}
+                  label="Get 500 free credits"
+                  className="px-5 py-2.5 text-sm"
+                />
                 <Link
                   href={tool.upgrade.featureAnchor}
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-purple-300 hover:text-purple-700"
@@ -278,13 +304,12 @@ export default function ToolPageShell({
               Scripts, ideas, thumbnails, subtitles and dubbing, all trained on your channel.
               500 credits a month, free, no card.
             </p>
-            <Link
-              href={`/signup?ref=tool-${tool.slug}-footer`}
-              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 px-6 py-3 font-medium text-white transition hover:brightness-110"
-            >
-              Create your free account
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            <div className="mt-8 flex justify-center">
+              <GoogleSignupCta
+                source={`tool-${tool.slug}-footer`}
+                label="Create your free account"
+              />
+            </div>
           </div>
         </section>
       </main>

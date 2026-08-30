@@ -1,3 +1,6 @@
+import type { LucideIcon } from "lucide-react";
+import { Compass, Gauge, Layers, Mic, Timer, Wand2 } from "lucide-react";
+
 /**
  * The public, no-signup tools at /tools.
  *
@@ -27,6 +30,13 @@ export interface ToolFaq {
   answer: string;
 }
 
+/** The three benefit cards directly under the tool, before the long-form body. */
+export interface ToolBenefit {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
 export interface FreeTool {
   slug: string;
   /** Nav/hub label, short. */
@@ -49,6 +59,8 @@ export interface FreeTool {
   steps: ToolStep[];
   /** Long-form body sections, the part that actually ranks. */
   sections: ToolSection[];
+  /** Rendered as cards under the generator, the "why this one" pitch. */
+  benefits: ToolBenefit[];
   useCases: { title: string; description: string }[];
   faqs: ToolFaq[];
   /** Related blog posts by slug, rendered as internal links. */
@@ -140,6 +152,26 @@ export const FREE_TOOLS: FreeTool[] = [
           "Inside the app, the same engine connects to your YouTube channel first. It reads what your channel already publishes, which of your videos performed and why, your title patterns, your upload cadence and your content gaps. Then it analyzes live trends in your niche, filters out saturated topics, and runs a differentiation pass so no two ideas overlap with each other or with videos you have already made.",
           "That is the difference between an idea for *a* channel and an idea for *your* channel. The free Starter plan includes 500 credits a month and needs no card, so you can compare the two on your own niche.",
         ],
+      },
+    ],
+    benefits: [
+      {
+        icon: Layers,
+        title: "A concept, not a list of titles",
+        description:
+          "Most generators hand you twenty titles and leave the thinking to you. This returns the angle, the hook, the format, the keywords and the talking points, so the video is ready to film.",
+      },
+      {
+        icon: Compass,
+        title: "An angle nobody else took",
+        description:
+          "The model is told to find the under-served version of your topic rather than the most obvious one. That is the difference between a video that gets watched and one that gets scrolled past.",
+      },
+      {
+        icon: Gauge,
+        title: "An honest opportunity score",
+        description:
+          "Saturated topics score low and say so. A tool that rates every idea a 95 is flattering you, not helping you decide what to make this week.",
       },
     ],
     useCases: [
@@ -289,6 +321,26 @@ export const FREE_TOOLS: FreeTool[] = [
           "The paid feature starts somewhere else entirely. It reads your existing videos through AI Studio and builds a style profile: your tone, vocabulary level, pacing, recurring themes, humour and narrative structure. Every script after that is generated against that profile, so it comes out sounding like your channel instead of like an AI.",
           "It also does the things a one-shot tool cannot: longer videos, five languages, storytelling mode, timestamps, uploaded reference files, and scripts generated directly from an idea you saved in ideation. The free Starter plan includes 500 credits a month with no card, which is enough to train the AI and feel the difference.",
         ],
+      },
+    ],
+    benefits: [
+      {
+        icon: Wand2,
+        title: "A finished script, not an outline",
+        description:
+          "No bullet points, no \"introduce yourself here\", no [add your content]. A title, a hook, body sections with real transitions, and a closing call to action.",
+      },
+      {
+        icon: Mic,
+        title: "Written to be spoken",
+        description:
+          "Short sentences and spoken rhythm, with no stage directions to strip out. You can read it straight to camera instead of rewriting it into something sayable.",
+      },
+      {
+        icon: Timer,
+        title: "Paced to the length you pick",
+        description:
+          "Three minutes means roughly 450 words, because that is what three minutes of natural speech is. A script that claims five minutes and runs ninety seconds is worse than none.",
       },
     ],
     useCases: [
