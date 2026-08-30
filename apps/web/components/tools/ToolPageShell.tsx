@@ -3,6 +3,7 @@ import Link from "next/link"
 import { ArrowRight, BookOpen, Check, Sparkles } from "lucide-react"
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
 import Footer from "@/components/footer"
+import SmoothScroll from "@/components/SmoothScroll"
 import BlogFaqAccordion from "@/components/blog/BlogFaqAccordion"
 import FeatureCard from "@/components/feature-card"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
@@ -76,6 +77,7 @@ export default function ToolPageShell({
 
   return (
     <div className="flex min-h-screen flex-col">
+      <SmoothScroll />
       <LandingPageNavbar />
 
       <main className="flex-1">
@@ -125,7 +127,7 @@ export default function ToolPageShell({
             <h2 className="mb-12 text-center text-3xl font-bold text-slate-900 md:text-4xl">
               Why creators choose Creator AI&apos;s {tool.name}
             </h2>
-            <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <ul className="grid auto-rows-fr grid-cols-1 gap-6 md:grid-cols-3">
               {tool.benefits.map((benefit) => (
                 <li key={benefit.title}>
                   <FeatureCard

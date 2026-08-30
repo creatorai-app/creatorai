@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ArrowRight, Sparkles, Zap, Lock, Wand2 } from "lucide-react"
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
 import Footer from "@/components/footer"
+import SmoothScroll from "@/components/SmoothScroll"
 import FeatureCard from "@/components/feature-card"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
 import { FREE_TOOLS } from "@/lib/free-tools"
@@ -37,6 +38,7 @@ const WHY_FREE_TOOLS = [
 export default function ToolsPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <SmoothScroll />
       <LandingPageNavbar />
 
       <main className="flex-1">
@@ -105,7 +107,7 @@ export default function ToolsPage() {
               </p>
             </div>
 
-            <ul className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <ul className="grid auto-rows-fr grid-cols-1 gap-6 md:grid-cols-3">
               {WHY_FREE_TOOLS.map((item) => (
                 <li key={item.title}>
                   <FeatureCard
@@ -136,7 +138,7 @@ export default function ToolsPage() {
               </p>
             </div>
 
-            <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid auto-rows-fr grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {CORE_FEATURES.map((feature) => (
                 <li key={feature.id}>
                   <Link href={`/features#${feature.id}`} className="block h-full">
@@ -145,7 +147,7 @@ export default function ToolsPage() {
                       icon={
                         <feature.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                       }
-                      description={feature.tagline}
+                      description={feature.cardDescription}
                     />
                   </Link>
                 </li>
@@ -158,7 +160,7 @@ export default function ToolsPage() {
                       icon={
                         <feature.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                       }
-                      description={feature.description}
+                      description={feature.cardDescription}
                     />
                   </Link>
                 </li>
