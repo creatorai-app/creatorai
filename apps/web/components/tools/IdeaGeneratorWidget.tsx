@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { AnimatePresence } from "motion/react"
-import * as motion from "motion/react-m"
 import Link from "next/link"
 import { Loader2, Sparkles, Lightbulb, Target, Hash, ListOrdered, Gauge } from "lucide-react"
 import { Button } from "@repo/ui/button"
@@ -26,6 +24,13 @@ interface FreeIdea {
 }
 
 const SLUG = "youtube-video-ideas-generator"
+
+// CSS rather than motion, deliberately. A motion `initial={{ opacity: 0 }}`
+// leaves the element invisible until the LazyMotion feature bundle has loaded
+// and run, and if that never happens the generated idea never appears at all.
+// app/page.tsx hit exactly this on the hero and moved to tailwindcss-animate
+// for the same reason; these start at first paint and cannot strand content.
+const RISE = "animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-500"
 
 /** Green above 70, amber above 40, red below, an honest score has to look honest. */
 function scoreTone(score: number) {
@@ -126,15 +131,8 @@ export default function IdeaGeneratorWidget() {
         )}
       </form>
 
-      <AnimatePresence>
-        {result && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="mt-6 rounded-2xl border border-purple-200 bg-white p-5 shadow-sm sm:p-6"
-        >
+      {result && (
+        <div className={`${RISE} mt-6 rounded-2xl border border-purple-200 bg-white p-5 shadow-sm sm:p-6`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-purple-600">
               <Lightbulb className="h-4 w-4" aria-hidden="true" />
@@ -148,14 +146,11 @@ export default function IdeaGeneratorWidget() {
             </span>
           </div>
 
-          <motion.h3
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.35 }}
-            className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl"
+          <h3
+            className={`${RISE} delay-150 mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl`}
           >
             {result.title}
-          </motion.h3>
+          </h3>
 
           {result.titleVariations.length > 0 && (
             <ul className="mt-3 space-y-1.5">
@@ -168,12 +163,7 @@ export default function IdeaGeneratorWidget() {
             </ul>
           )}
 
-          <motion.dl
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="mt-5 grid gap-4 sm:grid-cols-2"
-          >
+          <dl className={`${RISE} delay-300 mt-5 grid gap-4 sm:grid-cols-2`}>
             <div>
               <dt className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                 <Target className="h-4 w-4 text-purple-600" aria-hidden="true" />
@@ -224,7 +214,7 @@ export default function IdeaGeneratorWidget() {
                 </ol>
               </dd>
             </div>
-          </motion.dl>
+          </dl>
 
           <ToolResultActions
             copyText={asPlainText(result)}
@@ -234,9 +224,8 @@ export default function IdeaGeneratorWidget() {
               label: "Turn this into a full script →",
             }}
           />
-        </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       <SignupGateModal
         open={showSignupGate}
