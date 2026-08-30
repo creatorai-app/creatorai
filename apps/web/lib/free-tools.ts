@@ -1,5 +1,8 @@
+import type { ComponentType } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Compass, Gauge, Layers, Mic, Timer, Wand2 } from "lucide-react";
+import SearchIcon from "@/components/dashboard/sidebar/icons/SearchIcon";
+import FileTextIcon from "@/components/dashboard/sidebar/icons/FileTextIcon";
 
 /**
  * The public, no-signup tools at /tools.
@@ -41,6 +44,9 @@ export interface FreeTool {
   slug: string;
   /** Nav/hub label, short. */
   name: string;
+  /** The icon this tool's feature uses in the dashboard sidebar, so the tool
+   *  and the paid feature it samples read as the same thing. */
+  icon: ComponentType<{ className: string }>;
   /** The ONE transactional phrase this page is optimized to rank for. */
   focusKeyword: string;
   /** Supporting long-tail terms. */
@@ -82,6 +88,7 @@ export const FREE_TOOLS: FreeTool[] = [
   {
     slug: "youtube-video-ideas-generator",
     name: "YouTube Video Ideas Generator",
+    icon: SearchIcon,
     focusKeyword: "youtube video ideas generator",
     keywords: [
       "free youtube video idea generator",
@@ -253,6 +260,7 @@ export const FREE_TOOLS: FreeTool[] = [
   {
     slug: "youtube-script-generator",
     name: "YouTube Script Generator",
+    icon: FileTextIcon,
     focusKeyword: "youtube script generator",
     keywords: [
       "free youtube script generator",

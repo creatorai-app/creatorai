@@ -58,6 +58,9 @@ export default function ToolsPage() {
               Real generators, not demos. Get a complete video idea or a full, ready-to-record
               script in seconds, no account, no card, and what you generate is yours to use.
             </p>
+            <div className="mt-8 flex justify-center">
+              <GoogleSignupCta source="tools-hub-hero" label="Get started free" />
+            </div>
           </div>
 
           {/* The tools, immediately */}
@@ -68,8 +71,8 @@ export default function ToolsPage() {
                 href={`/tools/${tool.slug}`}
                 className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:border-purple-300 hover:shadow-lg"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500">
-                  <Sparkles className="h-5 w-5 text-white" aria-hidden="true" />
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-100 bg-purple-50 text-purple-600 shadow-sm">
+                  <tool.icon className="h-6 w-6" />
                 </span>
                 <h2 className="mt-4 text-lg font-semibold text-slate-900 group-hover:text-purple-700">
                   {tool.name}
