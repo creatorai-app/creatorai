@@ -8,6 +8,8 @@ export type NavItemType = {
   name: string
   href: string
   children?: NavDropdownItem[]
+  /** Footer link of the dropdown, e.g. "View all features". Defaults off. */
+  viewAllLabel?: string
 }
 
 export const navItem: NavItemType[] = [
@@ -21,9 +23,28 @@ export const navItem: NavItemType[] = [
       { name: "Story Builder", href: "/features#story-builder", description: "Structured story blueprints" },
       { name: "Thumbnails", href: "/features#thumbnails", description: "Eye-catching thumbnail designs" },
       { name: "Subtitles", href: "/features#subtitles", description: "Auto-generate video subtitles" },
+      { name: "Audio Dubbing", href: "/features#dubbing", description: "Dub videos in your own voice" },
+      { name: "Video Generation", href: "/features#video-generation", description: "Generate clips from a prompt" },
     ],
+    viewAllLabel: "View all features",
   },
-  { name: "Free Tools", href: "/tools" },
+  {
+    name: "Free Tools",
+    href: "/tools",
+    children: [
+      {
+        name: "YouTube Script Generator",
+        href: "/tools/youtube-script-generator",
+        description: "A full script from one sentence, free",
+      },
+      {
+        name: "YouTube Video Ideas Generator",
+        href: "/tools/youtube-video-ideas-generator",
+        description: "A complete video concept from a niche",
+      },
+    ],
+    viewAllLabel: "View all free tools",
+  },
   { name: "Pricing", href: "/pricing" },
   { name: "Blog", href: "/blog" },
   { name: "Contact Us", href: "/contact-us" },
