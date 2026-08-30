@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { AnimatePresence } from "motion/react"
+import * as motion from "motion/react-m"
 import Link from "next/link"
 import { Loader2, Sparkles, Lightbulb, Target, Hash, ListOrdered, Gauge } from "lucide-react"
 import { Button } from "@repo/ui/button"
@@ -9,6 +11,7 @@ import { Label } from "@repo/ui/label"
 import { useFreeTool } from "@/hooks/useFreeTool"
 import SignupGateModal from "./SignupGateModal"
 import ToolResultActions from "./ToolResultActions"
+import { TOOL_FIELD } from "./field-styles"
 
 interface FreeIdea {
   title: string
@@ -76,7 +79,7 @@ export default function IdeaGeneratorWidget() {
               placeholder="home espresso for beginners"
               maxLength={200}
               required
-              className="bg-white"
+              className={TOOL_FIELD}
             />
           </div>
           <div className="space-y-1.5">
@@ -89,7 +92,7 @@ export default function IdeaGeneratorWidget() {
               onChange={(e) => setAudience(e.target.value)}
               placeholder="people who just bought their first machine"
               maxLength={200}
-              className="bg-white"
+              className={TOOL_FIELD}
             />
           </div>
         </div>
@@ -97,7 +100,7 @@ export default function IdeaGeneratorWidget() {
         <Button
           type="submit"
           disabled={!canSubmit}
-          className="mt-4 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 text-white hover:brightness-110 sm:w-auto"
+          className="mt-5 h-12 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 text-base font-medium text-white transition hover:brightness-110"
         >
           {isLoading ? (
             <>
@@ -123,8 +126,15 @@ export default function IdeaGeneratorWidget() {
         )}
       </form>
 
-      {result && (
-        <div className="mt-6 rounded-2xl border border-purple-200 bg-white p-5 shadow-sm sm:p-6">
+      <AnimatePresence>
+        {result && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="mt-6 rounded-2xl border border-purple-200 bg-white p-5 shadow-sm sm:p-6"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-purple-600">
               <Lightbulb className="h-4 w-4" aria-hidden="true" />
@@ -138,9 +148,14 @@ export default function IdeaGeneratorWidget() {
             </span>
           </div>
 
-          <h3 className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl">
+          <motion.h3
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.35 }}
+            className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl"
+          >
             {result.title}
-          </h3>
+          </motion.h3>
 
           {result.titleVariations.length > 0 && (
             <ul className="mt-3 space-y-1.5">
@@ -153,7 +168,12 @@ export default function IdeaGeneratorWidget() {
             </ul>
           )}
 
-          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+          <motion.dl
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="mt-5 grid gap-4 sm:grid-cols-2"
+          >
             <div>
               <dt className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
                 <Target className="h-4 w-4 text-purple-600" aria-hidden="true" />
@@ -204,7 +224,7 @@ export default function IdeaGeneratorWidget() {
                 </ol>
               </dd>
             </div>
-          </dl>
+          </motion.dl>
 
           <ToolResultActions
             copyText={asPlainText(result)}
@@ -214,8 +234,9 @@ export default function IdeaGeneratorWidget() {
               label: "Turn this into a full script →",
             }}
           />
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       <SignupGateModal
         open={showSignupGate}

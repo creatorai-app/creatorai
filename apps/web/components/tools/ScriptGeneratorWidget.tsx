@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { AnimatePresence } from "motion/react"
+import * as motion from "motion/react-m"
 import Link from "next/link"
 import { Loader2, Sparkles, FileText } from "lucide-react"
 import { Button } from "@repo/ui/button"
@@ -16,6 +18,7 @@ import {
 import { useFreeTool } from "@/hooks/useFreeTool"
 import SignupGateModal from "./SignupGateModal"
 import ToolResultActions from "./ToolResultActions"
+import { TOOL_FIELD, TOOL_FIELD_TEXTAREA } from "./field-styles"
 
 interface FreeScript {
   title: string
@@ -63,38 +66,42 @@ function ScriptBody({ markdown }: { markdown: string }) {
         const line = raw.trim()
         if (!line) return null
 
+        // Lines fade in in reading order, capped so a long script finishes
+        // appearing in under a second rather than trickling in.
+        const delay = Math.min(i * 0.035, 0.9)
+
         if (line.startsWith("### ")) {
           return (
-            <h4 key={i} className="pt-2 text-base font-semibold text-slate-900">
+            <motion.h4 key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.3 }} className="pt-2 text-base font-semibold text-slate-900">
               {line.slice(4)}
-            </h4>
+            </motion.h4>
           )
         }
         if (line.startsWith("## ")) {
           return (
-            <h3 key={i} className="pt-3 text-lg font-bold text-slate-900">
+            <motion.h3 key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.3 }} className="pt-3 text-lg font-bold text-slate-900">
               {line.slice(3)}
-            </h3>
+            </motion.h3>
           )
         }
         if (line.startsWith("# ")) {
           return (
-            <h3 key={i} className="pt-3 text-lg font-bold text-slate-900">
+            <motion.h3 key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.3 }} className="pt-3 text-lg font-bold text-slate-900">
               {line.slice(2)}
-            </h3>
+            </motion.h3>
           )
         }
         if (/^[-*]\s+/.test(line)) {
           return (
-            <p key={i} className="pl-4 text-[0.95rem] leading-relaxed text-slate-700">
+            <motion.p key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.3 }} className="pl-4 text-[0.95rem] leading-relaxed text-slate-700">
               • {bold(line.replace(/^[-*]\s+/, ""))}
-            </p>
+            </motion.p>
           )
         }
         return (
-          <p key={i} className="text-[0.95rem] leading-relaxed text-slate-700">
+          <motion.p key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.3 }} className="text-[0.95rem] leading-relaxed text-slate-700">
             {bold(line)}
-          </p>
+          </motion.p>
         )
       })}
     </div>
@@ -131,7 +138,7 @@ export default function ScriptGeneratorWidget() {
             maxLength={500}
             rows={3}
             required
-            className="bg-white"
+            className={TOOL_FIELD_TEXTAREA}
           />
           <p className="text-xs text-slate-500">
             A sentence with a point of view beats a keyword. {topic.length}/500
@@ -144,7 +151,7 @@ export default function ScriptGeneratorWidget() {
               Tone
             </Label>
             <Select value={tone} onValueChange={setTone}>
-              <SelectTrigger id="tone" className="bg-white">
+              <SelectTrigger id="tone" className={TOOL_FIELD}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -161,7 +168,7 @@ export default function ScriptGeneratorWidget() {
               Length
             </Label>
             <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger id="duration" className="bg-white">
+              <SelectTrigger id="duration" className={TOOL_FIELD}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -178,7 +185,7 @@ export default function ScriptGeneratorWidget() {
         <Button
           type="submit"
           disabled={!canSubmit}
-          className="mt-4 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 text-white hover:brightness-110 sm:w-auto"
+          className="mt-5 h-12 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-500 text-base font-medium text-white transition hover:brightness-110"
         >
           {isLoading ? (
             <>
@@ -204,16 +211,28 @@ export default function ScriptGeneratorWidget() {
         )}
       </form>
 
-      {result && (
-        <div className="mt-6 rounded-2xl border border-purple-200 bg-white p-5 shadow-sm sm:p-6">
+      <AnimatePresence>
+        {result && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="mt-6 rounded-2xl border border-purple-200 bg-white p-5 shadow-sm sm:p-6"
+        >
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-purple-600">
             <FileText className="h-4 w-4" aria-hidden="true" />
             Your script
           </div>
 
-          <h3 className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl">
+          <motion.h3
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.35 }}
+            className="mt-3 text-xl font-bold leading-snug text-slate-900 sm:text-2xl"
+          >
             {result.title}
-          </h3>
+          </motion.h3>
 
           <ScriptBody markdown={result.script} />
 
@@ -225,8 +244,9 @@ export default function ScriptGeneratorWidget() {
               label: "Need the next video idea? →",
             }}
           />
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       <SignupGateModal
         open={showSignupGate}
