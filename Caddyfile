@@ -1,3 +1,27 @@
+# Shared by both old-domain site blocks below, so the http:// and https://
+# variants cannot drift apart.
+(old_domain) {
+	# robots.txt is served here rather than redirected. Google fetches the old
+	# host's robots.txt before it will crawl or validate anything on that host,
+	# and a cross-domain redirect on this one file is not reliably followed. The
+	# body is deliberately identical to what the app serves on the new domain.
+	handle /robots.txt {
+		header Content-Type "text/plain; charset=utf-8"
+		respond `User-Agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://trycreatorai.com/sitemap.xml
+` 200
+	}
+
+	# Everything else crosses over. 301 preserves path and query, so
+	# /blog/x?ref=y lands on the same page on the new domain.
+	handle {
+		redir https://trycreatorai.com{uri} permanent
+	}
+}
+
 trycreatorai.com {
 	reverse_proxy web:3000
 }
@@ -16,14 +40,14 @@ http://www.trycreatorai.com, https://www.trycreatorai.com {
 # here directly. ACME challenges are served ahead of routes, so certificates
 # for the old domain still renew normally.
 http://tryscriptai.com, http://www.tryscriptai.com {
-	redir https://trycreatorai.com{uri} permanent
+	import old_domain
 }
 
 # Old domain over TLS: kept for a year so existing links, email logos and search
 # results keep resolving. 301 preserves path and query, so /blog/x?ref=y lands on
 # the same page on the new domain and passes the ranking signal across.
 tryscriptai.com, www.tryscriptai.com {
-	redir https://trycreatorai.com{uri} permanent
+	import old_domain
 }
 
 api.trycreatorai.com {
