@@ -6,6 +6,7 @@ import { Loader2, Sparkles, FileText } from "lucide-react"
 import { Button } from "@repo/ui/button"
 import { Textarea } from "@repo/ui/textarea"
 import { Label } from "@repo/ui/label"
+import { Switch } from "@repo/ui/switch"
 import {
   Select,
   SelectContent,
@@ -117,6 +118,8 @@ export default function ScriptGeneratorWidget() {
   const [topic, setTopic] = useState("")
   const [tone, setTone] = useState<string>("conversational")
   const [duration, setDuration] = useState<string>("180")
+  const [includeStorytelling, setIncludeStorytelling] = useState(false)
+  const [includeTimestamps, setIncludeTimestamps] = useState(false)
   const { result, isLoading, error, showSignupGate, closeSignupGate, run } =
     useFreeTool<FreeScript>(SLUG, "/api/v1/free-tools/script")
 
@@ -127,7 +130,14 @@ export default function ScriptGeneratorWidget() {
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          if (canSubmit) run({ topic: topic.trim(), tone, duration: Number(duration) })
+          if (canSubmit)
+            run({
+              topic: topic.trim(),
+              tone,
+              duration: Number(duration),
+              includeStorytelling,
+              includeTimestamps,
+            })
         }}
         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
       >
@@ -185,6 +195,39 @@ export default function ScriptGeneratorWidget() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <Label className="text-sm font-medium text-slate-700">Formatting options</Label>
+          {[
+            {
+              id: "storytelling-switch",
+              label: "Include storytelling elements",
+              hint: "Weaves a narrative to make your script more engaging.",
+              checked: includeStorytelling,
+              onChange: setIncludeStorytelling,
+            },
+            {
+              id: "timestamps-switch",
+              label: "Include timestamps",
+              hint: "Adds estimated time markers for easier pacing and editing.",
+              checked: includeTimestamps,
+              onChange: setIncludeTimestamps,
+            },
+          ].map((option) => (
+            <div
+              key={option.id}
+              className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/70 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(15,23,42,0.06)]"
+            >
+              <div className="space-y-0.5">
+                <Label htmlFor={option.id} className="text-base text-slate-900">
+                  {option.label}
+                </Label>
+                <p className="text-sm text-slate-500">{option.hint}</p>
+              </div>
+              <Switch id={option.id} checked={option.checked} onCheckedChange={option.onChange} />
+            </div>
+          ))}
         </div>
 
         <Button

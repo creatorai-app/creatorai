@@ -43,6 +43,8 @@ export const ScriptSchema = z.object({
   // Capped well under the paid feature's range: the free sample proves quality,
   // it is not a way to get a 20-minute script without an account.
   duration: z.coerce.number().int().min(60).max(300).default(180),
+  includeStorytelling: z.coerce.boolean().optional().default(false),
+  includeTimestamps: z.coerce.boolean().optional().default(false),
 });
 type ScriptInput = z.infer<typeof ScriptSchema>;
 
@@ -84,11 +86,16 @@ export class FreeToolsController {
         topic: { type: 'string', example: 'why your espresso tastes sour' },
         tone: { type: 'string', enum: [...SCRIPT_TONES], default: 'conversational' },
         duration: { type: 'integer', minimum: 60, maximum: 300, default: 180 },
+        includeStorytelling: { type: 'boolean', default: false },
+        includeTimestamps: { type: 'boolean', default: false },
       },
     },
   })
   async script(@Body(new ZodValidationPipe(ScriptSchema)) body: ScriptInput, @Req() req: Request) {
     rateLimitOrThrow(req);
-    return this.freeToolsService.generateScript(body.topic, body.tone, body.duration);
+    return this.freeToolsService.generateScript(body.topic, body.tone, body.duration, {
+      storytelling: body.includeStorytelling,
+      timestamps: body.includeTimestamps,
+    });
   }
 }

@@ -114,13 +114,20 @@ RULES:
     return this.generateJson<FreeIdea>(prompt, IDEA_SCHEMA, 'idea');
   }
 
-  async generateScript(topic: string, tone: string, duration: number): Promise<FreeScript> {
+  async generateScript(
+    topic: string,
+    tone: string,
+    duration: number,
+    options: { storytelling?: boolean; timestamps?: boolean } = {},
+  ): Promise<FreeScript> {
     const minutes = Math.max(1, Math.round(duration / 60));
     const prompt = `You are an expert YouTube script writer. Generate a compelling, ready-to-record YouTube video script.
 
 **Video topic:** ${topic}
 **Tone:** ${tone}
 **Target duration:** ${duration} seconds (about ${minutes} minute${minutes === 1 ? '' : 's'})
+**Include storytelling elements:** ${options.storytelling ? 'Yes' : 'No'}
+**Include timestamps:** ${options.timestamps ? 'Yes' : 'No'}
 
 Guidelines:
 - Generate a catchy, SEO-friendly title.
@@ -129,6 +136,8 @@ Guidelines:
 - Match the target duration at a natural speaking pace of roughly 150 words per minute.
 - Include clear transitions between sections and one strong call-to-action at the end.
 - Write it to be read aloud on camera: short sentences, spoken rhythm, no stage directions beyond the headings.
+${options.storytelling ? '- Weave a narrative through the script: a concrete opening situation, tension that builds, and a payoff. Do not just list facts.' : ''}
+${options.timestamps ? '- Prefix each section heading with an estimated time marker like [0:00], paced at roughly 150 words per minute.' : ''}
 - No emoji, no placeholder text, no "[insert X here]".`;
 
     return this.generateJson<FreeScript>(prompt, SCRIPT_SCHEMA, 'script');
