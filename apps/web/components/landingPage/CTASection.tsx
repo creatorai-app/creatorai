@@ -1,5 +1,8 @@
 "use client";
-import { Link, ArrowRight } from "lucide-react";
+// `Link` here used to come from lucide-react, the chain-link icon, so the
+// primary landing-page CTA rendered as <svg href="/signup"> and never navigated.
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { BackgroundBeams } from "@repo/ui/background-beams";
 import { MButton } from "@repo/ui/moving-border";
 
@@ -26,6 +29,16 @@ export default function CTASection() {
                         </MButton>
                     </Link>
 
+                    <p className="text-sm text-slate-400">
+                        Or{" "}
+                        <Link
+                            href="/tools"
+                            className="font-medium text-purple-300 underline underline-offset-2 hover:text-purple-200"
+                        >
+                            try the free tools first
+                        </Link>
+                        . No account needed.
+                    </p>
                 </div>
             </div>
 

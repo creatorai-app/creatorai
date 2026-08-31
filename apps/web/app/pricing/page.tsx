@@ -62,6 +62,16 @@ export default function PricingPage() {
               <p className="text-lg md:text-xl text-slate-600 max-w-xl mx-auto">
                 Join thousands of creators who save 10+ hours every week. Start free, upgrade when you&#39;re ready.
               </p>
+              <p className="text-slate-600">
+                Not ready for an account?{" "}
+                <Link
+                  href="/tools"
+                  className="font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
+                >
+                  Try the free tools first
+                </Link>
+                .
+              </p>
 
               <motion.div
                 className="flex flex-wrap justify-center gap-6 pt-4"

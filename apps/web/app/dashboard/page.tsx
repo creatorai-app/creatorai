@@ -7,9 +7,9 @@ import { DashboardSkeleton } from "@/components/dashboard/main/skeleton/Dashboar
 import { connectYoutubeChannel, isGoogleProvider } from "@/lib/connectYT";
 import { toast } from "sonner";
 import { GmailPromptDialog } from "@/components/dashboard/gmail-prompt-dialog";
-import { getScripts, type Script } from "@/lib/api/getScripts";
-import { getThumbnails, type ThumbnailJob } from "@/lib/api/getThumbnails";
-import { getDubbings, type DubbingProject } from "@/lib/api/getDubbings";
+import type { Script } from "@/lib/api/getScripts";
+import type { ThumbnailJob } from "@/lib/api/getThumbnails";
+import type { DubbingProject } from "@/lib/api/getDubbings";
 import { api } from "@/lib/api-client";
 import type { IdeationJob, SubtitleResponse } from "@repo/validation"
 import {
@@ -40,27 +40,30 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchAll = async () => {
       setIsLoading(true)
-      try {
-        const [scripts, thumbnails, dubbings, ideationRes, subtitles] = await Promise.allSettled([
-          getScripts(),
-          getThumbnails(),
-          getDubbings(),
-          api.get<{ data: IdeationJob[] }>("/api/v1/ideation?limit=50", { requireAuth: true }),
-          api.get<SubtitleResponse[]>("/api/v1/subtitle", { requireAuth: true }),
-        ])
 
-        setData({
-          scripts: scripts.status === "fulfilled" ? scripts.value : [],
-          thumbnails: thumbnails.status === "fulfilled" ? thumbnails.value : [],
-          dubbings: dubbings.status === "fulfilled" ? dubbings.value : [],
-          ideations: ideationRes.status === "fulfilled" ? (ideationRes.value?.data ?? []) : [],
-          subtitles: subtitles.status === "fulfilled" ? (subtitles.value ?? []) : [],
-        })
-      } catch {
-        toast.error("Failed to load dashboard data")
-      } finally {
-        setIsLoading(false)
+      // Called directly rather than through the toasting helpers in lib/api: on this
+      // page five lists load at once, so one backend hiccup used to stack a separate
+      // toast per feature. Empty lists are the normal result for a new account.
+      const [scripts, thumbnails, dubbings, ideationRes, subtitles] = await Promise.allSettled([
+        api.get<Script[]>("/api/v1/script", { requireAuth: true }),
+        api.get<ThumbnailJob[]>("/api/v1/thumbnail", { requireAuth: true }),
+        api.get<DubbingProject[]>("/api/v1/dubbing", { requireAuth: true }),
+        api.get<{ data: IdeationJob[] }>("/api/v1/ideation?limit=50", { requireAuth: true }),
+        api.get<SubtitleResponse[]>("/api/v1/subtitle", { requireAuth: true }),
+      ])
+
+      setData({
+        scripts: scripts.status === "fulfilled" ? (scripts.value ?? []) : [],
+        thumbnails: thumbnails.status === "fulfilled" ? (thumbnails.value ?? []) : [],
+        dubbings: dubbings.status === "fulfilled" ? (dubbings.value ?? []) : [],
+        ideations: ideationRes.status === "fulfilled" ? (ideationRes.value?.data ?? []) : [],
+        subtitles: subtitles.status === "fulfilled" ? (subtitles.value ?? []) : [],
+      })
+
+      if ([scripts, thumbnails, dubbings, ideationRes, subtitles].some((r) => r.status === "rejected")) {
+        toast.error("Some dashboard data failed to load")
       }
+      setIsLoading(false)
     }
 
     fetchAll()

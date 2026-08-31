@@ -89,7 +89,14 @@ export class IdeationService {
       const result = await ai.models.generateContent({
         model: GEMINI_TEXT_MODEL,
         contents: [{ role: 'user', parts: [{ text: 'Give me one fresh niche focus idea.' }] }],
-        config: { systemInstruction: system, temperature: 1.1, maxOutputTokens: 100 } as any,
+        // thinkingLevel minimal: Gemini 3 otherwise spends the whole maxOutputTokens
+        // budget on thoughts and returns a truncated fragment. A one-line niche needs none.
+        config: {
+          systemInstruction: system,
+          temperature: 1.1,
+          maxOutputTokens: 100,
+          thinkingConfig: { thinkingLevel: 'minimal' },
+        } as any,
       });
       const nicheFocus = (
         (result as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? result?.text ?? ''

@@ -31,6 +31,10 @@ const FEATURE_IMAGES: Record<string, string> = {
   Subtitles: "/subtitle page.png",
 }
 
+/** True when any child in this menu has a screenshot to preview. */
+const hasPreviews = (children: NavItemType["children"]) =>
+  !!children?.some((child) => FEATURE_IMAGES[child.name])
+
 const Logo = () => (
   <Link
     href="/"
@@ -54,7 +58,9 @@ function DesktopNavItems({ items }: { items: NavItemType[] }) {
       }}
       className="absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 lg:flex"
     >
-      {items.map((item, idx) => (
+      {items.map((item, idx) => {
+        const showPreview = hasPreviews(item.children)
+        return (
         <div
           key={`nav-${idx}`}
           className="relative"
@@ -87,12 +93,14 @@ function DesktopNavItems({ items }: { items: NavItemType[] }) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute left-[-100%] top-full z-50 mt-1 flex w-full max-w-[800px] md:w-[800px] -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  className={`absolute left-[-100%] top-full z-50 mt-1 flex -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                    showPreview ? "w-full max-w-[800px] md:w-[800px]" : "w-[420px]"
+                  }`}
                   onMouseEnter={() => setDropdownOpen(true)}
                   onMouseLeave={() => setDropdownOpen(false)}
                 >
                   <div className="flex min-w-0 flex-1 flex-col p-2">
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-0">
+                    <div className={`grid gap-x-2 gap-y-0 ${showPreview ? "grid-cols-2" : "grid-cols-1"}`}>
                       {item.children.map((child, childIdx) => {
                         const imageSrc = FEATURE_IMAGES[child.name]
                         return (
@@ -114,63 +122,68 @@ function DesktopNavItems({ items }: { items: NavItemType[] }) {
                         )
                       })}
                     </div>
-                    <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800">
-                      <a
-                        href="/features"
-                        className="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20"
-                      >
-                        View all features →
-                      </a>
-                    </div>
-                  </div>
-                  <div className="relative min-h-[220px] w-[320px] shrink-0 border-l border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
-                    <AnimatePresence mode="wait">
-                      {(() => {
-                        const child =
-                          hoveredChildIdx !== null ? item.children[hoveredChildIdx] : null
-                        const imageSrc = child ? FEATURE_IMAGES[child.name] : null
-                        if (!child || !imageSrc) return null
-                        return (
-                          <motion.div
-                            key={hoveredChildIdx}
-                            initial={{ opacity: 0, scale: 0.96 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.96 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="absolute inset-0 flex items-center justify-center p-2"
-                          >
-                            <div className="relative h-full w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-600 dark:bg-slate-900">
-                              <Image
-                                src={imageSrc}
-                                alt={child.name}
-                                fill
-                                className="object-contain object-center"
-                                sizes="320px"
-                              />
-                            </div>
-                          </motion.div>
-                        )
-                      })()}
-                    </AnimatePresence>
-                    {hoveredChildIdx === null && (
-                      <div className="flex h-full min-h-[200px] items-center justify-center p-4 text-sm text-slate-400 dark:text-slate-500">
-                        Hover a feature to preview
+                    {item.viewAllLabel && (
+                      <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800">
+                        <a
+                          href={item.href}
+                          className="flex items-center rounded-lg px-3 py-2 text-sm font-medium text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                        >
+                          {item.viewAllLabel} →
+                        </a>
                       </div>
                     )}
                   </div>
+                  {showPreview && (
+                    <div className="relative min-h-[220px] w-[320px] shrink-0 border-l border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
+                      <AnimatePresence mode="wait">
+                        {(() => {
+                          const child =
+                            hoveredChildIdx !== null ? item.children?.[hoveredChildIdx] : null
+                          const imageSrc = child ? FEATURE_IMAGES[child.name] : null
+                          if (!child || !imageSrc) return null
+                          return (
+                            <motion.div
+                              key={hoveredChildIdx}
+                              initial={{ opacity: 0, scale: 0.96 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.96 }}
+                              transition={{ duration: 0.2, ease: "easeOut" }}
+                              className="absolute inset-0 flex items-center justify-center p-2"
+                            >
+                              <div className="relative h-full w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-600 dark:bg-slate-900">
+                                <Image
+                                  src={imageSrc}
+                                  alt={child.name}
+                                  fill
+                                  className="object-contain object-center"
+                                  sizes="320px"
+                                />
+                              </div>
+                            </motion.div>
+                          )
+                        })()}
+                      </AnimatePresence>
+                      {hoveredChildIdx === null && (
+                        <div className="flex h-full min-h-[200px] items-center justify-center p-4 text-sm text-slate-400 dark:text-slate-500">
+                          Hover a feature to preview
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
 
 const LandingPageNavbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [mobileFeatureOpen, setMobileFeatureOpen] = useState(false)
+  const [openMobileMenuIdx, setOpenMobileMenuIdx] = useState<number | null>(null)
   const router = useRouter()
 
 
@@ -226,16 +239,16 @@ const LandingPageNavbar = () => {
               item.children ? (
                 <div key={`mobile-${idx}`} className="w-full">
                   <button
-                    onClick={() => setMobileFeatureOpen(!mobileFeatureOpen)}
+                    onClick={() => setOpenMobileMenuIdx(openMobileMenuIdx === idx ? null : idx)}
                     className="flex w-full items-center justify-between text-neutral-600 dark:text-neutral-300"
                   >
                     {item.name}
                     <ChevronDown
-                      className={`h-4 w-4 transition-transform ${mobileFeatureOpen ? "rotate-180" : ""}`}
+                      className={`h-4 w-4 transition-transform ${openMobileMenuIdx === idx ? "rotate-180" : ""}`}
                     />
                   </button>
                   <AnimatePresence>
-                    {mobileFeatureOpen && (
+                    {openMobileMenuIdx === idx && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
@@ -252,13 +265,15 @@ const LandingPageNavbar = () => {
                             {child.name}
                           </Link>
                         ))}
-                        <Link
-                          href="/features"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="rounded-md px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400"
-                        >
-                          View all features →
-                        </Link>
+                        {item.viewAllLabel && (
+                          <Link
+                            href={item.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="rounded-md px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400"
+                          >
+                            {item.viewAllLabel} →
+                          </Link>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>

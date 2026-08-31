@@ -87,20 +87,13 @@ async function bootstrap() {
       customSiteTitle: 'Creator AI API',
     });
 
-    const allowedOrigins = [
-      process.env.FRONTEND_DEV_URL,
-      process.env.FRONTEND_PROD_URL,
-      "*",
-    ];
+    const allowedOrigins = [process.env.FRONTEND_DEV_URL, process.env.FRONTEND_PROD_URL];
 
     app.enableCors({
-      origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      },
+      // Refuse by withholding the CORS headers, never by throwing: an error raised here
+      // surfaces as a 500 that we record and alert on, so every scanner probing the API
+      // from its own origin pages us for working as intended.
+      origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
       credentials: true,
     });
 

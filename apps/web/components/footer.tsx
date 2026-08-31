@@ -114,7 +114,7 @@ const Footer = () => {
               />
             </motion.div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
               {Object.entries(footerItems).map(([section, items], i) => (
                 <motion.div
                   key={section}

@@ -18,8 +18,10 @@ import { dirname, resolve } from "node:path";
 import { config } from "dotenv";
 import { loadPublishedPosts } from "../lib/blog-source.ts";
 import type { BlogPost } from "../lib/blog-types.ts";
+import { FREE_TOOLS } from "../lib/free-tools.ts";
 
 const SITE = "https://trycreatorai.com";
+const LF = String.fromCharCode(10);
 const here = dirname(fileURLToPath(import.meta.url));
 const pub = resolve(here, "../public");
 
@@ -72,10 +74,21 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 
 - Homepage: ${SITE}
 - Features: ${SITE}/features
+- Free tools (no signup): ${SITE}/tools
 - Pricing: ${SITE}/pricing
 - About: ${SITE}/about-us
 - Contact: ${SITE}/contact-us
 - Sign up: ${SITE}/signup
+
+## Free Tools (no account required)
+
+Creator AI runs free, anonymous versions of its generators as public web tools.
+Each gives one full generation with no signup, no credit card, and no watermark;
+output is the user's to use commercially.
+
+${FREE_TOOLS.map(
+  (t) => `- [${t.name}](${SITE}/tools/${t.slug}): ${t.answerSummary}`,
+).join(LF)}
 
 ## How Creator AI Differs from ChatGPT and Claude
 

@@ -6,7 +6,12 @@ import { SupabaseAuthGuard } from '../guards/auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { AuthRequest } from '../common/interfaces/auth-request.interface';
 import { getUserId } from '../common/get-user-id';
+import { allowRequest, getClientIp } from '../common/rate-limit';
 import { HannahService, type HannahMessage } from './hannah.service';
+
+// Re-exported so hannah.controller.spec.ts keeps testing the limiter through the
+// surface it has always used.
+export { allowRequest };
 
 const ChatSchema = z.object({
   messages: z
@@ -47,32 +52,12 @@ const CHAT_BODY_SCHEMA = {
   },
 };
 
-// ponytail: in-memory sliding-window limiter — fine for a single API instance.
-// Move to Redis (redis.ts is already wired) if the API scales horizontally.
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 20;
 const hits = new Map<string, number[]>();
 
-/** Pure sliding-window check. Returns true if the request is allowed (and records it). */
-export function allowRequest(
-  store: Map<string, number[]>,
-  ip: string,
-  now: number,
-  windowMs = WINDOW_MS,
-  max = MAX_PER_WINDOW,
-): boolean {
-  const recent = (store.get(ip) ?? []).filter((t) => now - t < windowMs);
-  if (recent.length >= max) {
-    store.set(ip, recent);
-    return false;
-  }
-  recent.push(now);
-  store.set(ip, recent);
-  return true;
-}
-
 function rateLimitOrThrow(key: string) {
-  if (!allowRequest(hits, key, Date.now())) {
+  if (!allowRequest(hits, key, Date.now(), WINDOW_MS, MAX_PER_WINDOW)) {
     throw new HttpException('Too many messages. Please slow down a moment.', HttpStatus.TOO_MANY_REQUESTS);
   }
 }
@@ -89,8 +74,7 @@ export class HannahController {
   })
   @ApiBody(CHAT_BODY_SCHEMA)
   async chat(@Body(new ZodValidationPipe(ChatSchema)) body: ChatInput, @Req() req: Request) {
-    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
-    rateLimitOrThrow(ip);
+    rateLimitOrThrow(getClientIp(req));
     return this.hannahService.chat(body.messages as HannahMessage[], 'public', undefined, body.audio as { data: string; mimeType: string } | undefined);
   }
 
