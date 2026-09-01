@@ -47,10 +47,41 @@ for (const p of blogPosts) {
 }
 const dupes = [...byFk].filter(([, s]) => s.length > 1);
 
+// Publishing cadence: 3 to 7 days between consecutive posts. Not a crawl-budget
+// thing, that only applies to sites orders of magnitude larger than this one.
+// Posts batched onto one date are usually written together on adjacent topics,
+// which is the input that makes Google cluster them and serve one canonical,
+// and it is the footprint the scaled-content-abuse policy describes. Spacing
+// costs nothing, so we spread them. See .claude/skills/blog-post-seo/SKILL.md.
+// Same-day is a hard failure. Out-of-range gaps only warn, because
+// the archive predates this rule and back-dating live posts to satisfy a
+// linter would be worse than the gap.
+const byDate = [...blogPosts].sort((a, b) => a.publishedAt.localeCompare(b.publishedAt));
+const sameDay: string[] = [];
+const offCadence: string[] = [];
+for (let i = 1; i < byDate.length; i++) {
+  const prev = byDate[i - 1]!;
+  const cur = byDate[i]!;
+  const days = Math.round(
+    (new Date(cur.publishedAt).getTime() - new Date(prev.publishedAt).getTime()) / 86_400_000,
+  );
+  if (days === 0) sameDay.push(`  ${cur.publishedAt.slice(0, 10)}: ${prev.slug} + ${cur.slug}`);
+  else if (days < 3 || days > 7) offCadence.push(`  ${days}d gap before ${cur.slug}`);
+}
+
 console.log(lines.join("\n\n"));
 if (dupes.length) {
   console.log("\n=== DUPLICATE FOCUS KEYWORDS (must be unique) ===");
   for (const [fk, slugs] of dupes) console.log(`  "${fk}": ${slugs.join(", ")}`);
 }
-console.log(`\n${totalGaps === 0 && !dupes.length ? "All posts pass ✓" : `${totalGaps} total gap(s) across ${blogPosts.length} posts`}`);
-process.exit(totalGaps === 0 && dupes.length === 0 ? 0 : 1);
+if (sameDay.length) {
+  console.log("\n=== POSTS SHARING A PUBLISH DATE (spread them 3-7 days apart) ===");
+  console.log(sameDay.join("\n"));
+}
+if (offCadence.length) {
+  console.log("\n=== CADENCE WARNINGS (target 3-7 days between posts) ===");
+  console.log(offCadence.join("\n"));
+}
+const failed = totalGaps > 0 || dupes.length > 0 || sameDay.length > 0;
+console.log(`\n${failed ? `${totalGaps} total gap(s) across ${blogPosts.length} posts` : "All posts pass ✓"}`);
+process.exit(failed ? 1 : 0);
