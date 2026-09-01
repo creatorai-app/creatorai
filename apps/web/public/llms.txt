@@ -126,6 +126,8 @@ Full text of every article below is available at https://trycreatorai.com/llms-f
 - [vidIQ vs TubeBuddy (2026): We Ran Both on the Same Channel](https://trycreatorai.com/blog/vidiq-vs-tubebuddy-tested-on-the-same-channel-2026): We build a competing tool and have no affiliate deal with either. Here is what 30 days of running vidIQ and TubeBuddy side by side on one channel actually showed.
 - [Creator AI vs TubeBuddy: Optimization Tool vs Production Tool](https://trycreatorai.com/blog/creator-ai-vs-tubebuddy-for-youtube-creators): TubeBuddy optimizes videos you already made. Creator AI makes them. A fair comparison of two tools that are less competitive than the search results suggest.
 - [Creator AI vs vidIQ: Which One Actually Writes in Your Voice?](https://trycreatorai.com/blog/creator-ai-vs-vidiq-for-youtube-creators-2026): vidIQ tells you what the algorithm wants. Creator AI writes it the way you would have. An honest breakdown of where each one wins, and which to buy first if you can only afford one.
+- [vidIQ vs Canva: Which One Does a Growing Channel Actually Need?](https://trycreatorai.com/blog/vidiq-vs-canva-which-youtube-tool-do-you-actually-need-2026): They are not competitors. vidIQ decides what the video should be, Canva decides what it should look like, they overlap on exactly one feature, and neither one makes the video.
+- [Canva vs VEED: Which Browser Video Editor Is Worth Your Time?](https://trycreatorai.com/blog/canva-vs-veed-which-browser-video-editor-fits-youtube-2026): Both edit in a tab, both auto caption, both stop being enough at the same point. The deciding factor is which free plan catch you can live with.
 
 ### YouTube Algorithm
 
