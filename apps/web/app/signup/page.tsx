@@ -15,7 +15,7 @@ import { Label } from "@repo/ui/label";
 import { Progress } from "@repo/ui/progress";
 import { useSupabase } from "@/components/supabase-provider";
 import { registerUserSchema } from "@repo/validation";
-import { api } from "@/lib/api-client";
+import { api, getApiErrorMessage } from "@/lib/api-client";
 import { AuroraBackground } from "@repo/ui/aurora-background";
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar";
 import Footer from "@/components/footer";
@@ -49,6 +49,8 @@ function SignupForm() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [termsError, setTermsError] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [referralError, setReferralError] = useState<string | null>(null);
   const [showReferralBanner, setShowReferralBanner] = useState(false);
 
   const totalSteps = 2;
@@ -63,8 +65,9 @@ function SignupForm() {
       });
       setShowReferralBanner(false);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Could not apply referral code.";
-      toast.warning("Referral not applied", { description: message });
+      toast.warning("Referral not applied", {
+        description: getApiErrorMessage(err, "Could not apply referral code."),
+      });
     }
   };
 
@@ -74,13 +77,32 @@ function SignupForm() {
     }
   }, [user, router]);
 
-  // Handle referral code from URL
+  // Check the code before promising anyone a bonus for it. Doing this at sign-up
+  // time instead of after account creation is what keeps a mistyped or expired
+  // link from turning into a failed referral the user can no longer fix.
   useEffect(() => {
-    const ref = searchParams.get("ref");
-    if (ref) {
-      setReferralCode(ref);
-      setShowReferralBanner(true);
-    }
+    const ref = searchParams.get("ref")?.toUpperCase().trim();
+    if (!ref) return;
+
+    setShowReferralBanner(true);
+    api
+      .get<{ valid: boolean; referrerName: string | null }>(
+        `/api/v1/referral/validate/${encodeURIComponent(ref)}`,
+      )
+      .then(({ valid, referrerName }) => {
+        if (!valid) {
+          setReferralError(
+            `The referral code "${ref}" doesn't exist. You can still sign up — check the link you were sent to claim the bonus.`,
+          );
+          return;
+        }
+        setReferralCode(ref);
+        setReferrerName(referrerName);
+      })
+      .catch(() => {
+        // Couldn't reach the check — keep the code and let /track have the final say.
+        setReferralCode(ref);
+      });
   }, [searchParams]);
 
   const handleNext = async () => {
@@ -251,8 +273,14 @@ function SignupForm() {
                 {showReferralBanner && referralCode && (
                   <div className="px-6 py-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
                     <p className="text-sm text-center text-purple-700 dark:text-purple-300">
-                      🎉 You've been invited by a friend! <br /> Referral code: <span className="font-mono font-bold">{referralCode}</span> <br /> Subscribe to any paid plan and you'll both earn <strong>1,000 bonus credits</strong>.
+                      🎉 {referrerName ? `${referrerName} invited you!` : "You've been invited by a friend!"} <br /> Referral code: <span className="font-mono font-bold">{referralCode}</span> <br /> Subscribe to any paid plan and you'll both earn <strong>1,000 bonus credits</strong>.
                     </p>
+                  </div>
+                )}
+
+                {showReferralBanner && referralError && (
+                  <div className="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                    <p className="text-sm text-center text-amber-700 dark:text-amber-300">{referralError}</p>
                   </div>
                 )}
 
