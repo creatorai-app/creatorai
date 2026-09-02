@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ReferralService } from './referral.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -118,41 +119,77 @@ describe('ReferralService', () => {
   });
 
   describe('trackReferral', () => {
-    it('should throw BadRequestException for invalid referral code', async () => {
+    /** maybeSingle: no match is data:null with no error, a real failure carries one. */
+    const lookupReturns = (result: { data: unknown; error: unknown }) =>
       mockFrom.mockReturnValue({
-        select: () => ({
-          eq: () => ({
-            single: () => ({ data: null, error: { message: 'not found' } }),
-          }),
-        }),
+        select: () => ({ eq: () => ({ maybeSingle: () => result }) }),
       });
+
+    it('should throw BadRequestException for invalid referral code', async () => {
+      lookupReturns({ data: null, error: null });
 
       await expect(
         service.trackReferral({ referralCode: 'INVALID', userEmail: 'test@test.com' })
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('names the offending code so the error log is actionable', async () => {
+      lookupReturns({ data: null, error: null });
+
+      await expect(
+        service.trackReferral({ referralCode: 'NOPE1234', userEmail: 'test@test.com' })
+      ).rejects.toThrow('NOPE1234');
+    });
+
+    it('reports a failed lookup as our fault, not a bad code', async () => {
+      lookupReturns({ data: null, error: { message: 'connection reset' } });
+
+      await expect(
+        service.trackReferral({ referralCode: 'CODE1', userEmail: 'test@test.com' })
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
     it('should throw BadRequestException for self-referral', async () => {
-      mockFrom.mockReturnValue({
-        select: () => ({
-          eq: () => ({
-            single: () => ({
-              data: {
-                id: 'p-1',
-                user_id: 'u-1',
-                email: 'user@test.com',
-                referral_code: 'CODE1',
-                total_referrals: 0,
-              },
-              error: null,
-            }),
-          }),
-        }),
+      lookupReturns({
+        data: {
+          id: 'p-1',
+          user_id: 'u-1',
+          email: 'user@test.com',
+          referral_code: 'CODE1',
+          total_referrals: 0,
+        },
+        error: null,
       });
 
       await expect(
         service.trackReferral({ referralCode: 'CODE1', userEmail: 'user@test.com' })
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('validateReferralCode', () => {
+    it('reports a real code with the referrer name', async () => {
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({ maybeSingle: () => ({ data: { full_name: 'Jose', name: null }, error: null }) }),
+        }),
+      });
+
+      await expect(service.validateReferralCode('abc12345')).resolves.toEqual({
+        valid: true,
+        referrerName: 'Jose',
+      });
+    });
+
+    it('reports an unknown code as invalid instead of throwing', async () => {
+      mockFrom.mockReturnValue({
+        select: () => ({ eq: () => ({ maybeSingle: () => ({ data: null, error: null }) }) }),
+      });
+
+      await expect(service.validateReferralCode('NOPE1234')).resolves.toEqual({
+        valid: false,
+        referrerName: null,
+      });
     });
   });
 });

@@ -3,11 +3,12 @@ import {
   Get,
   Post,
   Body,
+  Param,
   Req,
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiParam } from '@nestjs/swagger';
 import { ReferralService } from './referral.service';
 import { SupabaseAuthGuard } from '../guards/auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -37,6 +38,13 @@ export class ReferralController {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException('User not found');
     return this.referralService.generateReferralCode(userId);
+  }
+
+  @Get('validate/:code')
+  @ApiOperation({ summary: 'Check a referral code before sign-up (public, no auth)' })
+  @ApiParam({ name: 'code' })
+  validateReferralCode(@Param('code') code: string) {
+    return this.referralService.validateReferralCode(code);
   }
 
   @Post('track')

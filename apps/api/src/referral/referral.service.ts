@@ -122,6 +122,34 @@ export class ReferralService {
     throw new InternalServerErrorException('Failed to generate unique referral code. Please try again.');
   }
 
+  /**
+   * Public pre-signup check so the sign-up page only promises a bonus for a code
+   * that actually exists. Returns the referrer's display name and nothing else —
+   * referral codes are shared publicly by design, the rest of the profile is not.
+   */
+  async validateReferralCode(code: string) {
+    const referralCode = code.toUpperCase().trim();
+    const supabase = this.supabaseService.getClient();
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name, name')
+      .eq('referral_code', referralCode)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error('Referral code lookup failed:', error);
+      throw new InternalServerErrorException(
+        'Could not check that referral code right now. Please try again.',
+      );
+    }
+
+    return {
+      valid: Boolean(data),
+      referrerName: data?.full_name || data?.name || null,
+    };
+  }
+
   async trackReferral(input: TrackReferralInput) {
     const { referralCode, userEmail } = input;
     const supabase = this.supabaseService.getClient();
@@ -130,10 +158,21 @@ export class ReferralService {
       .from('profiles')
       .select('id, user_id, email, referral_code, total_referrals')
       .eq('referral_code', referralCode)
-      .single();
+      .maybeSingle();
 
-    if (referrerError || !referrer) {
-      throw new BadRequestException('Invalid referral code');
+    // A failed lookup is our problem, not a bad code — don't tell the user their
+    // friend's code is fake because the database blinked.
+    if (referrerError) {
+      this.logger.error('Referrer lookup failed:', referrerError);
+      throw new InternalServerErrorException(
+        'Could not check that referral code right now. Please try again.',
+      );
+    }
+
+    if (!referrer) {
+      throw new BadRequestException(
+        `Referral code "${referralCode}" does not exist. Check the link you were sent.`,
+      );
     }
 
     if (referrer.email?.toLowerCase() === userEmail.toLowerCase()) {

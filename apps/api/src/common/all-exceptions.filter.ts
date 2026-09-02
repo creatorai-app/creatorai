@@ -36,6 +36,7 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
 
       if (status >= HttpStatus.BAD_REQUEST && !AllExceptionsFilter.IGNORED_STATUSES.has(status)) {
         const route = request.route?.path ?? request.url?.split('?')[0] ?? null;
+        const errorBody = exception instanceof HttpException ? exception.getResponse() : null;
 
         // Fire and forget: reporting never blocks or breaks the response.
         void reportError(this.supabaseService.getClient(), {
@@ -51,8 +52,16 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
             params: request.params,
             query: request.query,
             userAgent: request.headers?.['user-agent'] ?? null,
-            // 5xx only: enough to reproduce, without hoarding request bodies.
-            body: status >= HttpStatus.INTERNAL_SERVER_ERROR ? redact(request.body) : undefined,
+            // Which field failed. Without it a 400 reads as an unactionable 'Validation failed'.
+            validationErrors:
+              errorBody && typeof errorBody === 'object'
+                ? (errorBody as { errors?: unknown }).errors
+                : undefined,
+            // Redacted, never raw: secrets masked, long strings and nested objects
+            // collapsed to their shape. A 4xx without the input that caused it is
+            // not diagnosable — 'Invalid referral code' cannot be acted on unless
+            // the log says which code.
+            body: redact(request.body),
           },
         });
       }
@@ -70,10 +79,10 @@ function featureFromUrl(url?: string): string | null {
   return segments[versionAt >= 0 ? versionAt + 1 : 0] ?? null;
 }
 
-const SECRET_KEYS = /token|password|secret|key|authorization|credential/i;
+const SECRET_KEYS = /token|password|secret|key|authorization|credential|otp/i;
 
 /** Keep the shape of the payload, drop anything that looks like a credential or bulk blob. */
-function redact(body: unknown): unknown {
+export function redact(body: unknown): unknown {
   if (!body || typeof body !== 'object') return body;
   if (Array.isArray(body)) return `[array of ${body.length}]`;
 

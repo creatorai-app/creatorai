@@ -148,6 +148,64 @@ Sources: [Google — URL canonicalization & duplicate handling](https://develope
 20. Unique, genuinely helpful content with **references and examples** (cite
     sources inline as external links; use concrete before/after examples, tables).
 
+## Publishing cadence — space every `publishedAt` 3 to 7 days apart
+
+**Never give two posts the same publish date, and never dump a batch.** When you
+write several posts in one session, set each one's `publishedAt` 3 to 7 days
+after the previous post in the table, so the archive reads as a steady drip.
+Prefer 3 or 4 days; 7 is the ceiling. The newest post may land on today's date
+but never in the future.
+
+The audit enforces this: `pnpm --filter web seo:audit` **fails** on two posts
+sharing a date and **warns** on any gap outside 3 to 7 days. Existing 2-day gaps
+in the archive predate the rule and are left alone; do not back-date live posts
+to satisfy the linter, only to fix a genuine same-day cluster.
+
+To find the right dates, list what is already published newest-first and count
+forward from the last one:
+
+```
+pnpm --filter web seo:audit    # the cadence sections print every gap
+```
+
+### Why, mechanically
+
+**It is not crawl budget.** Google is explicit that crawl budget only matters
+for sites with 1M+ pages changing weekly, or 10,000+ pages changing daily, and
+says outright: "If your site doesn't have a large number of pages that change
+rapidly … you don't need to read this guide"
+([Crawl budget management](https://developers.google.com/search/docs/crawling-indexing/large-site-managing-crawl-budget)).
+At ~50 posts we are nowhere near it. Do not justify this rule with crawl budget.
+
+The real reasons are smaller and more specific:
+
+- **Duplicate clustering.** A batch published the same day is usually a batch
+  written the same day, on adjacent topics. That is precisely the input that
+  makes Google [cluster pages and pick one canonical](https://developers.google.com/search/docs/crawling-indexing/canonicalization),
+  see STEP 0. Spacing them is not what prevents this, distinct angles are, but a
+  same-day cluster of near-identical posts makes the grouping more likely.
+- **Scaled content abuse.** Google's [spam policies](https://developers.google.com/search/docs/essentials/spam-policies)
+  target mass-produced pages made primarily to rank. Genuine posts are not that,
+  but a visible batch footprint is the pattern the policy describes, and there is
+  no upside to resembling it.
+- **Same-day publishing buys nothing anyway.** Google's own guidance is that
+  indexing normally takes days, and to not expect same-day indexing unless you
+  are a news site. Dating posts three days apart costs zero latency in practice.
+- **It reads badly to humans.** A blog index showing four posts on one date and
+  nothing for eleven days looks like inventory being dumped, which is the exact
+  impression the content is trying not to give.
+
+So the rule is cheap insurance rather than a fix for a specific penalty, and the
+honest summary is: it costs nothing, so do it.
+
+### When you write several posts at once
+
+Write them all, then stage the dates. Set the first to land 3 to 4 days after
+the current newest post and step forward from there. If that would push the last
+one past today, either narrow the gaps to 3 days or hold the tail post for the
+next batch. Backfilling into the past is fine and often better: an unpublished
+post has no rankings to lose.
+
 ## Video embeds (VideoObject — "watch page" indexing)
 
 Embed a YouTube video by writing a markdown image whose URL is the YouTube link,
