@@ -13,14 +13,18 @@ const sections = [
   { id: "overview", title: "1. Overview" },
   { id: "data-collection", title: "2. Data We Collect" },
   { id: "data-usage", title: "3. How We Use Your Data" },
-  { id: "storage-security", title: "4. Data Storage & Security" },
-  { id: "third-party", title: "5. Third-Party Processors" },
-  { id: "data-retention", title: "6. Data Retention" },
-  { id: "your-rights", title: "7. Your Rights" },
-  { id: "cookies", title: "8. Cookies" },
-  { id: "children", title: "9. Children's Privacy" },
-  { id: "policy-changes", title: "10. Changes to This Policy" },
-  { id: "contact", title: "11. Contact" },
+  { id: "youtube-data", title: "4. YouTube Channel Connection" },
+  { id: "ai-training", title: "5. AI Training & Third-Party Models" },
+  { id: "no-misuse", title: "6. How We Will Not Use Your Data" },
+  { id: "storage-security", title: "7. Data Storage & Security" },
+  { id: "third-party", title: "8. Third-Party Processors" },
+  { id: "data-retention", title: "9. Data Retention" },
+  { id: "your-rights", title: "10. Your Rights" },
+  { id: "cookies", title: "11. Cookies" },
+  { id: "open-source", title: "12. Open Source" },
+  { id: "children", title: "13. Children's Privacy" },
+  { id: "policy-changes", title: "14. Changes to This Policy" },
+  { id: "contact", title: "15. Contact" },
 ]
 
 const PrivacyPage = () => {
@@ -59,10 +63,12 @@ const PrivacyPage = () => {
             Back
           </button>
 
-          <h1 className="text-4xl md:text-5xl font-bold text-center mb-16 text-slate-900 w-full">
+          <h1 className="text-4xl md:text-5xl font-bold text-center mb-2 text-slate-900 w-full">
             Privacy Policy
           </h1>
         </div>
+
+        <p className="text-center text-sm text-slate-500 mb-16">Last updated: September 3, 2026</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-x-12">
           <aside className="hidden lg:block">
@@ -130,7 +136,7 @@ const PrivacyPage = () => {
               <p>We use your data to:</p>
               <ul className="list-disc pl-5 space-y-2 marker:text-purple-500">
                 <li>Operate and improve the Creator AI platform</li>
-                <li>Train personalized AI models based on your content</li>
+                <li>Build a style profile from your videos that personalizes what we generate for you (see section 5)</li>
                 <li>Generate scripts, thumbnails, ideas, and other content for you</li>
                 <li>Process payments and manage your subscription</li>
                 <li>Send important account notifications</li>
@@ -142,7 +148,125 @@ const PrivacyPage = () => {
               </p>
             </PolicySection>
 
-            <PolicySection id="storage-security" title="4. Data Storage & Security">
+            <PolicySection id="youtube-data" title="4. YouTube Channel Connection">
+              <p>
+                Creator AI uses YouTube API Services. Connecting your channel is optional, and
+                everything in this section applies only once you choose to connect it.
+              </p>
+              <p>
+                We request read-only access (the{" "}
+                <span className="font-mono text-sm">youtube.readonly</span> scope). We never
+                request permission to upload, edit, or delete anything on your channel. With
+                that access we read:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 marker:text-purple-500">
+                <li>Your channel profile and public statistics</li>
+                <li>Your video list, with each video's title, description, and thumbnail</li>
+                <li>Public statistics for those videos, such as view and like counts, and their duration</li>
+              </ul>
+              <p>
+                We store this data so your dashboard and generated content stay in sync with
+                your channel. We do not download, re-host, or redistribute your videos.
+              </p>
+              <p>
+                By connecting your channel you are also agreeing to the{" "}
+                <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                  YouTube Terms of Service
+                </a>
+                . Google's handling of your data is governed by the{" "}
+                <a href="http://www.google.com/policies/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                  Google Privacy Policy
+                </a>
+                .
+              </p>
+              <p>
+                <strong>You can revoke our access at any time</strong> from your{" "}
+                <a href="https://security.google.com/settings/security/permissions" target="_blank" rel="noopener noreferrer" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                  Google security settings
+                </a>
+                , or by disconnecting your channel in your Creator AI settings. When you revoke
+                access, we delete the YouTube data we obtained through the API, and anything we
+                derived from it, within 7 days.
+              </p>
+            </PolicySection>
+
+            <PolicySection id="ai-training" title="5. AI Training & Third-Party Models">
+              <p>
+                We do not build or host our own AI models. Creator AI runs on third-party
+                models, which means your content is sent to another company's servers to be
+                processed. We would rather say that plainly than bury it.
+              </p>
+              <p>
+                <strong>Which models.</strong> We use Google's Gemini models through Google
+                Cloud Vertex AI. Google processes this content as our service provider under
+                the{" "}
+                <a href="https://cloud.google.com/terms/service-terms" target="_blank" rel="noopener noreferrer" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                  Google Cloud Service Specific Terms
+                </a>
+                , whose Training Restriction section commits that Google will not use customer
+                data to train or fine-tune its models without the customer's permission. We have
+                not given that permission and will not.
+              </p>
+              <p>
+                <strong>What we send.</strong> When you train your AI, we send the model the
+                YouTube URLs of the videos you selected, and the model watches them — the
+                actual audio and video, not just the title and description. We also send the
+                prompts, context, and files you provide when using our generation tools.
+              </p>
+              <p>
+                <strong>What we keep.</strong> From that analysis we store a style profile on
+                your account: transcript excerpts, a description of your pacing, tone, humor,
+                and hooks, and numeric embeddings of that description. This profile is what
+                makes your scripts, ideas, thumbnails, and story blueprints sound like you. It
+                is attached to your account and used only for your generations.
+              </p>
+              <p>
+                <strong>Training, precisely.</strong> "Training your AI" in our product means
+                building this profile for you. It does not mean we fine-tune a model, and your
+                content is never pooled with other users' content to train a shared model.
+              </p>
+            </PolicySection>
+
+            <PolicySection id="no-misuse" title="6. How We Will Not Use Your Data">
+              <p>
+                Connecting your channel means handing us your life's work. These are
+                commitments, not aspirations:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 marker:text-purple-500">
+                <li>
+                  <strong>We do not sell your personal data or your content</strong> to anyone,
+                  for any purpose
+                </li>
+                <li>
+                  <strong>We do not share your style profile with other users.</strong> Nobody
+                  else can generate content in your voice through our platform
+                </li>
+                <li>
+                  <strong>We do not use your content to train shared or foundation models</strong>,
+                  ours or anyone else's
+                </li>
+                <li>
+                  <strong>We do not use your content for advertising or profiling</strong>, and
+                  we do not build audience segments out of it
+                </li>
+                <li>
+                  <strong>We do not republish, redistribute, or license your videos</strong> or
+                  anything derived from them
+                </li>
+              </ul>
+              <p>
+                Internal access is limited to what is needed to run and support the service, and
+                we act on misuse of the platform or of the data shared with us — including
+                suspending or terminating accounts and, where appropriate, reporting it. If you
+                believe your data has been misused, tell us at{" "}
+                <Link href="mailto:support@trycreatorai.com" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                  support@trycreatorai.com
+                </Link>{" "}
+                and we will investigate.
+              </p>
+            </PolicySection>
+
+            <PolicySection id="storage-security" title="7. Data Storage & Security">
               <p>
                 Your data is encrypted both in transit (using TLS) and at rest. We use
                 industry-standard security measures to protect your information.
@@ -153,31 +277,41 @@ const PrivacyPage = () => {
               </p>
             </PolicySection>
 
-            <PolicySection id="third-party" title="5. Third-Party Processors">
+            <PolicySection id="third-party" title="8. Third-Party Processors">
               <p>
-                We work with trusted third-party services to operate our platform. These
-                include:
+                These are the companies that process your data on our behalf, and what each one
+                handles:
               </p>
               <ul className="list-disc pl-5 space-y-2 marker:text-purple-500">
-                <li>Cloud hosting providers for data storage and processing</li>
-                <li>AI APIs for content generation</li>
-                <li>Payment processors for billing</li>
-                <li>Analytics services for platform improvement</li>
+                <li><strong>Google Cloud (Vertex AI):</strong> runs the AI models that analyze your videos and generate your content</li>
+                <li><strong>Google Cloud Storage:</strong> stores media files you upload or that we generate for you</li>
+                <li><strong>Google (YouTube Data API):</strong> the source of your channel and video data, once you connect your channel</li>
+                <li><strong>Supabase:</strong> our database, authentication, and file storage</li>
+                <li><strong>Lemon Squeezy:</strong> processes payments and subscriptions &mdash; they handle your card details, we never see or store them</li>
+                <li><strong>Resend:</strong> sends transactional email such as sign-up confirmations and account notices</li>
+                <li><strong>Google Analytics:</strong> aggregate usage statistics for the website</li>
               </ul>
               <p>
-                All third-party processors are bound by data protection agreements.
+                All of them are bound by data protection agreements. If we add or replace a
+                processor, we will update this list.
               </p>
             </PolicySection>
 
-            <PolicySection id="data-retention" title="6. Data Retention">
+            <PolicySection id="data-retention" title="9. Data Retention">
               <p>
                 We keep your data only as long as needed to provide our services and comply
                 with legal obligations. When you delete your account, we remove your personal
                 data within 30 days, except where we're legally required to retain it.
               </p>
+              <p>
+                YouTube data is on a shorter clock: if you disconnect your channel or revoke our
+                access through your Google security settings, we delete the data we obtained
+                through the YouTube API, and the style profile derived from it, within 7 days
+                &mdash; without waiting for you to delete your account.
+              </p>
             </PolicySection>
 
-            <PolicySection id="your-rights" title="7. Your Rights">
+            <PolicySection id="your-rights" title="10. Your Rights">
               <p>You have the right to:</p>
               <ul className="list-disc pl-5 space-y-2 marker:text-purple-500">
                 <li>Access the personal data we hold about you</li>
@@ -185,6 +319,14 @@ const PrivacyPage = () => {
                 <li>Request deletion of your data</li>
                 <li>Export your data in a portable format</li>
                 <li>Opt out of marketing communications</li>
+                <li>
+                  Disconnect your YouTube channel at any time, in your Creator AI settings or
+                  from your{" "}
+                  <a href="https://security.google.com/settings/security/permissions" target="_blank" rel="noopener noreferrer" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                    Google security settings
+                  </a>
+                </li>
+                <li>Delete your style profile without deleting your account, by disconnecting your channel</li>
               </ul>
               <p>
                 To exercise any of these rights, contact us through our{" "}
@@ -198,18 +340,35 @@ const PrivacyPage = () => {
               </p>
             </PolicySection>
 
-            <PolicySection id="cookies" title="8. Cookies">
+            <PolicySection id="cookies" title="11. Cookies">
               <p>
                 We use essential cookies to keep you logged in and remember your preferences.
-                We also use analytics cookies to understand how people use our platform so we
-                can make it better.
+                We also use Google Analytics cookies to understand how people use our platform
+                so we can make it better.
               </p>
               <p>
                 You can control cookies through your browser settings.
               </p>
             </PolicySection>
 
-            <PolicySection id="children" title="9. Children's Privacy">
+            <PolicySection id="open-source" title="12. Open Source">
+              <p>
+                Creator AI is open source. The code that handles your data &mdash; what we
+                request from YouTube, what we send to the AI models, what we store, and what we
+                delete &mdash; is public at{" "}
+                <a href="https://github.com/creatorai-app/creatorai" target="_blank" rel="noopener noreferrer" className="font-medium text-purple-600 hover:text-purple-800 underline underline-offset-4 transition-colors">
+                  github.com/creatorai-app/creatorai
+                </a>
+                .
+              </p>
+              <p>
+                You do not have to take this policy on trust. Every claim on this page can be
+                checked against the source. If you find something in the code that contradicts
+                what we have written here, tell us and we will fix whichever one is wrong.
+              </p>
+            </PolicySection>
+
+            <PolicySection id="children" title="13. Children's Privacy">
               <p>
                 Creator AI is not intended for children under 13. We do not knowingly collect
                 personal information from children. If we learn that we have collected data
@@ -217,7 +376,7 @@ const PrivacyPage = () => {
               </p>
             </PolicySection>
 
-            <PolicySection id="policy-changes" title="10. Changes to This Policy">
+            <PolicySection id="policy-changes" title="14. Changes to This Policy">
               <p>
                 We may update this Privacy Policy from time to time. We'll notify you of
                 significant changes by email or through a notice on our platform. Continued
@@ -225,7 +384,7 @@ const PrivacyPage = () => {
               </p>
             </PolicySection>
 
-            <PolicySection id="contact" title="11. Contact">
+            <PolicySection id="contact" title="15. Contact">
               <p>
                 Questions about your privacy? Visit our{" "}
                 <Link
