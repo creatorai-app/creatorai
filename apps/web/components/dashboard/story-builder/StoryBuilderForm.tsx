@@ -200,6 +200,7 @@ export function StoryBuilderForm({
             placeholder="e.g., How I grew from 0 to 100K subscribers in 6 months using only Shorts"
             value={videoTopic}
             onChange={(e) => setVideoTopic(e.target.value)}
+            maxLength={500}
             disabled={isGenerating}
             rows={3}
             className="resize-none"
@@ -324,6 +325,7 @@ export function StoryBuilderForm({
             placeholder="e.g., Beginner content creators aged 18-30"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
+            maxLength={300}
             disabled={isGenerating}
           />
         </div>
@@ -344,6 +346,7 @@ export function StoryBuilderForm({
               : "e.g., Energetic and motivational, casual and conversational"}
             value={tone}
             onChange={(e) => setTone(e.target.value)}
+            maxLength={200}
             disabled={isGenerating}
           />
         </div>
@@ -359,6 +362,7 @@ export function StoryBuilderForm({
             placeholder="Any specific points, filming style, brand guidelines, etc."
             value={additionalContext}
             onChange={(e) => setAdditionalContext(e.target.value)}
+            maxLength={2000}
             disabled={isGenerating}
             rows={2}
             className="resize-none"
