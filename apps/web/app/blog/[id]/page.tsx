@@ -10,6 +10,7 @@ import { SparklesCore } from "@repo/ui/sparkles"
 import { ArrowLeft, Calendar, Clock, User, Tag, ChevronRight } from "lucide-react"
 import BlogFaqAccordion from "@/components/blog/BlogFaqAccordion"
 import BlogContent from "@/components/blog/BlogContent"
+import BrandedCta from "@/components/blog/BrandedCta"
 import ArticleTOC from "@/components/blog/ArticleTOC"
 import SmoothScroll from "@/components/SmoothScroll"
 import { getPostBySlug, getAllPublishedSlugs, getRelatedPosts } from "@/lib/blog-source"
@@ -111,7 +112,11 @@ export default async function BlogDetailPage({
 
               {/* Article Content */}
               <article className={`${RISE} max-w-none min-w-0`}>
-                <BlogContent content={post.content} components={markdownComponents} />
+                <BlogContent
+                  content={post.content}
+                  components={markdownComponents}
+                  midSlot={post.brandedCta ? <BrandedCta cta={post.brandedCta} /> : undefined}
+                />
 
                 {/* FAQ */}
                 {post.faqs.length > 0 && (

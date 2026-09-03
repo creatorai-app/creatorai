@@ -87,3 +87,23 @@ export function isHighlightRow(cells: string[]): boolean {
 export function isCreatorAiColumn(header: string): boolean {
   return header.toLowerCase().includes("creator ai");
 }
+
+/**
+ * Splits a post at the `##` heading closest to its midpoint, for the mid-article
+ * CTA. Returns `[content, ""]` when there is no interior heading to break on,
+ * which is the signal to render the post whole and skip the CTA — a card
+ * dropped mid-paragraph reads worse than no card.
+ */
+export function splitAtMiddleHeading(content: string): [string, string] {
+  // Interior headings only: splitting at the first or last one puts the CTA at
+  // the top or bottom of the article, where the page already has CTAs.
+  const headings = [...content.matchAll(/^## .+$/gm)].slice(1, -1);
+  if (headings.length === 0) return [content, ""];
+
+  const middle = content.length / 2;
+  const at = headings.reduce((best, h) =>
+    Math.abs(h.index - middle) < Math.abs(best.index - middle) ? h : best,
+  ).index;
+
+  return [content.slice(0, at), content.slice(at)];
+}

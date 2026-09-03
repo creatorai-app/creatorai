@@ -141,6 +141,15 @@ export interface BlogVideo {
   duration?: string
 }
 
+/** The sign-up card rendered halfway down a post. */
+export interface BlogBrandedCta {
+  title: string
+  description: string
+  buttonLabel: string
+  /** Site-relative path; defaults to /signup when omitted. */
+  buttonHref?: string
+}
+
 export interface BlogPost {
   id: string
   /** Null for posts seeded before the CMS existed, or when the author's account is deleted. */
@@ -167,6 +176,8 @@ export interface BlogPost {
   faqs: BlogFaq[]
   /** Emitted as VideoObject JSON-LD. A video belongs to exactly one post. */
   videos: BlogVideo[]
+  /** Mid-article sign-up card. Null hides it. */
+  branded_cta?: BlogBrandedCta | null
   published_at?: string | null
   created_at: string
   updated_at: string
@@ -190,6 +201,7 @@ export const BLOG_POST_WRITABLE_FIELDS = [
   'keywords',
   'faqs',
   'videos',
+  'branded_cta',
   'published_at',
 ] as const
 
