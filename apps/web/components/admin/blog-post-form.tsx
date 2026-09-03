@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@repo/ui/select"
 import { auditPost } from "@/lib/blog-seo-rules"
-import type { BlogFaq, BlogPost, BlogVideo } from "@repo/validation"
+import type { BlogBrandedCta, BlogFaq, BlogPost, BlogVideo } from "@repo/validation"
 
 /** One editor for both creating and editing, so the two pages cannot drift. */
 
@@ -35,6 +35,7 @@ export interface BlogFormState {
   keywords: string
   faqs: BlogFaq[]
   videos: BlogVideo[]
+  branded_cta: BlogBrandedCta
 }
 
 /** `datetime-local` needs "YYYY-MM-DDTHH:mm" in local time, not an ISO string. */
@@ -45,6 +46,9 @@ function toLocalInput(iso: string | null | undefined): string {
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+/** An all-blank CTA means "no CTA": payloadFromForm sends null for it. */
+const EMPTY_CTA: BlogBrandedCta = { title: "", description: "", buttonLabel: "", buttonHref: "" }
 
 export const EMPTY_FORM: BlogFormState = {
   title: "",
@@ -64,6 +68,7 @@ export const EMPTY_FORM: BlogFormState = {
   keywords: "",
   faqs: [],
   videos: [],
+  branded_cta: EMPTY_CTA,
 }
 
 export function formFromPost(blog: BlogPost): BlogFormState {
@@ -85,6 +90,7 @@ export function formFromPost(blog: BlogPost): BlogFormState {
     keywords: blog.keywords?.join(", ") || "",
     faqs: blog.faqs ?? [],
     videos: blog.videos ?? [],
+    branded_cta: { ...EMPTY_CTA, ...(blog.branded_cta ?? {}) },
   }
 }
 
@@ -110,7 +116,20 @@ export function payloadFromForm(form: BlogFormState) {
     keywords: splitList(form.keywords),
     faqs: form.faqs.filter((f) => f.question.trim() && f.answer.trim()),
     videos: form.videos.filter((v) => v.youtubeId.trim()),
+    branded_cta: brandedCtaOrNull(form.branded_cta),
   }
+}
+
+/**
+ * The DB rejects a CTA missing any of the three texts, so a half-filled card is
+ * stored as no card rather than as a save error the author cannot decode.
+ */
+function brandedCtaOrNull(cta: BlogBrandedCta): BlogBrandedCta | null {
+  const title = cta.title.trim()
+  const description = cta.description.trim()
+  const buttonLabel = cta.buttonLabel.trim()
+  if (!title || !description || !buttonLabel) return null
+  return { title, description, buttonLabel, buttonHref: cta.buttonHref?.trim() || "/signup" }
 }
 
 const slugify = (title: string) =>
@@ -221,6 +240,9 @@ export function BlogPostForm({
 
   const setFaq = (i: number, patch: Partial<BlogFaq>) =>
     set("faqs", form.faqs.map((f, j) => (j === i ? { ...f, ...patch } : f)))
+
+  const setCta = (patch: Partial<BlogBrandedCta>) =>
+    set("branded_cta", { ...form.branded_cta, ...patch })
 
   const setVideo = (i: number, patch: Partial<BlogVideo>) =>
     set("videos", form.videos.map((v, j) => (j === i ? { ...v, ...patch } : v)))
@@ -437,6 +459,59 @@ export function BlogPostForm({
         >
           <Plus className="h-4 w-4" /> Add FAQ
         </AdminButton>
+      </Section>
+
+      <Section
+        title="Branded CTA"
+        hint="Sign-up card shown halfway down the post. Leave the fields empty for no card; match the offer to what the post is about."
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Title</label>
+            <Input
+              value={form.branded_cta.title}
+              onChange={(e) => setCta({ title: e.target.value })}
+              placeholder="Dub a 60-second video now"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Button label</label>
+            <Input
+              value={form.branded_cta.buttonLabel}
+              onChange={(e) => setCta({ buttonLabel: e.target.value })}
+              placeholder="Try AI dubbing free"
+              className={inputCls}
+            />
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Description</label>
+          <textarea
+            value={form.branded_cta.description}
+            onChange={(e) => setCta({ description: e.target.value })}
+            rows={2}
+            className={areaCls}
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Button link</label>
+          <Input
+            value={form.branded_cta.buttonHref ?? ""}
+            onChange={(e) => setCta({ buttonHref: e.target.value })}
+            placeholder="/signup"
+            className={inputCls}
+          />
+          <p
+            className={`text-xs mt-1 ${
+              form.branded_cta.buttonHref && !form.branded_cta.buttonHref.startsWith("/")
+                ? "text-rose-400"
+                : "text-slate-600"
+            }`}
+          >
+            Site-relative path only, e.g. /signup or /pricing. Defaults to /signup.
+          </p>
+        </div>
       </Section>
 
       <Section title="Videos" hint="Emitted as VideoObject data. A video may only be declared on one post.">

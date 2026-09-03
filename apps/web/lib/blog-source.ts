@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createSupabaseClient, getSupabaseEnv } from "@repo/supabase";
-import type { BlogFaq, BlogPost, BlogVideo } from "./blog-types";
+import type { BlogBrandedCta, BlogFaq, BlogPost, BlogVideo } from "./blog-types";
 
 /**
  * Reads published blog posts from public.blog_posts, which is the source of
@@ -12,7 +12,7 @@ import type { BlogFaq, BlogPost, BlogVideo } from "./blog-types";
  */
 
 const COLUMNS =
-  "slug,title,excerpt,content,category,author_name,read_time,featured,tags,keywords,faqs,videos,seo_title,seo_description,focus_keyword,published_at,updated_at";
+  "slug,title,excerpt,content,category,author_name,read_time,featured,tags,keywords,faqs,videos,branded_cta,seo_title,seo_description,focus_keyword,published_at,updated_at";
 
 interface BlogRow {
   slug: string;
@@ -27,6 +27,7 @@ interface BlogRow {
   keywords: string[] | null;
   faqs: BlogFaq[] | null;
   videos: BlogVideo[] | null;
+  branded_cta: BlogBrandedCta | null;
   seo_title: string | null;
   seo_description: string | null;
   focus_keyword: string | null;
@@ -69,6 +70,7 @@ function toPost(row: BlogRow): BlogPost {
     faqs: row.faqs ?? [],
     // Undefined rather than [] so `post.videos?.length` stays the video test.
     videos: row.videos?.length ? row.videos : undefined,
+    brandedCta: row.branded_cta ?? undefined,
   };
 }
 

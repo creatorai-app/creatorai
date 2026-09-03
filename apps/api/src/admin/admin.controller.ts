@@ -202,6 +202,19 @@ export class AdminController {
             properties: { question: { type: 'string' }, answer: { type: 'string' } },
           },
         },
+        branded_cta: {
+          type: 'object',
+          nullable: true,
+          description:
+            'Sign-up card rendered halfway down the post. Null for no card. buttonHref must be site-relative and defaults to /signup.',
+          required: ['title', 'description', 'buttonLabel'],
+          properties: {
+            title: { type: 'string', example: 'Dub a 60-second video now' },
+            description: { type: 'string' },
+            buttonLabel: { type: 'string', example: 'Try AI dubbing free' },
+            buttonHref: { type: 'string', example: '/signup' },
+          },
+        },
         videos: {
           type: 'array',
           description: 'Emitted as VideoObject JSON-LD; a video belongs to one post only',

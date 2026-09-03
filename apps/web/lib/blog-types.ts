@@ -17,6 +17,17 @@ export interface BlogVideo {
   duration?: string;
 }
 
+/** The sign-up card rendered halfway down a post, editable per post in admin. */
+export interface BlogBrandedCta {
+  /** Short offer headline, e.g. "Dub a 60-second video now". */
+  title: string;
+  /** One or two sentences tying the offer to what the post is about. */
+  description: string;
+  buttonLabel: string;
+  /** Site-relative path. Defaults to /signup. */
+  buttonHref?: string;
+}
+
 export interface BlogPost {
   slug: string;
   title: string;
@@ -51,4 +62,6 @@ export interface BlogPost {
    * indexes the page as a video "watch page". Order matches the embeds in
    * `content`. Omit when the post has no video. */
   videos?: BlogVideo[];
+  /** Mid-article sign-up card. Undefined on posts that have none. */
+  brandedCta?: BlogBrandedCta;
 }

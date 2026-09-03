@@ -104,7 +104,8 @@ Sources: [Google — URL canonicalization & duplicate handling](https://develope
    pnpm --filter web seo:audit
    ```
 4. If the post embeds a video, add a `videos[]` entry (see "Video" below).
-5. Add the post's URL to `apps/web/public/llms.txt` and its content block to
+5. Write the post's **branded CTA** (see below) — every published post gets one.
+6. Add the post's URL to `apps/web/public/llms.txt` and its content block to
    `apps/web/public/llms-full.txt` (see "AEO/GEO" below).
 
 ## The checklist (what the audit enforces)
@@ -147,6 +148,8 @@ Sources: [Google — URL canonicalization & duplicate handling](https://develope
 19. Accurate, specific `seoTitle`/`seoDescription` that match the content.
 20. Unique, genuinely helpful content with **references and examples** (cite
     sources inline as external links; use concrete before/after examples, tables).
+21. A **branded CTA** matched to the post's topic (see the next section). The
+    generic "sign up" card is the fallback, not the default.
 
 ## Publishing cadence — space every `publishedAt` 3 to 7 days apart
 
@@ -236,6 +239,61 @@ watch page.
   page.png`, `story page.png`, `subtitle page.png`, `ideation page.png`,
   `ai studio page.png`) are reusable where relevant.
 
+## Branded CTA (the mid-article sign-up card)
+
+**Every published post carries one, and it sells the feature the post is about.**
+It renders automatically at the `##` heading nearest the middle of the article,
+between the intro the reader came for and the conclusion most of them never
+reach. A reader who is sold by paragraph six should not have to scroll to the
+footer to act.
+
+It lives in the `branded_cta` jsonb column, so it is edited per post from the
+admin dashboard without a deploy:
+
+```jsonc
+{
+  "title": "Dub a 60-second video now",          // the offer, imperative
+  "description": "One or two sentences tying the offer to this article.",
+  "buttonLabel": "Try AI dubbing free",
+  "buttonHref": "/signup"                         // optional, site-relative, defaults to /signup
+}
+```
+
+**Match the offer to the topic — that is the whole point.** A dubbing post
+offers a dub, a thumbnail post offers thumbnails, a scripts post offers a
+script. "Get 500 free credits every month" is the *generic* card, used only when
+a post spans the whole product (roundups, algorithm explainers, tool
+comparisons that are not about one feature).
+
+| Post is about | Title | Button |
+|---|---|---|
+| Dubbing / localization | Dub a 60-second video now | Try AI dubbing free |
+| Subtitles / captions | Caption your next upload in minutes | Generate subtitles free |
+| Thumbnails / CTR | Generate 5 thumbnails to A/B test | Make my thumbnails |
+| Scripts / hooks / writing | Get a script in your own voice | Write my script free |
+| Ideas / planning / research | Get 10 video ideas for your niche | Find my next video |
+| Retention / story structure | Structure your next video for retention | Build my story outline |
+| Everything else | Get 500 free credits every month | Start free |
+
+Rules:
+
+- **Never claim something the product does not do.** The numbers above are real
+  and checkable: the free Starter plan caps a dub at 60 seconds
+  (`STARTER_MAX_DUB_SECONDS`), thumbnails generate 1–5 per run
+  (`thumbnail.schema.ts`), ideation returns up to 10 ideas
+  (`IDEATION_ABSOLUTE_MAX_IDEAS`), and the free plan is 500 credits a month.
+  If you invent a number, someone signs up for a thing that is not there.
+- **Reuse the cluster's copy rather than inventing a variant per post.** Seven
+  offers cover the blog; a forty-eighth wording is churn, not conversion.
+- `buttonHref` must be a site-relative path (`/signup`, `/pricing`,
+  `/tools/...`) — a DB constraint rejects anything else, because this column is
+  admin-editable and lands in an `href`.
+- The card is skipped automatically on a post with fewer than three `##`
+  headings: there is no interior boundary to place it on. If a post is hitting
+  that, it has a structure problem, not a CTA problem.
+- It is **not a heading**. The title renders as a `<p>` so an ad headline never
+  competes with the article's own `##` outline.
+
 ## AEO / GEO (getting cited by AI answer engines)
 
 Optimize for ChatGPT / Perplexity / Google AI Overviews, not just blue links:
@@ -258,5 +316,6 @@ Optimize for ChatGPT / Perplexity / Google AI Overviews, not just blue links:
 ## Reference: fields of a BlogPost
 
 `slug, title, excerpt, category, author, date, readTime, featured, tags[],
-content, seoTitle, seoDescription, focusKeyword, keywords[], faqs[], videos?[]`.
+content, seoTitle, seoDescription, focusKeyword, keywords[], faqs[], videos?[],
+brandedCta?`.
 See the `BlogPost` interface in `apps/web/lib/blog-types.ts` and the column list in `packages/supabase/migrations/20260819000000_blog_posts_content_model.sql`.
