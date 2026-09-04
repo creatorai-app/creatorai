@@ -4,19 +4,19 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import BlogTable from "@/components/blog/BlogTable";
-import { splitBlogContent } from "@/lib/parse-blog-tables";
+import { splitBlogContent, splitAtMiddleHeading } from "@/lib/parse-blog-tables";
 
 interface BlogContentProps {
   content: string;
   components: Components;
+  /** Rendered at the `##` heading nearest the middle of the post. */
+  midSlot?: React.ReactNode;
 }
 
-export default function BlogContent({ content, components }: BlogContentProps) {
-  const segments = splitBlogContent(content);
-
+function Markdown({ content, components }: { content: string; components: Components }) {
   return (
     <>
-      {segments.map((segment, index) =>
+      {splitBlogContent(content).map((segment, index) =>
         segment.type === "table" ? (
           <BlogTable key={`table-${index}`} table={segment.table} />
         ) : (
@@ -28,6 +28,24 @@ export default function BlogContent({ content, components }: BlogContentProps) {
             {segment.content}
           </ReactMarkdown>
         )
+      )}
+    </>
+  );
+}
+
+export default function BlogContent({ content, components, midSlot }: BlogContentProps) {
+  // Splitting the markdown before parsing keeps the CTA on a section boundary,
+  // so it can never land mid-paragraph or inside a table.
+  const [before, after] = midSlot ? splitAtMiddleHeading(content) : [content, ""];
+
+  return (
+    <>
+      <Markdown content={before} components={components} />
+      {after && (
+        <>
+          {midSlot}
+          <Markdown content={after} components={components} />
+        </>
       )}
     </>
   );
