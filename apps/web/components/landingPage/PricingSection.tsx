@@ -8,7 +8,7 @@ import { WobbleCard } from "@repo/ui/wobble-card";
 import * as motion from "motion/react-m";
 import { Check } from "lucide-react";
 import { useSupabase } from "../supabase-provider";
-import { MARKETING_PLANS, type MarketingPlan } from "@/lib/pricing-plans"
+import { MARKETING_PLANS, dubbingAllowanceFor, type MarketingPlan } from "@/lib/pricing-plans"
 import { trackFunnel } from "@/lib/funnel"
 
 const containerVariants = {
@@ -171,6 +171,10 @@ function PlanCard({ plan, annual, href }: { plan: MarketingPlan; annual: boolean
                 </p>
 
                 <ul className="space-y-2 mb-6 flex-1">
+                    <li className="flex items-start text-sm sm:text-base text-slate-600 dark:text-slate-400">
+                        <Check className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span><span className="font-semibold text-slate-800 dark:text-slate-200">{dubbingAllowanceFor(plan)}</span> of dubbing</span>
+                    </li>
                     {plan.features.map((f, i) => (
                         <li
                             key={i}
