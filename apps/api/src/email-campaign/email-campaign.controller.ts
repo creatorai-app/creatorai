@@ -70,9 +70,13 @@ export class EmailCampaignController {
   }
 
   @Post('email-campaigns/preview-recipients')
-  @ApiOperation({ summary: 'Full recipient records matching a segment filter' })
-  previewRecipients(@Body() body: { segmentFilter?: SegmentFilter }) {
-    return this.service.getUsersBySegment(body.segmentFilter ?? {});
+  @ApiOperation({
+    summary: 'Recipient records for a segment, flagged if the template already reached them',
+  })
+  previewRecipients(
+    @Body() body: { segmentFilter?: SegmentFilter; templateId?: string },
+  ) {
+    return this.service.previewRecipients(body.segmentFilter ?? {}, body.templateId);
   }
 
   @Post('email-campaigns/send')
@@ -102,7 +106,13 @@ export class EmailCampaignController {
     return this.service.getHistory(Number(page) || 1, Number(limit) || 20);
   }
 
-  // Declared after /history so the static route wins over :id.
+  @Get('email-campaigns/stats')
+  @ApiOperation({ summary: 'Volume sent today/month/year and per-template progress' })
+  getStats() {
+    return this.service.getStats();
+  }
+
+  // Declared after /history and /stats so the static routes win over :id.
   @Get('email-campaigns/:id')
   @ApiOperation({ summary: 'Full details of one campaign send' })
   getCampaign(@Param('id') id: string) {

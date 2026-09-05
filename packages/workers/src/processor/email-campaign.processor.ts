@@ -65,6 +65,9 @@ export class EmailCampaignProcessor extends WorkerHost {
     if (!recipients.length) throw new Error('No resolvable recipients for campaign');
 
     const batchIds: string[] = [];
+    // Only ids from chunks that actually went out — this is what the next batch
+    // of this template excludes, so a failed chunk must stay out of it.
+    const deliveredIds: string[] = [];
     const errors: { chunkSize: number; error: string }[] = [];
 
     for (const group of chunk(recipients, RESEND_BATCH_LIMIT)) {
@@ -79,6 +82,7 @@ export class EmailCampaignProcessor extends WorkerHost {
         );
         if (res.error) throw new Error(res.error.message);
         for (const m of res.data?.data ?? []) if (m?.id) batchIds.push(m.id);
+        for (const user of group) deliveredIds.push(user.id);
       } catch (err) {
         errors.push({ chunkSize: group.length, error: err instanceof Error ? err.message : String(err) });
         this.logger.error(`Campaign chunk failed (${group.length}): ${String(err)}`);
@@ -94,6 +98,8 @@ export class EmailCampaignProcessor extends WorkerHost {
       segment_filter: data.segmentFilter,
       recipient_ids: data.recipientIds,
       recipient_count: recipients.length,
+      delivered_ids: deliveredIds,
+      delivered_count: deliveredIds.length,
       custom_html_used: !!data.htmlOverride,
       custom_html: data.htmlOverride,
       resend_batch_ids: batchIds,

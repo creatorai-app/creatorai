@@ -378,12 +378,20 @@ export interface RecipientRecord {
   channelConnected: boolean;
   channelName: string | null;
   modelTrained: boolean;
+  alreadySent?: boolean;
+}
+
+export interface EmailCampaignStats {
+  audienceSize: number;
+  totals: { today: number; month: number; year: number; allTime: number };
+  byTemplate: Record<string, { delivered: number; batches: number; lastSentAt: string | null }>;
 }
 
 export interface EmailSendHistoryItem {
   id: string;
   from_address: string;
   recipient_count: number;
+  delivered_count: number;
   custom_html_used: boolean;
   status: string;
   sent_at: string;
@@ -500,8 +508,10 @@ export const adminApi = {
     api.put<EmailTemplate>(`/api/v1/admin/email-templates/${id}`, body, AUTH),
   getEmailFromAddresses: () =>
     api.get<EmailFromAddress[]>('/api/v1/admin/email-from-addresses', AUTH),
-  previewRecipients: (segmentFilter: SegmentFilter) =>
-    api.post<RecipientRecord[]>('/api/v1/admin/email-campaigns/preview-recipients', { segmentFilter }, AUTH),
+  previewRecipients: (segmentFilter: SegmentFilter, templateId?: string) =>
+    api.post<RecipientRecord[]>('/api/v1/admin/email-campaigns/preview-recipients', { segmentFilter, templateId }, AUTH),
+  getEmailStats: () =>
+    api.get<EmailCampaignStats>('/api/v1/admin/email-campaigns/stats', AUTH),
   sendCampaign: (body: {
     templateId: string;
     fromAddress: string;

@@ -13,7 +13,6 @@ import {
   FileText,
   Activity,
   Mail,
-  Send,
   Link2,
   Briefcase,
   ClipboardList,
@@ -33,8 +32,7 @@ const adminLinks = [
   { label: "Funnel", href: "/dashboard/admin/funnel", icon: Filter },
   { label: "Activities", href: "/dashboard/admin/activities", icon: Activity },
   { label: "Errors", href: "/dashboard/admin/errors", icon: AlertTriangle },
-  { label: "Mails", href: "/dashboard/admin/mails", icon: Mail },
-  { label: "Emails", href: "/dashboard/admin/emails", icon: Send },
+  { label: "Emails", href: "/dashboard/admin/emails", icon: Mail },
   { label: "Affiliates", href: "/dashboard/admin/affiliates", icon: Link2 },
 ]
 

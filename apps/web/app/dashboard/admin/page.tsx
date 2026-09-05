@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
   ]
 
   const inbox: StatConfig[] = [
-    { label: "Unread Mails", value: stats?.unreadMails ?? 0, icon: Mail, gradient: "from-red-500 to-pink-500", accent: "text-red-400", href: "/dashboard/admin/mails" },
+    { label: "Unread Mails", value: stats?.unreadMails ?? 0, icon: Mail, gradient: "from-red-500 to-pink-500", accent: "text-red-400", href: "/dashboard/admin/emails?tab=receiving" },
     { label: "Pending Applications", value: stats?.pendingApplications ?? 0, icon: Briefcase, gradient: "from-pink-500 to-rose-500", accent: "text-pink-400", href: "/dashboard/admin/applications" },
   ]
 

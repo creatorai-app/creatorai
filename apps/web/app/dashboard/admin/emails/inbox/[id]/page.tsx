@@ -146,7 +146,7 @@ export default function AdminMailDetailPage() {
   if (!mail) {
     return (
       <div className="space-y-4">
-        <AdminButton variant="tertiary" onClick={() => router.push("/dashboard/admin/mails")}>
+        <AdminButton variant="tertiary" onClick={() => router.push("/dashboard/admin/emails?tab=receiving")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Back
         </AdminButton>
         <p className="text-slate-400">Mail not found.</p>
@@ -157,7 +157,7 @@ export default function AdminMailDetailPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <AdminButton variant="tertiary" size="icon" onClick={() => router.push("/dashboard/admin/mails")}>
+        <AdminButton variant="tertiary" size="icon" onClick={() => router.push("/dashboard/admin/emails?tab=receiving")}>
           <ArrowLeft className="h-4 w-4" />
         </AdminButton>
         <AdminButton variant="secondary" onClick={handleArchive}>
