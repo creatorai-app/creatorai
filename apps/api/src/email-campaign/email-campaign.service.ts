@@ -18,6 +18,7 @@ export interface RecipientRecord {
   channelConnected: boolean;
   channelName: string | null;
   modelTrained: boolean;
+  alreadySent?: boolean; // set by previewRecipients when a template is in scope
 }
 
 export interface SegmentFilter {
@@ -103,11 +104,15 @@ export class EmailCampaignService {
   }
 
   // ---- Segment (Phase 2): full records, single source of truth ----
+  // Ordered by signup date so a segment yields the same sequence on every call —
+  // consecutive daily batches slice this list, and a shifting order would make
+  // them overlap and skip people.
   async getUsersBySegment(filter: SegmentFilter): Promise<RecipientRecord[]> {
     let query = this.db
       .from('profiles')
       .select('user_id, full_name, name, email, ai_trained, created_at')
-      .not('email', 'is', null);
+      .not('email', 'is', null)
+      .order('created_at');
 
     if (typeof filter.modelTrained === 'boolean') {
       query = query.eq('ai_trained', filter.modelTrained);
@@ -125,13 +130,14 @@ export class EmailCampaignService {
 
     // No FK from these tables to profiles, so hydrate with JS joins (same pattern
     // as the admin user list).
-    const [{ data: channels }, { data: subs }] = await Promise.all([
+    const [{ data: channels }, { data: subs }, { data: unsubs }] = await Promise.all([
       this.db.from('youtube_channels').select('user_id, channel_name').in('user_id', userIds),
       this.db
         .from('subscriptions')
         .select('user_id, plans(name)')
         .eq('status', 'active')
         .in('user_id', userIds),
+      this.db.from('email_unsubscribes').select('user_id').in('user_id', userIds),
     ]);
 
     const channelByUser = new Map<string, string | null>(
@@ -140,16 +146,21 @@ export class EmailCampaignService {
     const planByUser = new Map<string, string | null>(
       (subs ?? []).map((s) => [s.user_id as string, (s.plans as { name?: string })?.name ?? null]),
     );
+    // The worker drops these at send time anyway. Excluding them here too keeps
+    // them from occupying slots in a batch that would then deliver nothing.
+    const unsubscribed = new Set((unsubs ?? []).map((u) => u.user_id as string));
 
-    let records: RecipientRecord[] = profiles.map((p) => ({
-      id: p.user_id as string,
-      email: p.email as string,
-      fullName: (p.full_name as string) ?? (p.name as string) ?? null,
-      planTier: planByUser.get(p.user_id as string) ?? null,
-      channelConnected: channelByUser.has(p.user_id as string),
-      channelName: channelByUser.get(p.user_id as string) ?? null,
-      modelTrained: Boolean(p.ai_trained),
-    }));
+    let records: RecipientRecord[] = profiles
+      .filter((p) => !unsubscribed.has(p.user_id as string))
+      .map((p) => ({
+        id: p.user_id as string,
+        email: p.email as string,
+        fullName: (p.full_name as string) ?? (p.name as string) ?? null,
+        planTier: planByUser.get(p.user_id as string) ?? null,
+        channelConnected: channelByUser.has(p.user_id as string),
+        channelName: channelByUser.get(p.user_id as string) ?? null,
+        modelTrained: Boolean(p.ai_trained),
+      }));
 
     // channelConnected + planTier can't be filtered at the DB level (JS joins), so
     // apply them here — same source list either way.
@@ -161,6 +172,89 @@ export class EmailCampaignService {
       records = records.filter((r) => (r.planTier ?? '').toLowerCase() === want);
     }
     return records;
+  }
+
+  // ---- Batching: who already got this template ----
+  private async getDeliveredIds(templateId: string): Promise<Set<string>> {
+    const { data, error } = await this.db
+      .from('email_sends')
+      .select('delivered_ids')
+      .eq('template_id', templateId);
+    if (error) throw new BadRequestException(error.message);
+    const out = new Set<string>();
+    for (const row of data ?? []) {
+      for (const id of (row.delivered_ids as string[]) ?? []) out.add(id);
+    }
+    return out;
+  }
+
+  // Segment matches, flagged with whether this template already reached them, so
+  // the dashboard can carve the next batch out of the ones it hasn't.
+  async previewRecipients(filter: SegmentFilter, templateId?: string) {
+    const records = await this.getUsersBySegment(filter);
+    if (!templateId) return records;
+    const delivered = await this.getDeliveredIds(templateId);
+    return records.map((r) => ({ ...r, alreadySent: delivered.has(r.id) }));
+  }
+
+  // Volume sent over time and per template, for the dashboard's progress view.
+  // ponytail: aggregates every send row in JS. Fine at hundreds of rows; move to
+  // a SQL view if email_sends ever reaches tens of thousands.
+  async getStats() {
+    const [sendsRes, audienceSize] = await Promise.all([
+      this.db
+        .from('email_sends')
+        .select('template_id, delivered_count, sent_at')
+        .order('sent_at', { ascending: false }),
+      this.countAudience(),
+    ]);
+    if (sendsRes.error) throw new BadRequestException(sendsRes.error.message);
+    const sends = sendsRes.data ?? [];
+
+    // UTC boundaries — sent_at is stored in UTC and the dashboard labels these
+    // as UTC, so there's no local-timezone ambiguity in the numbers.
+    const now = new Date();
+    const startOfDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const startOfMonth = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 1);
+
+    const totals = { today: 0, month: 0, year: 0, allTime: 0 };
+    const byTemplate: Record<
+      string,
+      { delivered: number; batches: number; lastSentAt: string | null }
+    > = {};
+
+    for (const s of sends) {
+      const count = (s.delivered_count as number) ?? 0;
+      const at = new Date(s.sent_at as string).getTime();
+      totals.allTime += count;
+      if (at >= startOfYear) totals.year += count;
+      if (at >= startOfMonth) totals.month += count;
+      if (at >= startOfDay) totals.today += count;
+
+      const templateId = s.template_id as string | null;
+      if (!templateId) continue;
+      const entry = (byTemplate[templateId] ??= { delivered: 0, batches: 0, lastSentAt: null });
+      entry.delivered += count;
+      entry.batches += 1;
+      // Rows arrive newest-first, so the first one seen is the latest.
+      entry.lastSentAt ??= s.sent_at as string;
+    }
+
+    return { audienceSize, totals, byTemplate };
+  }
+
+  // Everyone reachable at all: has an email, hasn't opted out. The denominator
+  // for per-template progress on the dashboard.
+  private async countAudience(): Promise<number> {
+    const [{ count: total }, { count: optedOut }] = await Promise.all([
+      this.db
+        .from('profiles')
+        .select('user_id', { count: 'exact', head: true })
+        .not('email', 'is', null),
+      this.db.from('email_unsubscribes').select('user_id', { count: 'exact', head: true }),
+    ]);
+    return Math.max(0, (total ?? 0) - (optedOut ?? 0));
   }
 
   // ---- Send (Phase 4/5): validate, persist edits, enqueue ----
@@ -255,7 +349,7 @@ export class EmailCampaignService {
     const { data, error, count } = await this.db
       .from('email_sends')
       .select(
-        'id, from_address, recipient_count, custom_html_used, status, sent_at, sent_by, email_templates(name, category)',
+        'id, from_address, recipient_count, delivered_count, custom_html_used, status, sent_at, sent_by, email_templates(name, category)',
         { count: 'exact' },
       )
       .order('sent_at', { ascending: false })

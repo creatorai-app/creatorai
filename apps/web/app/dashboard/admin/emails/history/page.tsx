@@ -66,6 +66,7 @@ export default function EmailHistoryPage() {
                 <th className="px-4 py-3 font-medium">Template</th>
                 <th className="px-4 py-3 font-medium">From</th>
                 <th className="px-4 py-3 font-medium">Recipients</th>
+                <th className="px-4 py-3 font-medium">Delivered</th>
                 <th className="px-4 py-3 font-medium">Edited</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Sent</th>
@@ -74,10 +75,10 @@ export default function EmailHistoryPage() {
             <tbody className="divide-y divide-slate-800">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-5 bg-slate-800 rounded animate-pulse" /></td></tr>
+                  <tr key={i}><td colSpan={7} className="px-4 py-3"><div className="h-5 bg-slate-800 rounded animate-pulse" /></td></tr>
                 ))
               ) : !data.length ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No campaigns sent yet</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No campaigns sent yet</td></tr>
               ) : (
                 data.map((s) => (
                   <tr key={s.id} onClick={() => router.push(`/dashboard/admin/emails/history/${s.id}`)}
@@ -88,6 +89,7 @@ export default function EmailHistoryPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-400">{s.from_address}</td>
                     <td className="px-4 py-3 text-slate-300">{s.recipient_count}</td>
+                    <td className="px-4 py-3 text-slate-300">{s.delivered_count ?? 0}</td>
                     <td className="px-4 py-3 text-slate-400">{s.custom_html_used ? "Yes" : "No"}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(s.status)}`}>{s.status}</span>

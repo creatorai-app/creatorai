@@ -6,6 +6,7 @@ import {
   adminApi,
   type EmailTemplate,
   type EmailFromAddress,
+  type EmailCampaignStats,
   type RecipientRecord,
   type SegmentFilter,
 } from "@/hooks/useAdmin"
@@ -40,6 +41,9 @@ const TRISTATE = [
 ]
 // Dark-theme dropdown panel — text-slate-200 so unfocused items stay readable.
 const SELECT_CONTENT = "bg-slate-900 border-slate-700 text-slate-200"
+// Sending happens in daily batches against a provider quota, so the size is
+// picked per send — presets for the common cases, "custom" for anything else.
+const BATCH_PRESETS = ["20", "50", "100", "250", "500", "1000"]
 
 const DEMO_RECIPIENT: RecipientRecord = {
   id: "demo", email: "you@example.com", fullName: "Alex Rivera",
@@ -78,7 +82,12 @@ function ComposeCampaignInner() {
   const [recipients, setRecipients] = useState<RecipientRecord[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [loadingRecipients, setLoadingRecipients] = useState(false)
+  const [batchPreset, setBatchPreset] = useState("50")
+  const [customBatch, setCustomBatch] = useState("")
+  const [skipSent, setSkipSent] = useState(true)
+  const [stats, setStats] = useState<EmailCampaignStats | null>(null)
 
+  const [segmentOpen, setSegmentOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -104,11 +113,18 @@ function ComposeCampaignInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Informational only — how much has gone out already, to size today's batch.
+  useEffect(() => {
+    adminApi.getEmailStats().then(setStats).catch(() => {})
+  }, [])
+
   const loadTemplate = (t: EmailTemplate, froms?: EmailFromAddress[]) => {
     setTemplateId(t.id)
     setHtml(t.html)
     setSubject(t.subject)
     setPast([]); setFuture([]) // fresh template = fresh history
+    // alreadySent was computed for the previous template — reload before trusting it.
+    setRecipients([])
     const pool = froms ?? fromAddresses
     if (t.default_from_address && pool.some((f) => f.email === t.default_from_address)) {
       setFromAddress(t.default_from_address)
@@ -197,15 +213,36 @@ function ComposeCampaignInner() {
   const loadRecipients = async () => {
     setLoadingRecipients(true)
     try {
-      const recs = await adminApi.previewRecipients(buildFilter())
+      // templateId flags who this template already reached — the batch is cut
+      // from the rest, so tomorrow's run continues where today's stopped.
+      const recs = await adminApi.previewRecipients(buildFilter(), templateId || undefined)
       setRecipients(recs)
-      setSelected(new Set(recs.map((r) => r.id)))
     } catch {
       toast.error("Failed to load recipients")
     } finally {
       setLoadingRecipients(false)
     }
   }
+
+  const batchSize =
+    batchPreset === "all" ? Number.MAX_SAFE_INTEGER
+    : batchPreset === "custom" ? Math.max(0, Math.floor(Number(customBatch) || 0))
+    : Number(batchPreset)
+
+  const eligible = useMemo(
+    () => recipients.filter((r) => !(skipSent && r.alreadySent)),
+    [recipients, skipSent],
+  )
+  const alreadySentCount = useMemo(
+    () => recipients.filter((r) => r.alreadySent).length,
+    [recipients],
+  )
+
+  // Take the batch off the front of the eligible list. Re-runs when the size or
+  // the skip toggle changes, so manual ticks below survive until one of those does.
+  useEffect(() => {
+    setSelected(new Set(eligible.slice(0, batchSize).map((r) => r.id)))
+  }, [eligible, batchSize])
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -267,7 +304,7 @@ function ComposeCampaignInner() {
         </div>
       </div>
 
-      {/* Category + variant + from */}
+      {/* Category + variant + segment */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Category">
           <Select value={category} onValueChange={onCategoryChange}>
@@ -285,15 +322,23 @@ function ComposeCampaignInner() {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="From">
-          <Select value={fromAddress} onValueChange={setFromAddress}>
-            <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200"><SelectValue placeholder="From address" /></SelectTrigger>
-            <SelectContent className={SELECT_CONTENT}>
-              {fromAddresses.map((f) => <SelectItem key={f.id} value={f.email}>{f.display_name} &lt;{f.email}&gt;</SelectItem>)}
-            </SelectContent>
-          </Select>
+        <Field label="Segment">
+          <AdminButton variant="secondary" className="w-full justify-start" onClick={() => setSegmentOpen(true)}>
+            <Users className="h-4 w-4 mr-1.5" />
+            {selectedCount > 0 ? `${selectedCount} recipient${selectedCount === 1 ? "" : "s"} selected` : "Choose recipients"}
+          </AdminButton>
         </Field>
       </div>
+
+      {/* From */}
+      <Field label="From">
+        <Select value={fromAddress} onValueChange={setFromAddress}>
+          <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200"><SelectValue placeholder="From address" /></SelectTrigger>
+          <SelectContent className={SELECT_CONTENT}>
+            {fromAddresses.map((f) => <SelectItem key={f.id} value={f.email}>{f.display_name} &lt;{f.email}&gt;</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
 
       {/* Subject (editable) */}
       <Field label={`Subject${edited ? " • edited" : ""}`}>
@@ -333,60 +378,117 @@ function ComposeCampaignInner() {
         </div>
       </div>
 
-      {/* Segment filter */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-slate-300">Segment</h2>
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Field label="Channel connected"><TriSelect value={seg.channel} onChange={(v) => setSeg((s) => ({ ...s, channel: v }))} /></Field>
-          <Field label="AI trained"><TriSelect value={seg.trained} onChange={(v) => setSeg((s) => ({ ...s, trained: v }))} /></Field>
-          <Field label="Plan tier">
-            <Select value={seg.plan} onValueChange={(v) => setSeg((s) => ({ ...s, plan: v }))}>
-              <SelectTrigger className="bg-slate-900 border-slate-700 text-slate-200"><SelectValue /></SelectTrigger>
-              <SelectContent className={SELECT_CONTENT}>
-                <SelectItem value="any">Any</SelectItem>
-                {PLAN_TIERS.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Signed up ≥ N days ago">
-            <Input type="number" min={0} value={seg.days} onChange={(e) => setSeg((s) => ({ ...s, days: e.target.value }))}
-              placeholder="any" className="bg-slate-900 border-slate-700 text-slate-100" />
-          </Field>
-        </div>
-        <AdminButton variant="secondary" onClick={loadRecipients} disabled={loadingRecipients}>
-          {loadingRecipients ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Users className="h-4 w-4 mr-1" />}
-          Load recipients
-        </AdminButton>
-      </div>
+      {/* Segment + recipients */}
+      <Dialog open={segmentOpen} onOpenChange={setSegmentOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100">Segment &amp; recipients</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Filter the audience, then take this batch off the top of whoever is left.
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Recipient checklist */}
-      {recipients.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-            <span className="text-sm font-semibold text-slate-300">{selectedCount} of {recipients.length} selected</span>
-            <div className="flex gap-2">
-              <button onClick={() => setSelected(new Set(recipients.map((r) => r.id)))} className="text-xs text-indigo-400 hover:underline">Select all</button>
-              <button onClick={() => setSelected(new Set())} className="text-xs text-slate-400 hover:underline">Clear</button>
+          <div className="space-y-4 shrink-0">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Channel connected"><TriSelect value={seg.channel} onChange={(v) => setSeg((s) => ({ ...s, channel: v }))} /></Field>
+              <Field label="AI trained"><TriSelect value={seg.trained} onChange={(v) => setSeg((s) => ({ ...s, trained: v }))} /></Field>
+              <Field label="Plan tier">
+                <Select value={seg.plan} onValueChange={(v) => setSeg((s) => ({ ...s, plan: v }))}>
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectContent className={SELECT_CONTENT}>
+                    <SelectItem value="any">Any</SelectItem>
+                    {PLAN_TIERS.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Signed up ≥ N days ago">
+                <Input type="number" min={0} value={seg.days} onChange={(e) => setSeg((s) => ({ ...s, days: e.target.value }))}
+                  placeholder="any" className="bg-slate-800 border-slate-700 text-slate-100" />
+              </Field>
             </div>
-          </div>
-          <div className="max-h-96 overflow-y-auto divide-y divide-slate-800">
-            {recipients.map((r) => (
-              <label key={r.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-900/40 cursor-pointer">
-                <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm text-slate-200 truncate">{r.fullName || r.email}</div>
-                  <div className="text-xs text-slate-500 truncate">{r.email}</div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Batch size">
+                <Select value={batchPreset} onValueChange={setBatchPreset}>
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectContent className={SELECT_CONTENT}>
+                    {BATCH_PRESETS.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    <SelectItem value="all">All remaining</SelectItem>
+                    <SelectItem value="custom">Custom…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {batchPreset === "custom" && (
+                <Field label="Custom amount">
+                  <Input type="number" min={1} value={customBatch} onChange={(e) => setCustomBatch(e.target.value)}
+                    placeholder="e.g. 75" className="bg-slate-800 border-slate-700 text-slate-100" />
+                </Field>
+              )}
+              <div className="sm:col-span-2 flex items-end">
+                <label className="flex items-center gap-2.5 cursor-pointer pb-2">
+                  <Checkbox checked={skipSent} onCheckedChange={(v) => setSkipSent(v === true)} />
+                  <span className="text-sm text-slate-300">Skip recipients this template already reached</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <AdminButton variant="secondary" onClick={loadRecipients} disabled={loadingRecipients}>
+                {loadingRecipients ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Users className="h-4 w-4 mr-1" />}
+                Load recipients
+              </AdminButton>
+              {stats && (
+                <span className="text-xs text-slate-500">
+                  Sent today (UTC): {stats.totals.today} · this month: {stats.totals.month}
+                </span>
+              )}
+            </div>
+
+            {recipients.length > 0 && (
+              <div className="flex items-center justify-between gap-3 flex-wrap border-t border-slate-800 pt-3">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-semibold text-slate-300">{selectedCount} of {recipients.length} selected</span>
+                  <p className="text-xs text-slate-500">
+                    {recipients.length} match · {alreadySentCount} already got this template ·{" "}
+                    {eligible.length} remaining · {Math.max(0, eligible.length - selectedCount)} left after this batch
+                  </p>
                 </div>
-                <div className="hidden sm:flex gap-1.5 text-[11px]">
-                  {r.planTier && <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 capitalize">{r.planTier}</span>}
-                  <span className={`px-1.5 py-0.5 rounded ${r.channelConnected ? "bg-green-900/40 text-green-400" : "bg-slate-800 text-slate-500"}`}>{r.channelConnected ? "channel" : "no channel"}</span>
-                  <span className={`px-1.5 py-0.5 rounded ${r.modelTrained ? "bg-green-900/40 text-green-400" : "bg-slate-800 text-slate-500"}`}>{r.modelTrained ? "trained" : "untrained"}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => setSelected(new Set(eligible.map((r) => r.id)))} className="text-xs text-indigo-400 hover:underline">Select all</button>
+                  <button onClick={() => setSelected(new Set())} className="text-xs text-slate-400 hover:underline">Clear</button>
                 </div>
-              </label>
-            ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+
+          {/* Scrolls on its own so a large segment can't push the modal off-screen.
+              Shows the eligible list — with skip on, the already-reached would be a
+              long run of unticked rows above the ones actually being sent to. */}
+          {eligible.length > 0 && (
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-slate-800 divide-y divide-slate-800">
+              {eligible.map((r) => (
+                <label key={r.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/40 cursor-pointer">
+                  <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-slate-200 truncate">{r.fullName || r.email}</div>
+                    <div className="text-xs text-slate-500 truncate">{r.email}</div>
+                  </div>
+                  <div className="hidden sm:flex gap-1.5 text-[11px]">
+                    {r.alreadySent && <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300">already sent</span>}
+                    {r.planTier && <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 capitalize">{r.planTier}</span>}
+                    <span className={`px-1.5 py-0.5 rounded ${r.channelConnected ? "bg-green-900/40 text-green-400" : "bg-slate-800 text-slate-500"}`}>{r.channelConnected ? "channel" : "no channel"}</span>
+                    <span className={`px-1.5 py-0.5 rounded ${r.modelTrained ? "bg-green-900/40 text-green-400" : "bg-slate-800 text-slate-500"}`}>{r.modelTrained ? "trained" : "untrained"}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <AdminButton variant="primary" onClick={() => setSegmentOpen(false)}>Done</AdminButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -401,7 +503,9 @@ function ComposeCampaignInner() {
             <Row label="Template" value={template?.name ?? "—"} />
             <Row label="Subject" value={subject} />
             <Row label="Edited before send" value={edited ? "Yes (saved to template)" : "No"} />
-            <Row label="Recipients" value={String(selectedCount)} />
+            <Row label="Recipients in this batch" value={String(selectedCount)} />
+            <Row label="Already reached earlier" value={String(alreadySentCount)} />
+            <Row label="Left after this batch" value={String(Math.max(0, eligible.length - selectedCount))} />
           </div>
           <DialogFooter>
             <AdminButton variant="secondary" onClick={() => setConfirmOpen(false)}>Cancel</AdminButton>
