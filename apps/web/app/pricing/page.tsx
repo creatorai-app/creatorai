@@ -11,7 +11,7 @@ import { SparklesCore } from "@repo/ui/sparkles";
 import { MButton } from "@repo/ui/moving-border";
 import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react";
 import { useSupabase } from "@/components/supabase-provider";
-import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans";
+import { MARKETING_PLANS, ALL_FEATURES, dubbingAllowanceFor } from "@/lib/pricing-plans";
 import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import { trackFunnel } from "@/lib/funnel";
 
@@ -55,9 +55,8 @@ export default function PricingPage() {
             >
               <h1 className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">
-                  Simple Pricing,
+                  Pricing
                 </span>{" "}
-                Powerful Results
               </h1>
               <p className="text-lg md:text-xl text-slate-600 max-w-xl mx-auto">
                 Join thousands of creators who save 10+ hours every week. Start free, upgrade when you&#39;re ready.
@@ -157,6 +156,14 @@ export default function PricingPage() {
                     {MARKETING_PLANS.map((p) => (
                       <td key={p.id} className="text-center py-3.5 px-4 text-sm font-medium text-slate-800">
                         {p.credits.toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="py-3.5 px-4 text-sm text-slate-700">Dubbing included</td>
+                    {MARKETING_PLANS.map((p) => (
+                      <td key={p.id} className="text-center py-3.5 px-4 text-sm font-medium text-slate-800">
+                        {dubbingAllowanceFor(p)}
                       </td>
                     ))}
                   </tr>

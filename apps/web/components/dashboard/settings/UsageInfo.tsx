@@ -14,6 +14,7 @@ import { Progress } from "@repo/ui/progress";
 import { Skeleton } from "@repo/ui/skeleton";
 import { Badge } from "@repo/ui/badge";
 import { useBilling } from "@/hooks/useBilling";
+import { formatDubbingAllowance } from "@repo/validation";
 import { api } from "@/lib/api-client";
 import {
   BarChart3,
@@ -406,6 +407,16 @@ export function UsageInfo() {
               </span>
               <span className="text-sm font-medium">
                 {billingInfo?.currentPlan?.credits_monthly?.toLocaleString() ?? 500} credits/mo
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Dubbing included</span>
+              <span className="text-sm font-medium">
+                {formatDubbingAllowance(
+                  billingInfo?.currentPlan?.credits_monthly ?? 500,
+                  billingInfo?.currentPlan?.name ?? "Starter",
+                )}
               </span>
             </div>
 

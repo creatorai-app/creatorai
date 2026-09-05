@@ -16,6 +16,7 @@ import type { CreateDubInput, SignDubUploadInput, DubResponse } from '@repo/vali
 import {
   canDub,
   hasEnoughCredits,
+  dubbingMultiplierForPlan,
   calculateDubbingCreditsByDuration,
   isDubDurationAllowed,
   maxDubSecondsForPlan,
@@ -126,10 +127,17 @@ export class DubbingService {
     );
   }
 
-  /** Credits this dub costs at the current rate — the single place the price is computed. */
-  private dubCost(durationSeconds: number): number {
-    const multiplier = this.getEnvNumber('DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER);
-    return calculateDubbingCreditsByDuration(durationSeconds, multiplier);
+  /**
+   * Credits this dub costs at the current rate — the single place the price is computed.
+   * Starter pays its own (higher) rate; the worker resolves the same rate from the plan
+   * it carries in the job, so the settle can't disagree with what was reserved.
+   */
+  private dubCost(durationSeconds: number, planName?: string | null): number {
+    const paid = this.getEnvNumber('DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER);
+    return calculateDubbingCreditsByDuration(
+      durationSeconds,
+      dubbingMultiplierForPlan(planName, paid),
+    );
   }
 
   /**
@@ -164,8 +172,12 @@ export class DubbingService {
   }
 
   /** Same cost the worker will settle — checked here so we fail before ElevenLabs runs. */
-  private async assertCanAffordDub(userId: string, durationSeconds: number): Promise<void> {
-    const required = this.dubCost(durationSeconds);
+  private async assertCanAffordDub(
+    userId: string,
+    durationSeconds: number,
+    planName?: string | null,
+  ): Promise<void> {
+    const required = this.dubCost(durationSeconds, planName);
 
     const { data: profile, error } = await this.supabase
       .from('profiles')
@@ -211,7 +223,7 @@ export class DubbingService {
 
     // Check the balance BEFORE the browser pushes up to 500MB — being told the dub is
     // unaffordable is much cheaper before the upload than after it.
-    await this.assertCanAffordDub(userId, input.durationSeconds);
+    await this.assertCanAffordDub(userId, input.durationSeconds, planName);
 
     const safeName = this.sanitizeFileName(input.filename);
     const objectName = `${STAGING_PREFIX}${userId}/dubbing/${Date.now()}_${safeName}`;
@@ -258,7 +270,7 @@ export class DubbingService {
     // Precheck the FULL duration-based cost, not just a one-second floor, so the user
     // gets a clear message rather than the bare "balance is short" from the reservation.
     try {
-      await this.assertCanAffordDub(userId, durationSeconds);
+      await this.assertCanAffordDub(userId, durationSeconds, planName);
     } catch (error) {
       await discardUpload();
       throw error;
@@ -279,7 +291,7 @@ export class DubbingService {
 
     // Take the money now. Atomic and floored at zero, so two dubs started at once can
     // never both pass — the second is rejected here instead of after ElevenLabs ran.
-    const reservedCredits = this.dubCost(durationSeconds);
+    const reservedCredits = this.dubCost(durationSeconds, planName);
     try {
       await this.reserveCredits(userId, reservedCredits);
     } catch (error) {
@@ -427,9 +439,9 @@ export class DubbingService {
       throw new BadRequestException('The original media is no longer available. Please create a new dub.');
     }
 
-    await this.assertCanAffordDub(userId, Number(row.duration_seconds));
+    await this.assertCanAffordDub(userId, Number(row.duration_seconds), planName);
 
-    const reservedCredits = this.dubCost(Number(row.duration_seconds));
+    const reservedCredits = this.dubCost(Number(row.duration_seconds), planName);
     await this.reserveCredits(userId, reservedCredits);
 
     // Reset the row in place so the same detail page reflects the new run.

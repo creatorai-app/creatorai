@@ -69,15 +69,69 @@ export const VIDEO_GENERATION_CREDIT_MULTIPLIER = 85;
 // in one call). ElevenLabs bills ~2,000 of THEIR credits per source minute; at the
 // Pro-tier overage rate that is ~$0.24/min = $0.004/second.
 //
-// ponytail: 3/sec is a deliberate under-charge. creditsForCost($0.004) = 5, which is
-// what holds the 80% target at CREDIT_FLOOR_USD; 3/sec lands at ~73% instead. Chosen
-// so a Starter user's 500 credits buys two 60s trial dubs (180 each) rather than one,
-// and so Creator gets ~16 min/month instead of the 3m20s the old 15/sec allowed.
-// It is affordable right now because the account is on an ElevenLabs startup grant
-// (~33M credits ≈ 16,500 dubbing minutes), during which marginal COGS is $0.
-// Raise to 5 via the DUBBING_CREDIT_MULTIPLIER env var when the grant runs out —
-// no deploy needed.
-export const DUBBING_CREDIT_MULTIPLIER = 3;
+// 1/6 per second = 10 credits per minute, which makes Creator's fixed 3,000 credits
+// worth exactly 5 hours of dubbing. Every other plan scales off the same rate:
+//   Starter    500 cr →   50 min
+//   Creator  3,000 cr →    5 h
+//   Pro      8,000 cr →   13 h 20 m
+//   Business 50,000 cr →  83 h 20 m
+//   Scale   100,000 cr → 166 h 40 m
+//
+// GRANT-FUNDED PROMO — NOT sustainable at ElevenLabs list prices. 5 hours costs $72
+// against Creator's $24, i.e. -200% margin. This is affordable only while the account
+// sits on the ElevenLabs startup grant (~33M credits ≈ 16,500 min ≈ 275 h), where
+// marginal COGS is $0. The grant is the budget: ~55 Creator users, or ~3 Business
+// users, at FULL utilisation drain it entirely.
+//
+// When the grant ends, raise this via the DUBBING_CREDIT_MULTIPLIER env var (no
+// deploy): 2.5 → 20 min/month at the 80% target, 5 → 10 min at 90%. Or move dubbing
+// to the in-house pipeline, which has to land under ~$0.016/min for 5 hours to hold
+// 80% margin at $24.
+export const DUBBING_CREDIT_MULTIPLIER = 1 / 6;
+
+// Starter is a TRIAL, not an allowance. The 60s per-clip cap (STARTER_MAX_DUB_SECONDS)
+// is the deliberate shape of it, and at the paid rate its 500 credits would also buy
+// 50 minutes of dubbing — free, uncapped by signup, and pure COGS. That is the fastest
+// way to drain the grant: ~330 free accounts, versus 55 paying Creator users.
+//
+// Held at 3/sec, the pre-promo rate the tier was designed around: a 60s dub costs 180,
+// so 500 credits buys the two full-length trial dubs and no more.
+export const STARTER_DUBBING_CREDIT_MULTIPLIER = 3;
+
+/**
+ * Credits per second for a plan. Mirrors maxDubSecondsForPlan's convention exactly —
+ * missing plan or 'starter' is Starter, everything else is paid — so the clip cap and
+ * the price can never disagree about who is on the free tier.
+ */
+export function dubbingMultiplierForPlan(
+  planName?: string | null,
+  paidMultiplier: number = DUBBING_CREDIT_MULTIPLIER,
+): number {
+  if (!planName) return STARTER_DUBBING_CREDIT_MULTIPLIER;
+  return planName.toLowerCase() === 'starter' ? STARTER_DUBBING_CREDIT_MULTIPLIER : paidMultiplier;
+}
+
+/** Hours of dubbing a credit allowance buys on a plan. Float, for display. */
+export function dubbingHoursForPlan(
+  credits: number,
+  planName?: string | null,
+  paidMultiplier: number = DUBBING_CREDIT_MULTIPLIER,
+): number {
+  return credits / dubbingMultiplierForPlan(planName, paidMultiplier) / 3600;
+}
+
+/**
+ * Dubbing allowance as display copy. Starter lands at ~2.8 minutes, which reads as
+ * nothing in hours, so sub-hour allowances are shown in minutes.
+ */
+export function formatDubbingAllowance(
+  credits: number,
+  planName?: string | null,
+  paidMultiplier: number = DUBBING_CREDIT_MULTIPLIER,
+): string {
+  const hours = dubbingHoursForPlan(credits, planName, paidMultiplier);
+  return hours < 1 ? `${(hours * 60).toFixed(1)} min` : `${hours.toFixed(1)} hrs`;
+}
 
 export const FeatureType = {
   SCRIPT_GENERATION: 'script_generation',
@@ -129,16 +183,24 @@ export function calculateDubbingCredits(params: ExternalCreditParams): number {
 
 // Duration-based (mirrors calculateVideoGenerationCredits): cost = seconds ×
 // credits/sec, rounded up so a partial second still charges a full second.
+//
+// The outer ceil is load-bearing: profiles.credits is an INTEGER column, and a
+// sub-1 multiplier (10 credits/min) makes seconds × rate fractional, which the
+// balance RPC would truncate or reject. Round up, never to zero.
 export function calculateDubbingCreditsByDuration(
   durationSeconds: number,
   multiplier = DUBBING_CREDIT_MULTIPLIER,
 ): number {
-  return Math.max(multiplier, Math.ceil(durationSeconds) * multiplier);
+  return Math.max(
+    getMinimumCreditsForDubbing(multiplier),
+    Math.ceil(Math.ceil(durationSeconds) * multiplier),
+  );
 }
 
-// Precheck floor before enqueue: enough for one second at the given rate.
+// Precheck floor before enqueue: enough for one second at the given rate, and never
+// below a single credit — a dub is never free.
 export function getMinimumCreditsForDubbing(multiplier = DUBBING_CREDIT_MULTIPLIER): number {
-  return multiplier;
+  return Math.max(1, Math.ceil(multiplier));
 }
 
 export function hasEnoughCredits(userCredits: number, requiredCredits: number): boolean {

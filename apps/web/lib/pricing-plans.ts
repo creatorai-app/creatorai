@@ -4,6 +4,18 @@
 // the names, prices and credit counts here in sync with the
 // 20260619000000_pricing_plans_rebuild.sql migration.
 
+import { formatDubbingAllowance } from "@repo/validation";
+
+/**
+ * Dubbing a plan's credits buy, e.g. "5.0 hrs". Derived from the live credit rate
+ * rather than written into `features` — a hardcoded number here would keep advertising
+ * 5 hours the moment the multiplier moves, which is exactly how the env override
+ * shipped a 5x mispricing once already.
+ */
+export function dubbingAllowanceFor(plan: MarketingPlan): string {
+  return formatDubbingAllowance(plan.credits, plan.id);
+}
+
 export interface MarketingPlan {
   /** Display slug (not the DB uuid). */
   id: string;

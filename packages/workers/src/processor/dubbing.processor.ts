@@ -5,6 +5,7 @@ import { createSupabaseClient, getSupabaseServiceEnv, reportError, SupabaseClien
 import {
   calculateDubbingCreditsByDuration,
   DUBBING_CREDIT_MULTIPLIER,
+  dubbingMultiplierForPlan,
   DUBBING_CANCEL_PREFIX,
   isDubDurationAllowed,
   maxDubSecondsForPlan,
@@ -261,7 +262,10 @@ export class DubbingProcessor extends WorkerHost {
     actualDurationSeconds: number,
     job: Job<DubJobData>,
   ): Promise<number> {
-    const multiplier = this.getEnvNumber('DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER);
+    const paid = this.getEnvNumber('DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER);
+    // Same plan-aware rate the API reserved at — resolving it differently here would
+    // settle a Starter dub at the paid rate and silently refund most of the charge.
+    const multiplier = dubbingMultiplierForPlan(job.data.planName, paid);
     const owed = calculateDubbingCreditsByDuration(actualDurationSeconds, multiplier);
     const delta = owed - charged;
     if (delta === 0) return owed;

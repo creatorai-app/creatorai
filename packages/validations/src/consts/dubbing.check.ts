@@ -20,6 +20,9 @@ import {
   calculateDubbingCreditsByDuration,
   getMinimumCreditsForDubbing,
   DUBBING_CREDIT_MULTIPLIER,
+  STARTER_DUBBING_CREDIT_MULTIPLIER,
+  dubbingMultiplierForPlan,
+  formatDubbingAllowance,
 } from './credits';
 import { SignDubUploadSchema, CreateDubSchema } from '../schema/dubbing.schema';
 
@@ -57,10 +60,53 @@ assert.equal(calculateDubbingCreditsByDuration(59.2, 3), 180); // rounds up
 assert.equal(calculateDubbingCreditsByDuration(0, 3), 3); // floor: never free
 assert.equal(calculateDubbingCreditsByDuration(1, 3), 3);
 assert.equal(getMinimumCreditsForDubbing(3), 3);
-assert.equal(getMinimumCreditsForDubbing(), DUBBING_CREDIT_MULTIPLIER);
+assert.equal(getMinimumCreditsForDubbing(), 1); // sub-1 rate still costs a whole credit
 
-// A Starter user's 500 credits must buy two full-length trial dubs at the cap.
-assert.equal(calculateDubbingCreditsByDuration(STARTER_MAX_DUB_SECONDS, DUBBING_CREDIT_MULTIPLIER) * 2 <= 500, true);
+// Credits are an integer DB column. A fractional rate (10 credits/min) must never
+// produce a fractional charge — the balance RPC would truncate or reject it.
+for (const seconds of [1, 7, 61, 91, 3599, 18000]) {
+  const cost = calculateDubbingCreditsByDuration(seconds, DUBBING_CREDIT_MULTIPLIER);
+  assert.equal(Number.isInteger(cost), true, `fractional credits for ${seconds}s: ${cost}`);
+  assert.equal(cost >= 1, true, `free dub at ${seconds}s`);
+}
+
+// The rate is set so Creator's fixed 3,000 credits buy a full 5 hours of dubbing.
+// If this fails, the promo no longer matches what the plan actually grants.
+assert.equal(calculateDubbingCreditsByDuration(5 * 60 * 60, DUBBING_CREDIT_MULTIPLIER) <= 3000, true);
+assert.equal(calculateDubbingCreditsByDuration(60, DUBBING_CREDIT_MULTIPLIER), 10); // 10 credits/min
+
+// Starter pays its own rate. The clip cap and the price must agree about who is on the
+// free tier, so this mirrors maxDubSecondsForPlan case for case.
+assert.equal(dubbingMultiplierForPlan('Starter'), STARTER_DUBBING_CREDIT_MULTIPLIER);
+assert.equal(dubbingMultiplierForPlan('starter'), STARTER_DUBBING_CREDIT_MULTIPLIER);
+assert.equal(dubbingMultiplierForPlan(null), STARTER_DUBBING_CREDIT_MULTIPLIER); // fails closed
+assert.equal(dubbingMultiplierForPlan(undefined), STARTER_DUBBING_CREDIT_MULTIPLIER);
+assert.equal(dubbingMultiplierForPlan('Creator'), DUBBING_CREDIT_MULTIPLIER);
+assert.equal(dubbingMultiplierForPlan('scale'), DUBBING_CREDIT_MULTIPLIER);
+for (const plan of ['Starter', 'starter', null, undefined, 'Creator', 'scale']) {
+  assert.equal(
+    maxDubSecondsForPlan(plan) === STARTER_MAX_DUB_SECONDS,
+    dubbingMultiplierForPlan(plan) === STARTER_DUBBING_CREDIT_MULTIPLIER,
+    `cap and rate disagree about ${String(plan)}`,
+  );
+}
+
+// A Starter user's 500 credits must buy two full-length trial dubs at the cap — and
+// NOT a paid plan's allowance. At the paid rate 500 credits would be 50 free minutes.
+const starterDub = calculateDubbingCreditsByDuration(
+  STARTER_MAX_DUB_SECONDS,
+  dubbingMultiplierForPlan('starter'),
+);
+assert.equal(starterDub, 180);
+assert.equal(starterDub * 2 <= 500, true);
+assert.equal(starterDub * 3 > 500, true); // a trial, not an allowance
+
+// Advertised allowances — these are the numbers on the pricing page.
+assert.equal(formatDubbingAllowance(3000, 'Creator'), '5.0 hrs');
+assert.equal(formatDubbingAllowance(8000, 'Pro'), '13.3 hrs');
+assert.equal(formatDubbingAllowance(50000, 'Business'), '83.3 hrs');
+assert.equal(formatDubbingAllowance(100000, 'Scale'), '166.7 hrs');
+assert.equal(formatDubbingAllowance(500, 'Starter'), '2.8 min');
 
 // Sign-upload schema: audio/video only, positive size and duration required.
 assert.equal(
