@@ -10,6 +10,7 @@ import ScriptGenerationForm from "@/components/dashboard/scripts/ScriptGeneratio
 import ScriptOutputPanel from "@/components/dashboard/scripts/ScriptOutputPanel";
 import { ScriptHowItWorksGuide } from "@/components/dashboard/scripts/ScriptHowItWorksGuide";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
+import { useClaimFreeRun } from "@/hooks/useClaimFreeRun";
 import { Skeleton } from "@repo/ui/skeleton";
 import { Badge } from "@repo/ui/badge";
 import { Sparkles } from "lucide-react";
@@ -21,6 +22,9 @@ function NewScriptPageInner() {
   const searchParams = useSearchParams()
   const { profileLoading } = useSupabase()
   const gate = useAISetupGate()
+  // A `?freeRun=` from the signup flow: the visitor made this at /tools
+  // before they had an account. Claim it, then redirect to the real record.
+  const { claiming } = useClaimFreeRun("script")
 
   const ideationId = searchParams.get("ideationId") ?? undefined
   const ideaIndex = searchParams.get("ideaIndex") != null ? Number(searchParams.get("ideaIndex")) : undefined
@@ -48,7 +52,7 @@ function NewScriptPageInner() {
     if (ideaTitle && !hook.prompt) hook.setPrompt(ideaTitle)
   }, [ideaTitle])
 
-  if (profileLoading) {
+  if (profileLoading || claiming) {
     return (
       <div className="container py-8 space-y-4">
         <Skeleton className="h-10 w-64" />

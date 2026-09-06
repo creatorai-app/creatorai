@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { getFreeTool } from "@/lib/free-tools"
 import { ToolJsonLd, toolMetadata } from "@/lib/tool-seo"
 
-const tool = getFreeTool("youtube-video-ideas-generator")!
+const tool = getFreeTool("free-youtube-video-ideas-generator")!
 
 export const metadata: Metadata = toolMetadata(tool)
 

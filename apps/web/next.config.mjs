@@ -106,6 +106,15 @@ const nextConfig = {
       { source: "/blog/youtube-auto-dubbing-vs-ai-voice-cloning", destination: "/blog/youtube-auto-dubbing-vs-ai-voice-cloning-explained", permanent: true },
       { source: "/blog/best-ai-dubbing-tool-for-youtubers-2026", destination: "/blog/best-ai-dubbing-tool-for-youtubers-2026-compared", permanent: true },
 
+      // Free-tool slugs gained a "free-" prefix, which is the word people
+      // actually search alongside these tools and was already the first word of
+      // both page titles. Both URLs are indexed and linked from the blog, so
+      // they 301 rather than 404. The blog bodies still point at the old paths
+      // and resolve through these; they are DB rows, and rewriting live post
+      // content to save one redirect hop is the more expensive side of the fix.
+      { source: "/tools/youtube-script-generator", destination: "/tools/free-youtube-script-generator", permanent: true },
+      { source: "/tools/youtube-video-ideas-generator", destination: "/tools/free-youtube-video-ideas-generator", permanent: true },
+
       // 2026 cluster consolidation. Eight clusters had several posts chasing one
       // search intent, which split link equity and produced the "Duplicate,
       // Google chose a different canonical" reports. Each cluster now has one

@@ -34,13 +34,18 @@ export const navItem: NavItemType[] = [
     children: [
       {
         name: "YouTube Script Generator",
-        href: "/tools/youtube-script-generator",
+        href: "/tools/free-youtube-script-generator",
         description: "A full script from one sentence, free",
       },
       {
         name: "YouTube Video Ideas Generator",
-        href: "/tools/youtube-video-ideas-generator",
+        href: "/tools/free-youtube-video-ideas-generator",
         description: "A complete video concept from a niche",
+      },
+      {
+        name: "YouTube Story Structure Generator",
+        href: "/tools/free-youtube-story-structure-generator",
+        description: "A beat-by-beat outline with a retention score",
       },
     ],
     viewAllLabel: "View all free tools",
@@ -73,8 +78,9 @@ export const footerItems: FooterSection = {
     { name: "Sign Up", href: "/signup" },
   ],
   "Free Tools": [
-    { name: "YouTube Script Generator", href: "/tools/youtube-script-generator" },
-    { name: "Video Ideas Generator", href: "/tools/youtube-video-ideas-generator" },
+    { name: "YouTube Script Generator", href: "/tools/free-youtube-script-generator" },
+    { name: "Video Ideas Generator", href: "/tools/free-youtube-video-ideas-generator" },
+    { name: "Story Structure Generator", href: "/tools/free-youtube-story-structure-generator" },
     { name: "All free tools", href: "/tools" },
   ],
   "Legal": [

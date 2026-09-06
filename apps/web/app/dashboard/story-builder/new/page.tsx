@@ -10,6 +10,7 @@ import { StoryBuilderForm } from "@/components/dashboard/story-builder/StoryBuil
 import { StoryBuilderProgress } from "@/components/dashboard/story-builder/StoryBuilderProgress";
 import { StoryBuilderResults } from "@/components/dashboard/story-builder/StoryBuilderResults";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
+import { useClaimFreeRun } from "@/hooks/useClaimFreeRun";
 import { Skeleton } from "@repo/ui/skeleton";
 import { Badge } from "@repo/ui/badge";
 import { Sparkles } from "lucide-react"
@@ -19,6 +20,9 @@ export default function NewStoryBuilderPage() {
   const searchParams = useSearchParams()
   const { profileLoading } = useSupabase()
   const gate = useAISetupGate()
+  // A `?freeRun=` from the signup flow: the visitor made this at /tools
+  // before they had an account. Claim it, then redirect to the real record.
+  const { claiming } = useClaimFreeRun("story")
 
   const hook = useStoryBuilder({
     onComplete: (id) => router.push(`/dashboard/story-builder/${id}`),
@@ -34,7 +38,7 @@ export default function NewStoryBuilderPage() {
     }
   }, [searchParams])
 
-  if (profileLoading) {
+  if (profileLoading || claiming) {
     return (
       <div className="container py-8 space-y-4">
         <Skeleton className="h-10 w-64" />

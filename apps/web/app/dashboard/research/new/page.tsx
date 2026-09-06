@@ -15,6 +15,7 @@ import { Sparkles, Loader2, ArrowLeft, Lock, Wand2, Compass, Bot, Lightbulb } fr
 import IdeationProgress from "@/components/dashboard/research/IdeationProgress";
 import { useIdeation } from "@/hooks/useIdeation";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
+import { useClaimFreeRun } from "@/hooks/useClaimFreeRun";
 import { useCurrentPlan } from "@/hooks/useCurrentPlan";
 import Link from "next/link";
 
@@ -30,6 +31,9 @@ export default function NewIdeationPage() {
   // Every plan has the same idea capabilities, usage is bounded only by credits.
   const { maxIdeas, loading: planLoading } = useCurrentPlan();
   const gate = useAISetupGate();
+  // A `?freeRun=` from the signup flow: the visitor made this at /tools
+  // before they had an account. Claim it, then redirect to the real record.
+  const { claiming } = useClaimFreeRun("idea");
   const [customCount, setCustomCount] = useState("3");
   const {
     context, setContext,
@@ -80,7 +84,7 @@ export default function NewIdeationPage() {
 
   let content: React.ReactNode;
 
-  if (isLoadingProfile || planLoading) {
+  if (isLoadingProfile || planLoading || claiming) {
     content = (
       <motion.div
         className="max-w-xl mx-auto space-y-4"

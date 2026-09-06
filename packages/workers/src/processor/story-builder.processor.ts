@@ -14,6 +14,8 @@ import {
   calculateStoryBuilderCredits,
   STORY_BUILDER_CREDIT_MULTIPLIER,
   TOKENS_PER_CREDIT,
+  STORY_BLUEPRINT_RESPONSE_SCHEMA,
+  buildStoryBlueprintPrompt,
 } from '@repo/validation';
 import { GoogleGenAI } from '@google/genai';
 import { getGenAI, GEMINI_TEXT_MODEL } from './utils/genai';
@@ -57,204 +59,6 @@ interface ChannelData {
   topic_details: any;
   default_language: string | null;
 }
-
-const BLUEPRINT_RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    structuredBlueprint: {
-      type: 'object',
-      properties: {
-        hook: {
-          type: 'object',
-          properties: {
-            curiosityStatement: { type: 'string', description: 'A statement that sparks curiosity in the first 5 seconds' },
-            promise: { type: 'string', description: 'What the viewer will gain by watching' },
-            stakes: { type: 'string', description: 'What is at risk or why this matters now' },
-            openingLine: { type: 'string', description: 'Exact opening script line' },
-            visualSuggestion: { type: 'string', description: 'What viewer should see during hook (0-15 sec)' },
-            emotionalTrigger: { type: 'string', description: 'Primary emotion targeted' },
-          },
-          required: ['curiosityStatement', 'promise', 'stakes', 'openingLine', 'visualSuggestion', 'emotionalTrigger'],
-        },
-        contextSetup: {
-          type: 'object',
-          properties: {
-            problem: { type: 'string', description: 'The core problem or question (15-45 sec)' },
-            whyItMatters: { type: 'string', description: 'Why the viewer should care about this now' },
-            backgroundInfo: { type: 'string', description: 'Essential context to understand the topic' },
-          },
-          required: ['problem', 'whyItMatters', 'backgroundInfo'],
-        },
-        escalationSegments: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              segmentNumber: { type: 'number' },
-              title: { type: 'string' },
-              microHook: { type: 'string', description: 'Mini-hook to re-engage attention at start of segment' },
-              insight: { type: 'string', description: 'Core insight or value delivered' },
-              transitionTension: { type: 'string', description: 'How this segment creates tension leading into the next' },
-              estimatedDuration: { type: 'string' },
-            },
-            required: ['segmentNumber', 'title', 'microHook', 'insight', 'transitionTension', 'estimatedDuration'],
-          },
-          minItems: 3,
-        },
-        climax: {
-          type: 'object',
-          properties: {
-            biggestInsight: { type: 'string', description: 'The most impactful revelation' },
-            unexpectedTwist: { type: 'string', description: 'Surprising angle or counter-intuitive point' },
-            coreValueMoment: { type: 'string', description: 'The deeper meaning or takeaway' },
-          },
-          required: ['biggestInsight', 'unexpectedTwist', 'coreValueMoment'],
-        },
-        resolution: {
-          type: 'object',
-          properties: {
-            closeLoop: { type: 'string', description: 'How the opening promise is fulfilled' },
-            reinforceTransformation: { type: 'string', description: 'Restate what viewer now knows/can do' },
-            softCTA: { type: 'string', description: 'Natural call-to-action that fits the narrative' },
-          },
-          required: ['closeLoop', 'reinforceTransformation', 'softCTA'],
-        },
-      },
-      required: ['hook', 'contextSetup', 'escalationSegments', 'climax', 'resolution'],
-    },
-    tensionMapping: {
-      type: 'object',
-      properties: {
-        retentionScore: { type: 'number', description: 'Overall predicted retention 0-10' },
-        curiosityLoops: { type: 'number', description: 'Number of curiosity loops planted' },
-        emotionalPeaks: { type: 'number', description: 'Number of emotional high points' },
-        predictedDropRisk: { type: 'string', description: 'low, medium, or high' },
-        sectionScores: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              section: { type: 'string' },
-              curiosityDensity: { type: 'number', description: '0-10 score' },
-              emotionalShift: { type: 'number', description: '0-10 score' },
-              informationSpike: { type: 'number', description: '0-10 score' },
-              overallScore: { type: 'number', description: '0-10 score' },
-            },
-            required: ['section', 'curiosityDensity', 'emotionalShift', 'informationSpike', 'overallScore'],
-          },
-        },
-      },
-      required: ['retentionScore', 'curiosityLoops', 'emotionalPeaks', 'predictedDropRisk', 'sectionScores'],
-    },
-    retentionBeats: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          timestamp: { type: 'string' },
-          type: { type: 'string' },
-          description: { type: 'string' },
-        },
-        required: ['timestamp', 'type', 'description'],
-      },
-      minItems: 4,
-    },
-    openLoops: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          setup: { type: 'string' },
-          payoffTimestamp: { type: 'string' },
-          description: { type: 'string' },
-        },
-        required: ['setup', 'payoffTimestamp', 'description'],
-      },
-      minItems: 2,
-    },
-    patternInterrupts: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          timestamp: { type: 'string' },
-          type: { type: 'string' },
-          description: { type: 'string' },
-        },
-        required: ['timestamp', 'type', 'description'],
-      },
-      minItems: 4,
-    },
-    emotionalArc: {
-      type: 'object',
-      properties: {
-        structure: { type: 'string' },
-        beats: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              phase: { type: 'string' },
-              emotion: { type: 'string' },
-              timestamp: { type: 'string' },
-              description: { type: 'string' },
-            },
-            required: ['phase', 'emotion', 'timestamp', 'description'],
-          },
-          minItems: 4,
-        },
-      },
-      required: ['structure', 'beats'],
-    },
-    ctaPlacement: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          timestamp: { type: 'string' },
-          type: { type: 'string' },
-          script: { type: 'string' },
-          rationale: { type: 'string' },
-        },
-        required: ['timestamp', 'type', 'script', 'rationale'],
-      },
-      minItems: 2,
-    },
-    storyPacing: {
-      type: 'object',
-      properties: {
-        overview: { type: 'string' },
-        sections: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              duration: { type: 'string' },
-              pace: { type: 'string' },
-              description: { type: 'string' },
-            },
-            required: ['name', 'duration', 'pace', 'description'],
-          },
-          minItems: 4,
-        },
-      },
-      required: ['overview', 'sections'],
-    },
-    fullOutline: {
-      type: 'string',
-      description: 'Complete production outline incorporating all blueprint sections. Modular, not free-flow. Min 300 words.',
-    },
-    detectedContentType: {
-      type: 'string',
-      description: 'AI-detected best content type for this topic if different from user selection',
-    },
-  },
-  required: [
-    'structuredBlueprint', 'tensionMapping', 'retentionBeats', 'openLoops',
-    'patternInterrupts', 'emotionalArc', 'ctaPlacement', 'storyPacing', 'fullOutline',
-  ],
-} as const;
 
 @Processor('story-builder', { concurrency: 3 })
 export class StoryBuilderProcessor extends WorkerHost {
@@ -331,7 +135,7 @@ export class StoryBuilderProcessor extends WorkerHost {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: 'application/json',
-          responseJsonSchema: BLUEPRINT_RESPONSE_SCHEMA,
+          responseJsonSchema: STORY_BLUEPRINT_RESPONSE_SCHEMA,
         },
       });
 
@@ -413,6 +217,10 @@ export class StoryBuilderProcessor extends WorkerHost {
     }
   }
 
+  /**
+   * Only the creator-profile block is built here. The rest of the prompt is
+   * shared with the anonymous /tools sample so the two cannot drift.
+   */
   private buildPrompt(
     videoTopic: string,
     targetAudience: string,
@@ -454,58 +262,18 @@ ${pacingSection}
 IMPORTANT: Adapt ALL elements to match this creator's established style.
 ---` : '';
 
-    return `You are an expert YouTube content strategist specializing in story structure and retention optimization. Generate a comprehensive, MODULAR (not free-flow) story blueprint.
-
-**Video Topic:** ${videoTopic}
-**Structure Template:** ${contentLabel}
-**Story Mode:** ${storyModeLabel}
-**Video Duration:** ${durationLabel}
-**Audience Level:** ${audienceLevel}
-${targetAudience ? `**Target Audience:** ${targetAudience}` : ''}
-${tone ? `**Desired Tone:** ${tone}` : ''}
-${additionalContext ? `**Additional Context:** ${additionalContext}` : ''}
-${ideationContext ? `**Idea Context from Ideation:** ${ideationContext}` : ''}
-${creatorSection}
-
-STORY MODE "${storyModeLabel}" means:
-- Cinematic: Dramatic visuals, slow reveals, epic tone, wide establishing shots
-- High-Energy: Fast cuts, bold statements, rapid pacing, high intensity
-- Documentary: Facts-first, interviews-style, measured pacing, authoritative
-- Conversational: Casual, direct-to-camera, personal, relatable, as if talking to a friend
-- Dramatic: Tension-heavy, cliffhangers, emotional peaks, suspenseful reveals
-- Minimal: Clean, simple, essential info only, no fluff, elegant pacing
-
-STRUCTURE TEMPLATE "${contentLabel}" shapes the escalation segments:
-- Educational Breakdown: Progressive complexity, concept stacking
-- Commentary: Opinion-led, reaction-driven, hot takes with evidence
-- Documentary: Evidence gathering → reveal → impact → implications
-- Case Study: Setup → investigation → findings → lessons → application
-- Personal Story: Situation → struggle → turning point → transformation
-- Listicle: Ranked items with escalating value, each standalone
-- Tutorial: Setup → step-by-step → common mistakes → pro tips
-
-REQUIREMENTS:
-1. **Structured Blueprint** must be MODULAR with:
-   - Hook (0-15 sec): curiosity statement, promise, stakes
-   - Context Setup (15-45 sec): problem, why it matters
-   - Escalation: 3-5 segments, each with micro-hook, insight, transition tension
-   - Climax: biggest insight, unexpected twist, core value moment
-   - Resolution + Callback: close loop, reinforce transformation, soft CTA
-
-2. **Tension Mapping** must calculate:
-   - retentionScore (0-10 overall)
-   - curiosityLoops count
-   - emotionalPeaks count
-   - predictedDropRisk (low/medium/high)
-   - Per-section scores for curiosityDensity, emotionalShift, informationSpike (each 0-10)
-
-3. Retention beats (4-6), open loops (2-4), pattern interrupts (4-6), emotional arc (4-6 phases), CTAs (2-3, never first 30s), pacing sections (4-6)
-
-4. fullOutline must be modular and detailed (300+ words), not free-flow text
-
-5. If the chosen content type doesn't fit the topic well, suggest a better one in detectedContentType
-
-6. All timestamps must be realistic for ${durationLabel}`;
+    return buildStoryBlueprintPrompt({
+      videoTopic,
+      durationLabel,
+      contentLabel,
+      storyModeLabel,
+      audienceLevel,
+      targetAudience,
+      tone,
+      additionalContext,
+      ideationContext,
+      creatorSection,
+    });
   }
 
   private async updateJobStatus(jobId: string, status: string, errorMessage?: string) {

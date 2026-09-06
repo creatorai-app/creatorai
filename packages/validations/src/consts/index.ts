@@ -6,3 +6,5 @@ export * from './gemini';
 export * from './languages';
 export * from './upload';
 export * from './videoGeneration';
+export * from './storyBlueprint';
+export * from './storyBlueprintPrompt';

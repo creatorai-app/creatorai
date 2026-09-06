@@ -2,7 +2,7 @@ import ToolPageShell from "@/components/tools/ToolPageShell"
 import IdeaGeneratorWidget from "@/components/tools/IdeaGeneratorWidget"
 import { getFreeTool } from "@/lib/free-tools"
 
-const tool = getFreeTool("youtube-video-ideas-generator")!
+const tool = getFreeTool("free-youtube-video-ideas-generator")!
 
 export default function YouTubeVideoIdeasGeneratorPage() {
   return (

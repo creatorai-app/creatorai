@@ -1,5 +1,18 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  STORY_BLUEPRINT_RESPONSE_SCHEMA,
+  buildStoryBlueprintPrompt,
+  VIDEO_DURATION_LABELS,
+  CONTENT_TYPE_LABELS,
+  STORY_MODE_LABELS,
+  AUDIENCE_LEVEL_LABELS,
+  type VideoDuration,
+  type ContentType,
+  type StoryMode,
+  type AudienceLevel,
+  type StoryBuilderResult,
+} from '@repo/validation';
 import { createGoogleAI, GEMINI_TEXT_MODEL } from '../utils/genai';
 
 /**
@@ -141,5 +154,43 @@ ${options.timestamps ? '- Prefix each section heading with an estimated time mar
 - No emoji, no placeholder text, no "[insert X here]".`;
 
     return this.generateJson<FreeScript>(prompt, SCRIPT_SCHEMA, 'script');
+  }
+
+  /**
+   * The same blueprint the paid story builder produces, minus the creator style
+   * profile (there is no connected channel to read).
+   *
+   * It generates the FULL schema rather than a trimmed preview on purpose: the
+   * public page only renders the hook, the segments and the retention score, but
+   * the stored result has to drop into `story_builder_jobs.result` untouched when
+   * the visitor signs up and claims it. A trimmed sample would claim into a
+   * dashboard page with empty sections.
+   */
+  async generateStory(input: {
+    videoTopic: string;
+    targetAudience?: string;
+    audienceLevel: AudienceLevel;
+    videoDuration: VideoDuration;
+    contentType: ContentType;
+    storyMode: StoryMode;
+  }): Promise<StoryBuilderResult> {
+    const prompt = buildStoryBlueprintPrompt({
+      videoTopic: input.videoTopic,
+      durationLabel: VIDEO_DURATION_LABELS[input.videoDuration],
+      contentLabel: CONTENT_TYPE_LABELS[input.contentType],
+      storyModeLabel: STORY_MODE_LABELS[input.storyMode],
+      audienceLevel: AUDIENCE_LEVEL_LABELS[input.audienceLevel],
+      targetAudience: input.targetAudience,
+    });
+
+    const result = await this.generateJson<StoryBuilderResult>(
+      prompt,
+      STORY_BLUEPRINT_RESPONSE_SCHEMA,
+      'story blueprint',
+    );
+
+    // The worker stamps this after parsing too; the dashboard reads it off the
+    // result rather than the job row.
+    return { ...result, storyMode: input.storyMode };
   }
 }
