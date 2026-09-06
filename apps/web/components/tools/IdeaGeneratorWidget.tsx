@@ -23,7 +23,7 @@ interface FreeIdea {
   opportunityScore: number
 }
 
-const SLUG = "youtube-video-ideas-generator"
+const SLUG = "free-youtube-video-ideas-generator"
 
 // CSS rather than motion, deliberately. A motion `initial={{ opacity: 0 }}`
 // leaves the element invisible until the LazyMotion feature bundle has loaded
@@ -42,8 +42,17 @@ function scoreTone(score: number) {
 export default function IdeaGeneratorWidget() {
   const [niche, setNiche] = useState("")
   const [audience, setAudience] = useState("")
-  const { result, isLoading, error, showSignupGate, closeSignupGate, run } =
-    useFreeTool<FreeIdea>(SLUG, "/api/v1/free-tools/idea")
+  const {
+    result,
+    runId,
+    isLoading,
+    error,
+    showSignupGate,
+    gateReason,
+    requestExport,
+    closeSignupGate,
+    run,
+  } = useFreeTool<FreeIdea>(SLUG, "/api/v1/free-tools/idea")
 
   const canSubmit = niche.trim().length >= 3 && !isLoading
 
@@ -219,8 +228,11 @@ export default function IdeaGeneratorWidget() {
           <ToolResultActions
             copyText={asPlainText(result)}
             toolSlug={SLUG}
+            tool="idea"
+            runId={runId}
+            onExport={requestExport}
             nextStep={{
-              href: "/tools/youtube-script-generator",
+              href: "/tools/free-youtube-script-generator",
               label: "Turn this into a full script →",
             }}
           />
@@ -232,6 +244,9 @@ export default function IdeaGeneratorWidget() {
         onOpenChange={(next) => !next && closeSignupGate()}
         toolSlug={SLUG}
         toolName="video ideas generator"
+        tool="idea"
+        runId={runId}
+        reason={gateReason}
       />
 
       {result && (

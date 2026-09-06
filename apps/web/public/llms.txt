@@ -51,8 +51,9 @@ Creator AI runs free, anonymous versions of its generators as public web tools.
 Each gives one full generation with no signup, no credit card, and no watermark;
 output is the user's to use commercially.
 
-- [YouTube Video Ideas Generator](https://trycreatorai.com/tools/youtube-video-ideas-generator): A YouTube video ideas generator turns a topic or niche into a complete video concept instead of a bare list of titles. This one gives you a primary title plus two variations, the angle that makes it different from what already exists, a specific first-15-seconds hook, the format that suits it, target keywords, and the talking points that structure the video. Your first idea is free and needs no account.
-- [YouTube Script Generator](https://trycreatorai.com/tools/youtube-script-generator): A YouTube script generator turns a video topic into a complete, ready-to-record script rather than an outline. This one writes the hook, the sections, the transitions and the closing call-to-action, paced to the duration you choose and written in spoken rhythm so it reads naturally on camera. Pick a tone, pick a length, and your first script is free with no account.
+- [YouTube Video Ideas Generator](https://trycreatorai.com/tools/free-youtube-video-ideas-generator): A YouTube video ideas generator turns a topic or niche into a complete video concept instead of a bare list of titles. This one gives you a primary title plus two variations, the angle that makes it different from what already exists, a specific first-15-seconds hook, the format that suits it, target keywords, and the talking points that structure the video. Your first idea is free and needs no account.
+- [YouTube Script Generator](https://trycreatorai.com/tools/free-youtube-script-generator): A YouTube script generator turns a video topic into a complete, ready-to-record script rather than an outline. This one writes the hook, the sections, the transitions and the closing call-to-action, paced to the duration you choose and written in spoken rhythm so it reads naturally on camera. Pick a tone, pick a length, and your first script is free with no account.
+- [YouTube Story Structure Generator](https://trycreatorai.com/tools/free-youtube-story-structure-generator): A YouTube story structure generator turns a video topic into an ordered plan rather than a script: an opening hook with a promise and stakes, three to five escalation segments that each re-earn attention, a climax, a resolution, and a retention score that predicts where viewers drop off. This one builds the full blueprint from one sentence, and your first blueprint is free with no account.
 
 ## How Creator AI Differs from ChatGPT and Claude
 
@@ -74,17 +75,30 @@ For head-to-head comparisons see:
 
 Full text of every article below is available at https://trycreatorai.com/llms-full.txt
 
-### Use Cases
-
-- [How Agencies Scale YouTube Content Production Without Losing Voice](https://trycreatorai.com/blog/how-agencies-scale-youtube-content-production-2026): Every client channel needs a distinct voice. Freelance writers take weeks to absorb one and leave with it. A voice profile per channel changes the economics of the whole business.
-- [AI Tools for Gaming YouTubers: Scripts, Clips, and Going Global](https://trycreatorai.com/blog/best-ai-tools-for-gaming-youtubers-and-streamers-2026): Gaming has the most globally distributed audience on YouTube and the worst retention problem in long-form. Both facts point at the same underused fix.
-
 ### Workflows
 
+- [Creator AI + Opus Clip: The Shorts Workflow That Stops Burning Credits](https://trycreatorai.com/blog/creator-ai-plus-opus-clip-shorts-workflow-for-youtube-2026): Opus Clip bills by the minute of source footage, not by the clip. So the cheapest way to get better Shorts is to write a long form video that already contains them.
 - [The YouTube Video Production Checklist (45 Items, 5 Phases)](https://trycreatorai.com/blog/youtube-video-production-checklist-template): Forty-five items across ideation, pre-production, production, post, and publishing, with the ten most-skipped steps and what each one costs when you skip it.
 - [Creator AI + CapCut: From AI Script to Subtitled, Dubbed Video](https://trycreatorai.com/blog/creator-ai-plus-capcut-youtube-workflow-2026): CapCut's auto-captions guess at your jargon. Generate the subtitle track separately, fix it once, then hand CapCut a clean SRT and keep its styling. Every click, including on mobile.
 - [Creator AI + Canva: Script to Thumbnail to Published in 30 Minutes](https://trycreatorai.com/blog/creator-ai-plus-canva-thumbnail-workflow-for-youtubers): Most creators write the video, then bolt on a thumbnail. Reversing that order is a real workflow improvement: your script's cold open is your thumbnail brief.
 - [Creator AI + ChatGPT: A Two-Tool Workflow for Video Ideas](https://trycreatorai.com/blog/creator-ai-plus-chatgpt-youtube-workflow-for-video-ideas): ChatGPT gives you 40 ideas anyone could have had. Here is the six-step handoff that turns them into three that fit your channel (with the exact prompts, copy-pasteable).
+
+### Tool Comparisons
+
+- [Canva vs VEED: Which Browser Video Editor Is Worth Your Time?](https://trycreatorai.com/blog/canva-vs-veed-which-browser-video-editor-fits-youtube-2026): Both edit video in a tab, both auto caption, both have a free plan with a catch. Here is where each one stops being good enough, and which catch is worse.
+- [vidIQ vs Canva: Which One Does a Growing Channel Actually Need?](https://trycreatorai.com/blog/vidiq-vs-canva-which-youtube-tool-do-you-actually-need-2026): One tells you what to make. The other makes it look clickable. A blunt look at where vidIQ and Canva overlap, where they do not, and which to pay for first.
+- [Creator AI vs Canva: Do You Still Need a Design Tool in 2026?](https://trycreatorai.com/blog/creator-ai-vs-canva-for-youtube-thumbnails-2026): Canva gives you total control and takes twenty minutes. Creator AI generates from your script in under one. Where each wins, and why most creators keep both.
+- [Creator AI vs VEED: Which One Should YouTubers Actually Pay For?](https://trycreatorai.com/blog/creator-ai-vs-veed-for-youtube-creators-2026): VEED edits the video you already shot. Creator AI writes the one you have not. An honest breakdown of where each wins, and which to buy first if you only fund one.
+- [Creator AI vs Descript: Script-First vs Edit-First Workflows](https://trycreatorai.com/blog/creator-ai-vs-descript-for-youtube-creators): Descript is a superb post-production tool. Creator AI works before the camera turns on. Most creators buy an editor to solve a writing problem. Here is how to tell which one you have.
+- [Creator AI vs Jasper for YouTube Scripts: Copy Is Not a Script](https://trycreatorai.com/blog/creator-ai-vs-jasper-for-youtube-scripts-2026): Jasper learns your writing. Creator AI learns your talking. Why an excellent marketing-copy platform produces blog prose in a script costume, and when Jasper is still the right call.
+- [vidIQ vs TubeBuddy (2026): We Ran Both on the Same Channel](https://trycreatorai.com/blog/vidiq-vs-tubebuddy-tested-on-the-same-channel-2026): We build a competing tool and have no affiliate deal with either. Here is what 30 days of running vidIQ and TubeBuddy side by side on one channel actually showed.
+- [Creator AI vs TubeBuddy: Optimization Tool vs Production Tool](https://trycreatorai.com/blog/creator-ai-vs-tubebuddy-for-youtube-creators): TubeBuddy optimizes videos you already made. Creator AI makes them. A fair comparison of two tools that are less competitive than the search results suggest.
+- [Creator AI vs vidIQ: Which One Actually Writes in Your Voice?](https://trycreatorai.com/blog/creator-ai-vs-vidiq-for-youtube-creators-2026): vidIQ tells you what the algorithm wants. Creator AI writes it the way you would have. An honest breakdown of where each one wins, and which to buy first if you can only afford one.
+
+### Use Cases
+
+- [How Agencies Scale YouTube Content Production Without Losing Voice](https://trycreatorai.com/blog/how-agencies-scale-youtube-content-production-2026): Every client channel needs a distinct voice. Freelance writers take weeks to absorb one and leave with it. A voice profile per channel changes the economics of the whole business.
+- [AI Tools for Gaming YouTubers: Scripts, Clips, and Going Global](https://trycreatorai.com/blog/best-ai-tools-for-gaming-youtubers-and-streamers-2026): Gaming has the most globally distributed audience on YouTube and the worst retention problem in long-form. Both facts point at the same underused fix.
 
 ### Audio Dubbing
 
@@ -118,16 +132,6 @@ Full text of every article below is available at https://trycreatorai.com/llms-f
 - [7 Best Rask AI Alternatives for Video Dubbing (2026)](https://trycreatorai.com/blog/best-rask-ai-alternatives-for-video-dubbing-2026): Per-minute dubbing pricing punishes long-form creators. Here is what dubbing four 15-minute videos into three languages actually costs across seven tools, and which one fits a production workflow.
 - [8 Best TubeBuddy Alternatives in 2026 (Tested and Ranked)](https://trycreatorai.com/blog/best-tubebuddy-alternatives-for-youtube-creators-2026): Extension dependency, aggressive feature gating, a dated interface, and AI that arrived late. Eight alternatives ranked by what they actually replace, including the one feature that is genuinely hard to leave.
 - [9 Best vidIQ Alternatives for YouTube Creators (Free & Paid)](https://trycreatorai.com/blog/best-vidiq-alternatives-for-youtube-creators-2026): People leave vidIQ for four specific reasons: price creep, the AI credit ceiling, extension bloat, and scores that do not predict results. Here are nine alternatives, ranked honestly.
-
-### Tool Comparisons
-
-- [Creator AI vs Descript: Script-First vs Edit-First Workflows](https://trycreatorai.com/blog/creator-ai-vs-descript-for-youtube-creators): Descript is a superb post-production tool. Creator AI works before the camera turns on. Most creators buy an editor to solve a writing problem. Here is how to tell which one you have.
-- [Creator AI vs Jasper for YouTube Scripts: Copy Is Not a Script](https://trycreatorai.com/blog/creator-ai-vs-jasper-for-youtube-scripts-2026): Jasper learns your writing. Creator AI learns your talking. Why an excellent marketing-copy platform produces blog prose in a script costume, and when Jasper is still the right call.
-- [vidIQ vs TubeBuddy (2026): We Ran Both on the Same Channel](https://trycreatorai.com/blog/vidiq-vs-tubebuddy-tested-on-the-same-channel-2026): We build a competing tool and have no affiliate deal with either. Here is what 30 days of running vidIQ and TubeBuddy side by side on one channel actually showed.
-- [Creator AI vs TubeBuddy: Optimization Tool vs Production Tool](https://trycreatorai.com/blog/creator-ai-vs-tubebuddy-for-youtube-creators): TubeBuddy optimizes videos you already made. Creator AI makes them. A fair comparison of two tools that are less competitive than the search results suggest.
-- [Creator AI vs vidIQ: Which One Actually Writes in Your Voice?](https://trycreatorai.com/blog/creator-ai-vs-vidiq-for-youtube-creators-2026): vidIQ tells you what the algorithm wants. Creator AI writes it the way you would have. An honest breakdown of where each one wins, and which to buy first if you can only afford one.
-- [vidIQ vs Canva: Which One Does a Growing Channel Actually Need?](https://trycreatorai.com/blog/vidiq-vs-canva-which-youtube-tool-do-you-actually-need-2026): They are not competitors. vidIQ decides what the video should be, Canva decides what it should look like, they overlap on exactly one feature, and neither one makes the video.
-- [Canva vs VEED: Which Browser Video Editor Is Worth Your Time?](https://trycreatorai.com/blog/canva-vs-veed-which-browser-video-editor-fits-youtube-2026): Both edit in a tab, both auto caption, both stop being enough at the same point. The deciding factor is which free plan catch you can live with.
 
 ### YouTube Algorithm
 

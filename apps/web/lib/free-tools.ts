@@ -1,8 +1,5 @@
-import type { ComponentType } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Compass, Gauge, Layers, Mic, Timer, Wand2 } from "lucide-react";
-import SearchIcon from "@/components/dashboard/sidebar/icons/SearchIcon";
-import FileTextIcon from "@/components/dashboard/sidebar/icons/FileTextIcon";
 
 /**
  * The public, no-signup tools at /tools.
@@ -11,6 +8,11 @@ import FileTextIcon from "@/components/dashboard/sidebar/icons/FileTextIcon";
  * headings, its metadata, its JSON-LD, the sitemap, and the cross-links from the
  * blog. Adding a tool means adding an object here plus a route that renders
  * ToolPageShell with its widget, no SEO wiring to remember.
+ *
+ * Data only, no React components: scripts/generate-llms.mts imports this from
+ * plain node, which resolves neither the "@/" alias nor JSX. The hub page owns
+ * the per-tool icon (see app/tools/page.tsx), which is the only place one is
+ * rendered.
  *
  * Every tool page targets a TRANSACTIONAL keyword ("...generator"), while the
  * blog posts linked from `relatedPosts` target the INFORMATIONAL versions of the
@@ -44,9 +46,6 @@ export interface FreeTool {
   slug: string;
   /** Nav/hub label, short. */
   name: string;
-  /** The icon this tool's feature uses in the dashboard sidebar, so the tool
-   *  and the paid feature it samples read as the same thing. */
-  icon: ComponentType<{ className: string }>;
   /** The ONE transactional phrase this page is optimized to rank for. */
   focusKeyword: string;
   /** Supporting long-tail terms. */
@@ -88,9 +87,8 @@ export const FREE_TOOL_SIGNUP_BENEFITS = SIGNUP_BENEFITS;
 
 export const FREE_TOOLS: FreeTool[] = [
   {
-    slug: "youtube-video-ideas-generator",
+    slug: "free-youtube-video-ideas-generator",
     name: "YouTube Video Ideas Generator",
-    icon: SearchIcon,
     focusKeyword: "youtube video ideas generator",
     keywords: [
       "free youtube video idea generator",
@@ -261,9 +259,8 @@ export const FREE_TOOLS: FreeTool[] = [
   },
 
   {
-    slug: "youtube-script-generator",
+    slug: "free-youtube-script-generator",
     name: "YouTube Script Generator",
-    icon: FileTextIcon,
     focusKeyword: "youtube script generator",
     keywords: [
       "free youtube script generator",
@@ -428,6 +425,178 @@ export const FREE_TOOLS: FreeTool[] = [
       label: "See the full script feature",
       blurb:
         "Scripts in your own voice, five languages, any length, storytelling mode, timestamps and reference files.",
+    },
+  },
+
+  {
+    slug: "free-youtube-story-structure-generator",
+    name: "YouTube Story Structure Generator",
+    focusKeyword: "youtube story structure generator",
+    keywords: [
+      "free video outline generator",
+      "youtube video structure template",
+      "retention score for youtube videos",
+      "video hook and escalation planner",
+      "story blueprint for youtube",
+    ],
+    seoTitle: "Free YouTube Story Structure Generator 2026: Plan Retention",
+    seoDescription:
+      "Free YouTube story structure generator: a hook, escalation segments, a climax and a retention score before you film. First blueprint needs no signup.",
+    h1: "Free YouTube Story Structure Generator",
+    subhead:
+      "A modular blueprint for your next video: the hook, the segments that escalate, the climax, and a retention score that says where viewers would leave. Your first one needs no account.",
+    cardDescription:
+      "Turn a topic into a beat-by-beat video structure: a 15-second hook, escalating segments with their own micro-hooks, and an honest retention score.",
+    answerSummary:
+      "A YouTube story structure generator turns a video topic into an ordered plan rather than a script: an opening hook with a promise and stakes, three to five escalation segments that each re-earn attention, a climax, a resolution, and a retention score that predicts where viewers drop off. This one builds the full blueprint from one sentence, and your first blueprint is free with no account.",
+    steps: [
+      {
+        title: "Say what the video is about",
+        description:
+          "One sentence with a point of view. \"Why your espresso tastes sour and the three things to change\" gives the model a promise to structure around; \"espresso\" does not.",
+      },
+      {
+        title: "Pick the shape",
+        description:
+          "Length, structure template (tutorial, case study, commentary, personal story and four more) and story mode. The same topic produces a very different outline as a documentary than as a high-energy breakdown.",
+      },
+      {
+        title: "Film against the beats",
+        description:
+          "You get the hook, the context setup, the escalation segments with their transitions, the climax, the resolution and a retention score. That is a shot list, not a mood board.",
+      },
+    ],
+    sections: [
+      {
+        heading: "Why an outline is not a story structure",
+        body: [
+          "Most video outlines are a list of the things you plan to say, in the order you thought of them. That is a table of contents. It tells you what is in the video and nothing about whether anyone stays for it.",
+          "A structure is different: it is a plan for *attention*. Where the curiosity gap opens, where it closes, which segment re-hooks a viewer who was about to leave, and what the payoff is that justifies the promise you made in the first fifteen seconds. This **youtube story structure generator** builds that layer, because it is the one that decides retention.",
+          "YouTube is explicit that ranking depends on how well the title, description and video content match a search, *and* on which videos drive engagement for it. Structure is the half of that sentence nobody plans. See [YouTube's own search and discovery documentation](https://support.google.com/youtube/answer/141805).",
+        ],
+      },
+      {
+        heading: "What each generated blueprint contains",
+        body: [
+          "**A hook with a promise and stakes.** Not \"open with a question\", but the exact curiosity statement, the promise the video is making, what is at risk if the viewer clicks away, a suggested opening line and what should be on screen for the first fifteen seconds.",
+          "**Context setup.** The problem, why it matters now, and the minimum background a new viewer needs before the first real point lands.",
+          "**Three to five escalation segments.** Each has its own micro-hook, the insight it delivers, an estimated duration, and the tension it hands to the next segment. This is what stops a video sagging in the middle.",
+          "**A climax and a resolution.** The biggest insight, the counter-intuitive turn, then closing the loop you opened at the start and a soft call-to-action that fits the narrative rather than interrupting it.",
+          "**A retention score.** An honest 0-10 prediction with per-section scores for curiosity density, emotional shift and information spike, plus the drop-risk rating. A section that scores badly is telling you to rewrite it before you film it, which is the cheapest moment to find out.",
+        ],
+      },
+      {
+        heading: "How to get a better blueprint out of it",
+        body: [
+          "**Name the audience level.** \"Beginner\" and \"advanced\" produce genuinely different escalation orders, because the amount of setup a viewer needs before the interesting part changes everything about pacing.",
+          "**Pick the structure template deliberately.** A topic framed as a case study escalates through investigation and findings; the same topic as a listicle escalates through ranked, standalone items. If you pick the wrong one, the blueprint says so and names a better fit.",
+          "**Be honest about the length.** The timestamps are paced to the duration you choose. Asking for a 30-minute structure and filming eight minutes gives you an outline with four segments you will cut.",
+          "**Read the low-scoring section first.** The value of a retention score is not the number at the top, it is the one section scoring 4 while everything else scores 8.",
+        ],
+      },
+      {
+        heading: "What the free version leaves out",
+        body: [
+          "This page runs a single, anonymous version of the story builder inside Creator AI. It knows your topic and the shape you picked, which is why the blueprint is solid and generic.",
+          "Inside the app, the same engine reads your channel first: your tone, your pacing, how long your segments usually run, how often you use humour, your ratio of direct address to storytelling, and the structures your best videos already used. The blueprint is then built to be filmable *by you* rather than by a generic presenter.",
+          "It also links to ideation, so a scored idea becomes a structure without retyping it, and to script writing, so the blueprint becomes a full script in your voice. The free Starter plan includes 500 credits a month and needs no card.",
+        ],
+      },
+    ],
+    connectLabel: "Connect your channel for blueprints built around your pacing",
+    benefits: [
+      {
+        icon: Timer,
+        title: "A retention score before you film",
+        description:
+          "Per-section curiosity, emotional shift and information density, with a drop-risk rating. Finding the weak segment in a document costs minutes; finding it in the analytics costs the video.",
+      },
+      {
+        icon: Layers,
+        title: "Segments that stand on their own",
+        description:
+          "Each escalation segment gets its own micro-hook and a transition that hands tension to the next one. That is also what makes a long video clippable later.",
+      },
+      {
+        icon: Wand2,
+        title: "Structure, not a mood board",
+        description:
+          "Exact opening lines, estimated durations, where the CTAs go and why. Specific enough to film from, which is the whole difference between a plan and an intention.",
+      },
+    ],
+    useCases: [
+      {
+        title: "A topic you know is good but cannot shape",
+        description:
+          "You have the idea and the research and no sense of what order any of it goes in. The blueprint gives you the order and tells you where it will sag.",
+      },
+      {
+        title: "Videos that lose people at ninety seconds",
+        description:
+          "Retention cliffs are usually a structure problem, not a delivery problem. The per-section scores point at the segment that causes it.",
+      },
+      {
+        title: "Long-form you plan to clip",
+        description:
+          "Self-contained segments with their own hooks are what a clipping tool can actually find later. Structure the long video and the Shorts come free.",
+      },
+      {
+        title: "Briefing someone else to film or edit",
+        description:
+          "Hook, beats, timings and CTA placement is already most of a brief. Hand it to an editor and skip the round of \"what did you mean here\".",
+      },
+    ],
+    faqs: [
+      {
+        question: "Is this YouTube story structure generator really free?",
+        answer:
+          "Yes. Your first blueprint generates with no account, no card and no email. Exporting it needs a free account, and so does your second blueprint. The Starter plan includes 500 credits every month and still needs no card.",
+      },
+      {
+        question: "What is the difference between this and a script generator?",
+        answer:
+          "A script is the words. A structure is the order and the pacing: where the hook lands, how each segment re-earns attention, where the payoff goes. Most creators who feel stuck writing are actually stuck structuring, which is why doing this first usually makes the script faster.",
+      },
+      {
+        question: "How is the retention score calculated?",
+        answer:
+          "The model scores each section on curiosity density, emotional shift and information spike, then rolls those into an overall 0-10 prediction and a drop-risk rating. It is a structural estimate, not a forecast of your analytics: treat a low-scoring section as a prompt to rewrite it, not as a number to optimise.",
+      },
+      {
+        question: "Which structure template should I pick?",
+        answer:
+          "Pick the one that matches how you would explain the topic out loud. If you would walk someone through steps, it is a tutorial; if you would tell them what happened to you, it is a personal story. If the model thinks you picked wrong, it names a better fit in the blueprint.",
+      },
+      {
+        question: "Can I turn the blueprint into a script?",
+        answer:
+          "Yes, inside the app. Sign up and the blueprint is saved to your dashboard, where the script writer can build on it using a voice profile trained on your own videos. On this page you get the structure itself, which is the part most outlines are missing.",
+      },
+      {
+        question: "How many free blueprints can I generate?",
+        answer:
+          "One per visit without an account. After that you will be asked to create a free account, which comes with 500 monthly credits and access to every other tool, including ideation, script writing, thumbnails, subtitles and dubbing.",
+      },
+    ],
+    relatedPosts: [
+      {
+        slug: "youtube-video-story-structure-for-retention-2026",
+        title: "YouTube Video Story Structure That Holds Retention",
+      },
+      {
+        slug: "improve-youtube-audience-retention-watch-time",
+        title: "How to Improve YouTube Audience Retention and Watch Time",
+      },
+      {
+        slug: "how-to-write-youtube-hooks-that-stop-the-scroll",
+        title: "How to Write YouTube Hooks That Stop the Scroll",
+      },
+    ],
+    upgrade: {
+      featureAnchor: "/features#story-builder",
+      label: "See the full story builder",
+      blurb:
+        "Blueprints built around your own pacing and tone, linked to your scored ideas, and handed straight to the script writer.",
     },
   },
 ];

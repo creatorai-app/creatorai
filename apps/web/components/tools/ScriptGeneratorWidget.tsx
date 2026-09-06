@@ -24,7 +24,7 @@ interface FreeScript {
   script: string
 }
 
-const SLUG = "youtube-script-generator"
+const SLUG = "free-youtube-script-generator"
 
 // CSS rather than motion, deliberately. A motion `initial={{ opacity: 0 }}`
 // leaves the element invisible until the LazyMotion feature bundle has loaded
@@ -120,8 +120,17 @@ export default function ScriptGeneratorWidget() {
   const [duration, setDuration] = useState<string>("180")
   const [includeStorytelling, setIncludeStorytelling] = useState(false)
   const [includeTimestamps, setIncludeTimestamps] = useState(false)
-  const { result, isLoading, error, showSignupGate, closeSignupGate, run } =
-    useFreeTool<FreeScript>(SLUG, "/api/v1/free-tools/script")
+  const {
+    result,
+    runId,
+    isLoading,
+    error,
+    showSignupGate,
+    gateReason,
+    requestExport,
+    closeSignupGate,
+    run,
+  } = useFreeTool<FreeScript>(SLUG, "/api/v1/free-tools/script")
 
   const canSubmit = topic.trim().length >= 3 && !isLoading
 
@@ -277,8 +286,11 @@ export default function ScriptGeneratorWidget() {
           <ToolResultActions
             copyText={`${result.title}\n\n${result.script}`}
             toolSlug={SLUG}
+            tool="script"
+            runId={runId}
+            onExport={requestExport}
             nextStep={{
-              href: "/tools/youtube-video-ideas-generator",
+              href: "/tools/free-youtube-video-ideas-generator",
               label: "Need the next video idea? →",
             }}
           />
@@ -290,6 +302,9 @@ export default function ScriptGeneratorWidget() {
         onOpenChange={(next) => !next && closeSignupGate()}
         toolSlug={SLUG}
         toolName="script generator"
+        tool="script"
+        runId={runId}
+        reason={gateReason}
       />
 
       {result && (

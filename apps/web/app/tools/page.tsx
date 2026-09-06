@@ -1,13 +1,28 @@
+import type { ComponentType } from "react"
 import Link from "next/link"
-import { ArrowRight, Sparkles, Zap, Lock, Wand2 } from "lucide-react"
+import { ArrowRight, Clapperboard, Sparkles, Zap, Lock, Wand2 } from "lucide-react"
 import LandingPageNavbar from "@/components/landingPage/LandingPageNavbar"
 import Footer from "@/components/footer"
 import SmoothScroll from "@/components/SmoothScroll"
 import FeatureCard from "@/components/feature-card"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
 import ConnectChannelCta from "@/components/tools/ConnectChannelCta"
+import SearchIcon from "@/components/dashboard/sidebar/icons/SearchIcon"
+import FileTextIcon from "@/components/dashboard/sidebar/icons/FileTextIcon"
 import { FREE_TOOLS } from "@/lib/free-tools"
 import { CORE_FEATURES, EXTRA_FEATURES } from "@/lib/product-features"
+
+/**
+ * Each tool wears the icon its paid feature wears in the dashboard sidebar, so
+ * the free sample and the real thing read as the same product. Kept here rather
+ * than in lib/free-tools.ts because this is the only place one renders, and the
+ * registry has to stay importable from a plain node script.
+ */
+const TOOL_ICON: Record<string, ComponentType<{ className: string }>> = {
+  "free-youtube-video-ideas-generator": SearchIcon,
+  "free-youtube-script-generator": FileTextIcon,
+  "free-youtube-story-structure-generator": Clapperboard,
+}
 
 /**
  * The /tools hub. The tools themselves are the first thing under the hero,
@@ -71,14 +86,16 @@ export default function ToolsPage() {
 
           {/* The tools, immediately */}
           <div className="relative z-10 mx-auto mt-12 grid max-w-5xl gap-6 px-6 md:grid-cols-2">
-            {FREE_TOOLS.map((tool) => (
+            {FREE_TOOLS.map((tool) => {
+              const Icon = TOOL_ICON[tool.slug] ?? Sparkles
+              return (
               <Link
                 key={tool.slug}
                 href={`/tools/${tool.slug}`}
                 className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:border-purple-300 hover:shadow-lg"
               >
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-100 bg-purple-50 text-purple-600 shadow-sm">
-                  <tool.icon className="h-6 w-6" />
+                  <Icon className="h-6 w-6" />
                 </span>
                 <h2 className="mt-4 text-lg font-semibold text-slate-900 group-hover:text-purple-700">
                   {tool.name}
@@ -94,7 +111,8 @@ export default function ToolsPage() {
                   />
                 </span>
               </Link>
-            ))}
+              )
+            })}
           </div>
         </section>
 

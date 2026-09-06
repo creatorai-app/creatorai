@@ -1,11 +1,21 @@
-import { Controller, Post, Body, Req, HttpException, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { Controller, Post, Body, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { z } from 'zod';
 import type { Request } from 'express';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { allowRequest, getClientIp } from '../common/rate-limit';
-import { SCRIPT_TONES } from '@repo/validation';
+import {
+  SCRIPT_TONES,
+  AUDIENCE_LEVELS,
+  VIDEO_DURATIONS,
+  CONTENT_TYPES,
+  STORY_MODES,
+} from '@repo/validation';
+import { SupabaseAuthGuard } from '../guards/auth.guard';
+import type { AuthRequest } from '../common/interfaces/auth-request.interface';
+import { getUserId } from '../common/get-user-id';
 import { FreeToolsService } from './free-tools.service';
+import { FreeToolRunsService } from './free-tool-runs.service';
 
 /**
  * Anonymous generators behind the public /tools pages. No auth, no credits, no
@@ -31,13 +41,21 @@ function rateLimitOrThrow(req: Request) {
   }
 }
 
+/**
+ * Every free generation carries the visitor's localStorage session id, so the
+ * run can be stored now and handed to the account they create later.
+ */
+const sessionId = z.string().uuid('Invalid session');
+
 export const IdeaSchema = z.object({
+  sessionId,
   niche: z.string().trim().min(3, 'Tell us the topic or niche').max(200),
   audience: z.string().trim().max(200).optional().or(z.literal('')),
 });
 type IdeaInput = z.infer<typeof IdeaSchema>;
 
 export const ScriptSchema = z.object({
+  sessionId,
   topic: z.string().trim().min(3, 'Tell us what the video is about').max(500),
   tone: z.enum(SCRIPT_TONES).default('conversational'),
   // Capped well under the paid feature's range: the free sample proves quality,
@@ -48,21 +66,47 @@ export const ScriptSchema = z.object({
 });
 type ScriptInput = z.infer<typeof ScriptSchema>;
 
+/**
+ * The free story blueprint takes the six inputs that shape the structure and
+ * drops the four that only matter once there is a channel to personalize
+ * against (tone, additional context, an ideation link, the personalized flag).
+ */
+export const StorySchema = z.object({
+  sessionId,
+  videoTopic: z.string().trim().min(3, 'Tell us what the video is about').max(500),
+  targetAudience: z.string().trim().max(300).optional().or(z.literal('')),
+  audienceLevel: z.enum(AUDIENCE_LEVELS).default('general'),
+  videoDuration: z.enum(VIDEO_DURATIONS).default('medium'),
+  contentType: z.enum(CONTENT_TYPES).default('tutorial'),
+  storyMode: z.enum(STORY_MODES).default('conversational'),
+});
+type StoryInput = z.infer<typeof StorySchema>;
+
+export const ClaimSchema = z.object({
+  runId: z.string().uuid(),
+  sessionId,
+});
+type ClaimInput = z.infer<typeof ClaimSchema>;
+
 @ApiTags('free-tools')
 @Controller('free-tools')
 export class FreeToolsController {
-  constructor(private readonly freeToolsService: FreeToolsService) {}
+  constructor(
+    private readonly freeToolsService: FreeToolsService,
+    private readonly runs: FreeToolRunsService,
+  ) {}
 
   @Post('idea')
   @ApiOperation({
     summary: 'Generate one YouTube video idea (anonymous, free)',
-    description: 'Powers /tools/youtube-video-ideas-generator. Rate limited per IP.',
+    description: 'Powers /tools/free-youtube-video-ideas-generator. Rate limited per IP.',
   })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['niche'],
+      required: ['sessionId', 'niche'],
       properties: {
+        sessionId: { type: 'string', format: 'uuid' },
         niche: { type: 'string', example: 'home espresso for beginners' },
         audience: { type: 'string', example: 'people who just bought their first machine' },
       },
@@ -70,19 +114,23 @@ export class FreeToolsController {
   })
   async idea(@Body(new ZodValidationPipe(IdeaSchema)) body: IdeaInput, @Req() req: Request) {
     rateLimitOrThrow(req);
-    return this.freeToolsService.generateIdea(body.niche, body.audience || undefined);
+    const { sessionId: session, ...input } = body;
+    const result = await this.freeToolsService.generateIdea(body.niche, body.audience || undefined);
+    const runId = await this.runs.record(session, 'idea', input, result);
+    return { ...result, runId };
   }
 
   @Post('script')
   @ApiOperation({
     summary: 'Generate one YouTube script (anonymous, free)',
-    description: 'Powers /tools/youtube-script-generator. Rate limited per IP.',
+    description: 'Powers /tools/free-youtube-script-generator. Rate limited per IP.',
   })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['topic'],
+      required: ['sessionId', 'topic'],
       properties: {
+        sessionId: { type: 'string', format: 'uuid' },
         topic: { type: 'string', example: 'why your espresso tastes sour' },
         tone: { type: 'string', enum: [...SCRIPT_TONES], default: 'conversational' },
         duration: { type: 'integer', minimum: 60, maximum: 300, default: 180 },
@@ -93,9 +141,77 @@ export class FreeToolsController {
   })
   async script(@Body(new ZodValidationPipe(ScriptSchema)) body: ScriptInput, @Req() req: Request) {
     rateLimitOrThrow(req);
-    return this.freeToolsService.generateScript(body.topic, body.tone, body.duration, {
+    const { sessionId: session, ...input } = body;
+    const result = await this.freeToolsService.generateScript(body.topic, body.tone, body.duration, {
       storytelling: body.includeStorytelling,
       timestamps: body.includeTimestamps,
     });
+    const runId = await this.runs.record(session, 'script', input, result);
+    return { ...result, runId };
+  }
+
+  @Post('story')
+  @ApiOperation({
+    summary: 'Generate one story blueprint (anonymous, free)',
+    description: 'Powers /tools/free-youtube-story-structure-generator. Rate limited per IP.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['sessionId', 'videoTopic'],
+      properties: {
+        sessionId: { type: 'string', format: 'uuid' },
+        videoTopic: { type: 'string', example: 'why your espresso tastes sour' },
+        targetAudience: { type: 'string', example: 'people who just bought their first machine' },
+        audienceLevel: { type: 'string', enum: [...AUDIENCE_LEVELS], default: 'general' },
+        videoDuration: { type: 'string', enum: [...VIDEO_DURATIONS], default: 'medium' },
+        contentType: { type: 'string', enum: [...CONTENT_TYPES], default: 'tutorial' },
+        storyMode: { type: 'string', enum: [...STORY_MODES], default: 'conversational' },
+      },
+    },
+  })
+  async story(@Body(new ZodValidationPipe(StorySchema)) body: StoryInput, @Req() req: Request) {
+    rateLimitOrThrow(req);
+    const { sessionId: session, ...input } = body;
+    const result = await this.freeToolsService.generateStory({
+      videoTopic: body.videoTopic,
+      targetAudience: body.targetAudience || undefined,
+      audienceLevel: body.audienceLevel,
+      videoDuration: body.videoDuration,
+      contentType: body.contentType,
+      storyMode: body.storyMode,
+    });
+    const runId = await this.runs.record(session, 'story', input, result);
+    return { ...result, runId };
+  }
+
+  /**
+   * Copy a stored anonymous run into the caller's account.
+   *
+   * SupabaseAuthGuard only, deliberately without OnboardedGuard: this runs
+   * seconds after signup, when the user has neither a trained AI nor a
+   * connected channel, and it spends no credits. The dashboard read routes it
+   * redirects to are gated the same way.
+   */
+  @Post('claim')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Claim an anonymous free-tool run into the signed-in account',
+    description:
+      'Materializes the stored run into scripts / ideation_jobs / story_builder_jobs and returns the dashboard path for it. Idempotent per run.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['runId', 'sessionId'],
+      properties: {
+        runId: { type: 'string', format: 'uuid' },
+        sessionId: { type: 'string', format: 'uuid' },
+      },
+    },
+  })
+  async claim(@Body(new ZodValidationPipe(ClaimSchema)) body: ClaimInput, @Req() req: AuthRequest) {
+    return this.runs.claim(body.runId, body.sessionId, getUserId(req));
   }
 }

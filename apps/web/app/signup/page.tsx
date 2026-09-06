@@ -71,11 +71,21 @@ function SignupForm() {
     }
   };
 
+  /**
+   * Where to land after signing up. Set by the free-tool pages so a result
+   * generated at /tools survives the signup and is claimed into the new
+   * account (see lib/free-tool-session.ts). Same-origin paths only, and the
+   * auth callback narrows it again to /dashboard before honoring it.
+   */
+  const rawNext = searchParams.get("next");
+  const nextPath =
+    rawNext?.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      router.push(nextPath ?? "/dashboard");
     }
-  }, [user, router]);
+  }, [user, router, nextPath]);
 
   // Check the code before promising anyone a bonus for it. Doing this at sign-up
   // time instead of after account creation is what keeps a mistyped or expired
@@ -168,7 +178,7 @@ function SignupForm() {
         email: details.email!,
         password: details.password!,
         options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=/login`,
+          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(nextPath ?? "/login")}`,
           data: {
             full_name: details.name,
           },
@@ -180,7 +190,12 @@ function SignupForm() {
       if (data.user) {
         toast.success("Account created!", { description: "Please check your email to verify your account." });
         await trackReferral(data.user.email);
-        router.push("/login");
+        // Carry `next` to the login page too: the confirmation email already
+        // has it, but someone who signs in by hand from here should land in the
+        // same place.
+        router.push(
+          nextPath ? `/login?redirectTo=${encodeURIComponent(nextPath)}` : "/login",
+        );
       }
     } catch (error: unknown) {
       if (isZodError(error)) {
@@ -208,9 +223,10 @@ function SignupForm() {
     }
     setLoading(true);
     try {
-      const redirectUrl = referralCode
-        ? `${window.location.origin}/api/auth/callback?ref=${referralCode}`
-        : `${window.location.origin}/api/auth/callback`;
+      const callbackUrl = new URL("/api/auth/callback", window.location.origin);
+      if (referralCode) callbackUrl.searchParams.set("ref", referralCode);
+      if (nextPath) callbackUrl.searchParams.set("next", nextPath);
+      const redirectUrl = callbackUrl.toString();
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",

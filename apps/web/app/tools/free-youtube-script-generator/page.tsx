@@ -2,7 +2,7 @@ import ToolPageShell from "@/components/tools/ToolPageShell"
 import ScriptGeneratorWidget from "@/components/tools/ScriptGeneratorWidget"
 import { getFreeTool } from "@/lib/free-tools"
 
-const tool = getFreeTool("youtube-script-generator")!
+const tool = getFreeTool("free-youtube-script-generator")!
 
 export default function YouTubeScriptGeneratorPage() {
   return (
