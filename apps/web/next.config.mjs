@@ -30,7 +30,7 @@ const contentSecurityPolicy = [
   // <style> tags by design.
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com https://lmsqueezy.com https://app.lemonsqueezy.com`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://avatar.vercel.sh https://yt3.ggpht.com https://i.ytimg.com https://www.google-analytics.com ${supabaseUrl}`,
+  `img-src 'self' data: blob: https://avatar.vercel.sh https://yt3.ggpht.com https://i.ytimg.com https://www.google-analytics.com https://peerpush.com ${supabaseUrl}`,
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseUrl} ${supabaseWs} ${backendUrl} https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com`,
   // Demo video (Drive) and the checkout overlay.
