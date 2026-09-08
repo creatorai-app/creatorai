@@ -112,6 +112,15 @@ const Footer = () => {
                   href: item.href,
                 }))}
               />
+              <a href="https://peerpush.com/p/creator-ai" target="_blank" rel="noopener" className="inline-block">
+                <img
+                  src="https://peerpush.com/p/creator-ai/badge.png"
+                  alt="Creator AI on PeerPush"
+                  width={230}
+                  height={65}
+                  className="w-[230px] max-w-full h-auto"
+                />
+              </a>
             </motion.div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
