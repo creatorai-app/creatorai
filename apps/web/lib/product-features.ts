@@ -60,6 +60,10 @@ export interface FeatureDemoVideo {
   captions: string;
   /** Runtime in seconds. VideoObject.duration (PT58S) is derived from this. */
   durationSeconds: number;
+  /** ISO 8601 date the recording was published, e.g. "2026-09-09". Required:
+   *  Google treats uploadDate as a required VideoObject property, and a
+   *  VideoObject without one is dropped rather than warned about. */
+  uploadDate: string;
   /** Plain-text transcript rendered on the page, one entry per paragraph. This
    *  is the part search and answer engines actually index. */
   transcript: string[];

@@ -21,10 +21,24 @@ import type { ProductFeature } from "@/lib/product-features"
  * 2026, but it stays for the same reason it stays on the tool pages: valid schema
  * and one of the cleanest Q&A formats for LLM answer engines to lift.
  *
- * No VideoObject yet. It belongs here the moment `feature.demoVideo` is set, and
- * must be emitted only when the recording actually exists — schema describing a
- * video that is not on the page is the "Video isn't on a watch page" exclusion.
+ * VideoObject is emitted ONLY when `feature.demoVideo` is set. Schema describing
+ * a video that is not on the page is the "Video isn't on a watch page" exclusion,
+ * and a half-filled VideoObject is worse than none: Google drops the entity and
+ * the page keeps the cost of claiming to be a watch page.
+ *
+ * One video may only be declared on one URL. lib/blog-data.ts records what
+ * happened last time we forgot that — the same VideoObject on two pages made
+ * them compete and fed the duplicate-page reports in Search Console. If a demo
+ * here is ever also embedded in a post, exactly one of the two declares it.
  */
+
+/** Seconds to the ISO 8601 duration schema.org wants: 58 -> "PT58S". */
+function isoDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds))
+  const minutes = Math.floor(seconds / 60)
+  const remainder = seconds % 60
+  return `PT${minutes ? `${minutes}M` : ""}${remainder || !minutes ? `${remainder}S` : ""}`
+}
 
 export function featureMetadata(feature: ProductFeature): Metadata {
   const path = `/features/${feature.id}`
@@ -91,11 +105,41 @@ export function FeatureJsonLd({ feature }: { feature: ProductFeature }) {
         }
       : null
 
+  // Absolute URLs throughout: a crawler reading the JSON-LD has no page context
+  // to resolve "/subtitle page.png" against.
+  const demo = feature.demoVideo
+  const videoJsonLd = demo
+    ? {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        name: `${feature.title} demo`,
+        description: feature.seoDescription,
+        thumbnailUrl: [`${siteConfig.url}${demo.poster}`],
+        uploadDate: demo.uploadDate,
+        duration: isoDuration(demo.durationSeconds),
+        contentUrl: demo.mp4,
+        // The transcript is on the page, so say so — it is the part an answer
+        // engine can read, and it ties the text to the video it came from.
+        ...(demo.transcript.length ? { transcript: demo.transcript.join("\n\n") } : {}),
+        publisher: {
+          "@type": "Organization",
+          name: siteConfig.name,
+          logo: {
+            "@type": "ImageObject",
+            url: `${siteConfig.url}/dark-logo.png`,
+          },
+        },
+        // Ties the video to this page so Google treats it as the watch page.
+        mainEntityOfPage: { "@type": "WebPage", "@id": url },
+      }
+    : null
+
   return (
     <>
       <JsonLd data={appJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       {faqJsonLd && <JsonLd data={faqJsonLd} />}
+      {videoJsonLd && <JsonLd data={videoJsonLd} />}
     </>
   )
 }
