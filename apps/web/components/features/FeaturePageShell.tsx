@@ -5,6 +5,7 @@ import Footer from "@/components/footer"
 import SmoothScroll from "@/components/SmoothScroll"
 import BlogFaqAccordion from "@/components/blog/BlogFaqAccordion"
 import FeatureCard from "@/components/feature-card"
+import FeatureDemoVideo from "@/components/features/FeatureDemoVideo"
 import RichText from "@/components/RichText"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
 import { CORE_FEATURES, type ProductFeature } from "@/lib/product-features"
@@ -80,6 +81,15 @@ export default function FeaturePageShell({ feature }: { feature: ProductFeature 
             </div>
           </div>
         </section>
+
+        {/* Demo. Renders nothing until the feature has a demoVideo. */}
+        {feature.demoVideo && (
+          <section className="bg-white pt-12">
+            <div className="mx-auto max-w-3xl px-6">
+              <FeatureDemoVideo video={feature.demoVideo} title={feature.title} />
+            </div>
+          </section>
+        )}
 
         {/* AEO: the direct answer, first thing after the hero */}
         <section className="border-y border-slate-200 bg-white py-12">
