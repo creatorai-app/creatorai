@@ -30,6 +30,11 @@ import type { FeatureDemoVideo as FeatureDemoVideoData } from "@/lib/product-fea
  * search and answer engines can actually read — a video file is opaque to them.
  * It sits in a <details> so it does not push the rest of the page down; the
  * content inside is still in the HTML and still indexed.
+ *
+ * No <figcaption>: it may only be the first or last child of its <figure>, and
+ * the only place it would have gone here is inside the <details>, where it is
+ * invalid and where assistive tech would not read it as the figure's caption
+ * anyway. The <summary> names the transcript and aria-label names the video.
  */
 export default function FeatureDemoVideo({
   video,
@@ -68,9 +73,8 @@ export default function FeatureDemoVideo({
       {video.transcript.length > 0 && (
         <details className="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4">
           <summary className="cursor-pointer text-sm font-medium text-slate-700 hover:text-purple-700">
-            Read the transcript
+            Read the {title} transcript
           </summary>
-          <figcaption className="sr-only">{title} demo transcript</figcaption>
           <div className="mt-4 space-y-3">
             {video.transcript.map((paragraph, i) => (
               <p key={i} className="text-[0.98rem] leading-relaxed text-slate-600">
