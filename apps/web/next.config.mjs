@@ -32,6 +32,11 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://avatar.vercel.sh https://yt3.ggpht.com https://i.ytimg.com https://www.google-analytics.com https://peerpush.com ${supabaseUrl}`,
   "font-src 'self' data:",
+  // Feature-page demo videos and their .vtt caption tracks are served from the
+  // public GCS bucket, not from /public — there are no video binaries in this
+  // repo and there should not be. Without this they fall through to
+  // default-src 'self' and are refused.
+  "media-src 'self' https://storage.googleapis.com",
   `connect-src 'self' ${supabaseUrl} ${supabaseWs} ${backendUrl} https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com`,
   // Demo video (Drive) and the checkout overlay.
   "frame-src 'self' https://drive.google.com https://www.youtube-nocookie.com https://www.youtube.com https://app.lemonsqueezy.com",

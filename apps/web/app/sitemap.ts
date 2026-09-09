@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/blog-source";
 import { FREE_TOOLS } from "@/lib/free-tools";
+import { CORE_FEATURES } from "@/lib/product-features";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://trycreatorai.com";
 
@@ -127,6 +128,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
+  // Generated from the registry, so a feature added to CORE_FEATURES is in the
+  // sitemap without anyone remembering to come here. Below /features itself
+  // (0.9) because the hub is the entry point, above a blog post (0.7) because
+  // these are primary marketing pages.
+  const featurePages: MetadataRoute.Sitemap = CORE_FEATURES.map((feature) => ({
+    url: `${BASE_URL}/features/${feature.id}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
+
   // lastModified is the last edit, not the publish date: an admin fixing a post
   // in the dashboard is exactly the signal a sitemap is meant to carry.
   const blogPages: MetadataRoute.Sitemap = (await getPublishedPosts()).map((post) => ({
@@ -136,5 +148,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...toolPages, ...blogPages];
+  return [...staticPages, ...toolPages, ...featurePages, ...blogPages];
 }

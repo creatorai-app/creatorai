@@ -102,6 +102,14 @@ export default function FeaturesPage() {
                       </li>
                     ))}
                   </ul>
+
+                  <Link
+                    href={`/features/${feature.id}`}
+                    className="mt-8 inline-flex items-center gap-1.5 font-medium text-purple-600 hover:text-purple-700"
+                  >
+                    See how it works
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </div>
 
                 <div className={`${idx % 2 !== 0 ? "lg:col-start-1" : ""} flex items-center justify-center`}>
