@@ -114,7 +114,10 @@ export function FeatureJsonLd({ feature }: { feature: ProductFeature }) {
         "@type": "VideoObject",
         name: `${feature.title} demo`,
         description: feature.seoDescription,
-        thumbnailUrl: [`${siteConfig.url}${demo.poster}`],
+        // encodeURI, because the poster screenshots already in public/ have
+        // spaces in their filenames ("/subtitle page.png") and a raw space makes
+        // the URL invalid — the whole VideoObject gets rejected over it.
+        thumbnailUrl: [encodeURI(`${siteConfig.url}${demo.poster}`)],
         uploadDate: demo.uploadDate,
         duration: isoDuration(demo.durationSeconds),
         contentUrl: demo.mp4,
