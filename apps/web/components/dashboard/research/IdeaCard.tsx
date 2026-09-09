@@ -170,7 +170,7 @@ export default function IdeaCard({ idea, index, ideationId }: IdeaCardProps) {
             <Button
               size="sm" variant="outline"
               className="text-xs sm:text-sm h-8 sm:h-9"
-              onClick={() => router.push(`/dashboard/thumbnails/new?prompt=${encodeURIComponent(idea.title)}`)}
+              onClick={() => router.push(`/dashboard/thumbnails/new?ideationId=${ideationId}&ideaIndex=${index}&title=${encodeURIComponent(idea.title)}`)}
             >
               <ImageIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" /> Thumbnail
             </Button>

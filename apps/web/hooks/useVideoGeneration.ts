@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { api, getApiErrorMessage } from "@/lib/api-client"
 import { useSSE, type SSEEvent } from "./useSSE"
+import { useTypewriter } from "./useTypewriter"
 import {
   type VideoAspectRatio,
   type VideoDurationSeconds,
@@ -69,8 +70,6 @@ export function useVideoGeneration() {
 
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSurprising, setIsSurprising] = useState(false)
-  const [isTyping, setIsTyping] = useState(false)
-  const typeTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
   const [videoJobId, setVideoJobId] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -118,25 +117,7 @@ export function useVideoGeneration() {
     },
   })
 
-  // Reveal the generated prompt letter-by-letter for a subtle "typing" effect.
-  const typeOut = (text: string) => {
-    if (typeTimer.current) clearInterval(typeTimer.current)
-    setIsTyping(true)
-    setPrompt("")
-    let i = 0
-    typeTimer.current = setInterval(() => {
-      i += 1
-      setPrompt(text.slice(0, i))
-      if (i >= text.length) {
-        if (typeTimer.current) clearInterval(typeTimer.current)
-        typeTimer.current = null
-        setIsTyping(false)
-      }
-    }, 22)
-  }
-
-  // Stop the animation if the component unmounts mid-type.
-  useEffect(() => () => { if (typeTimer.current) clearInterval(typeTimer.current) }, [])
+  const { typeOut, isTyping } = useTypewriter(setPrompt)
 
   const surpriseMe = async () => {
     setIsSurprising(true)
