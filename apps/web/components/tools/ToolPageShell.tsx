@@ -6,6 +6,7 @@ import Footer from "@/components/footer"
 import SmoothScroll from "@/components/SmoothScroll"
 import BlogFaqAccordion from "@/components/blog/BlogFaqAccordion"
 import FeatureCard from "@/components/feature-card"
+import RichText from "@/components/RichText"
 import GoogleSignupCta from "@/components/tools/GoogleSignupCta"
 import ConnectChannelCta from "@/components/tools/ConnectChannelCta"
 import { FREE_TOOLS, type FreeTool } from "@/lib/free-tools"
@@ -19,53 +20,6 @@ import { FREE_TOOLS, type FreeTool } from "@/lib/free-tools"
  * came to use it), then the answer paragraph, then the long-form body that
  * actually earns the ranking, then the FAQ and the signup CTA.
  */
-
-/** `**bold**` in registry copy, the only inline formatting these sections use. */
-function RichText({ text }: { text: string }) {
-  return (
-    <>
-      {text
-        .split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g)
-        .map((part, i) => {
-        if (part.startsWith("**") && part.endsWith("**")) {
-          return (
-            <strong key={i} className="font-semibold text-slate-900">
-              {part.slice(2, -2)}
-            </strong>
-          )
-        }
-        if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-          return <em key={i}>{part.slice(1, -1)}</em>
-        }
-        const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part)
-        if (link) {
-          const [, label, href] = link as unknown as [string, string, string]
-          const external = href.startsWith("http")
-          return external ? (
-            <a
-              key={i}
-              href={href}
-              target="_blank"
-              rel="noopener"
-              className="font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
-            >
-              {label}
-            </a>
-          ) : (
-            <Link
-              key={i}
-              href={href}
-              className="font-medium text-purple-600 underline underline-offset-2 hover:text-purple-700"
-            >
-              {label}
-            </Link>
-          )
-        }
-        return <span key={i}>{part}</span>
-      })}
-    </>
-  )
-}
 
 export default function ToolPageShell({
   tool,
