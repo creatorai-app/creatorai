@@ -1,10 +1,18 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
 import axios, { AxiosError } from 'axios';
-import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const supabase = await getSupabaseServer();
   const redirectUrl = new URL('/dashboard', request.url);
+
+  // Location stays relative. Behind Caddy, Next's standalone server builds
+  // request.url from the container's HOSTNAME + PORT, not the Host header, so
+  // an absolute redirect lands on http://<container-id>:3000/dashboard.
+  const toDashboard = () =>
+    new Response(null, {
+      status: 302,
+      headers: { Location: `${redirectUrl.pathname}${redirectUrl.search}` },
+    });
 
   try {
     const url = new URL(request.url);
@@ -12,7 +20,7 @@ export async function GET(request: Request) {
 
     if (!code) {
       redirectUrl.searchParams.set('error', 'missing_code');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     // Exchange code for session
@@ -21,14 +29,14 @@ export async function GET(request: Request) {
     if (exchangeError || !data?.session) {
       console.error('Supabase auth error:', exchangeError);
       redirectUrl.searchParams.set('error', 'auth_failed');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     const { provider_token, provider_refresh_token, user } = data.session;
     console.log('OAuth session data:', data);
     if (!provider_token) {
       redirectUrl.searchParams.set('error', 'no_provider_token');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     // Fetch YouTube channel data
@@ -48,13 +56,13 @@ export async function GET(request: Request) {
       console.error('YouTube API error:', axiosError.response?.data || axiosError.message);
 
       redirectUrl.searchParams.set('error', 'youtube_fetch_failed');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     const channelData = channelResponse.data.items?.[0];
     if (!channelData) {
       redirectUrl.searchParams.set('error', 'no_channel_data');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     // Save to DB
@@ -90,7 +98,7 @@ export async function GET(request: Request) {
     if (channelError) {
       console.error('Error saving channel data:', channelError);
       redirectUrl.searchParams.set('error', 'save_failed');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     const { error: profileError } = await supabase
@@ -101,14 +109,14 @@ export async function GET(request: Request) {
     if (profileError) {
       console.error('Error updating profile:', profileError);
       redirectUrl.searchParams.set('error', 'profile_update_failed');
-      return NextResponse.redirect(redirectUrl);
+      return toDashboard();
     }
 
     // ✅ Success → Dashboard
-    return NextResponse.redirect(redirectUrl);
+    return toDashboard();
   } catch (err) {
     console.error('Unexpected error in YouTube callback:', err);
     redirectUrl.searchParams.set('error', 'unexpected');
-    return NextResponse.redirect(redirectUrl);
+    return toDashboard();
   }
 }
