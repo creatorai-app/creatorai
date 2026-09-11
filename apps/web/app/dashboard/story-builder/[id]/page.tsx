@@ -110,7 +110,7 @@ export default function StoryBuilderDetailPage() {
                                 </p>
                             </div>
                             <div className="flex gap-2 shrink-0">
-                                <Link href={`/dashboard/thumbnails/new?storyBuilderId=${jobId}&prompt=${encodeURIComponent(job.video_topic || "")}`}>
+                                <Link href={`/dashboard/thumbnails/new?storyBuilderId=${jobId}&title=${encodeURIComponent(job.video_topic || "")}`}>
                                     <Button variant="outline" size="sm" className="gap-1.5">
                                         <ImageIcon className="h-3.5 w-3.5" />
                                         Thumbnail

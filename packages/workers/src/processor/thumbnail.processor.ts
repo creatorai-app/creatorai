@@ -24,6 +24,10 @@ interface ThumbnailJobData {
   faceImageUrl?: string;
   videoLink?: string;
   personalized: boolean;
+  /** Resolved server-side from the script / blueprint / idea the request came from. */
+  contentContext?: string;
+  /** Whatever the creator typed into "Additional Context". */
+  userContext?: string;
 }
 
 interface StyleData {
@@ -53,6 +57,7 @@ export class ThumbnailProcessor extends WorkerHost {
     const {
       userId, thumbnailJobId, bullJobId, prompt, ratio,
       generateCount, referenceImageUrl, faceImageUrl, videoLink, personalized,
+      contentContext, userContext,
     } = job.data;
 
     await job.updateProgress(0);
@@ -89,6 +94,13 @@ export class ThumbnailProcessor extends WorkerHost {
         ? `\nThis thumbnail is for a YouTube video: ${videoLink}. Reflect the video's themes.`
         : '';
 
+      // What the video is actually about — from the linked script/blueprint/idea and
+      // from the creator's own notes. Without it the model only sees the raw prompt.
+      const briefContext = [
+        contentContext && `What the video is about:\n${contentContext}`,
+        userContext && `Creator notes:\n${userContext}`,
+      ].filter(Boolean).join('\n\n');
+
       const count = Math.min(generateCount || 3, 4);
       await job.log(`Generating ${count} thumbnail variations in parallel...`);
 
@@ -108,7 +120,7 @@ Optimized for YouTube click-through rate.
 Bold vibrant colors, dramatic composition, high contrast, cinematic lighting.
 Variation directive: ${hint}
 ${videoContext}
-
+${briefContext ? `\n${briefContext}\n` : ''}
 ${prompt}`;
 
         const parts: any[] = [{ text: textPrompt }, ...contextParts];

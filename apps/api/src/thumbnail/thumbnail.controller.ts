@@ -18,7 +18,12 @@ import { Queue } from 'bullmq';
 import { SupabaseAuthGuard } from '../guards/auth.guard';
 import { OnboardedGuard } from '../guards/onboarded.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { CreateThumbnailSchema, type CreateThumbnailInput } from '@repo/validation';
+import {
+  CreateThumbnailSchema,
+  type CreateThumbnailInput,
+  SurpriseThumbnailPromptSchema,
+  type SurpriseThumbnailPromptInput,
+} from '@repo/validation';
 import type { AuthRequest } from '../common/interfaces/auth-request.interface';
 import { getUserId } from '../common/get-user-id';
 import type { Observable } from 'rxjs';
@@ -34,6 +39,17 @@ export class ThumbnailController {
     private readonly thumbnailService: ThumbnailService,
   ) { }
 
+  @Post('surprise')
+  @UseGuards(SupabaseAuthGuard, OnboardedGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate an on-brand thumbnail prompt from the trained style and source content' })
+  async surprise(
+    @Body(new ZodValidationPipe(SurpriseThumbnailPromptSchema)) body: SurpriseThumbnailPromptInput,
+    @Req() req: AuthRequest,
+  ) {
+    return this.thumbnailService.surprisePrompt(getUserId(req), body);
+  }
+
   @Post('generate')
   @UseGuards(SupabaseAuthGuard, OnboardedGuard)
   @ApiBearerAuth()
@@ -43,12 +59,15 @@ export class ThumbnailController {
     required: ['prompt'],
     properties: {
       prompt: { type: 'string' },
+      context: { type: 'string' },
       ratio: { type: 'string', enum: ['16:9', '9:16', '1:1', '4:3'], default: '16:9' },
       generateCount: { type: 'integer', minimum: 1, maximum: 5, default: 3 },
       videoLink: { type: 'string', format: 'uri' },
       personalized: { type: 'boolean', default: true },
       scriptId: { type: 'string', format: 'uuid' },
       storyBuilderId: { type: 'string', format: 'uuid' },
+      ideationId: { type: 'string', format: 'uuid' },
+      ideaIndex: { type: 'integer', minimum: 0 },
       referenceImage: { type: 'string', format: 'binary' },
       faceImage: { type: 'string', format: 'binary' },
     },

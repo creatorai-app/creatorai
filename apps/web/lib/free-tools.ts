@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Compass, Gauge, Layers, Mic, Timer, Wand2 } from "lucide-react";
+import type { ContentFaq, ContentSection, ContentStep } from "./content-shapes";
 
 /**
  * The public, no-signup tools at /tools.
@@ -20,20 +21,12 @@ import { Compass, Gauge, Layers, Mic, Timer, Wand2 } from "lucide-react";
  * cannibalize each other (see .claude/skills/blog-post-seo, STEP 0).
  */
 
-export interface ToolStep {
-  title: string;
-  description: string;
-}
-
-export interface ToolSection {
-  heading: string;
-  body: string[];
-}
-
-export interface ToolFaq {
-  question: string;
-  answer: string;
-}
+// Shared with the /features landing pages, so the shapes live in one neutral
+// module. The Tool* names stay as aliases: every existing import of them keeps
+// working, and a tool page still reads as if it owns its own types.
+export type ToolStep = ContentStep;
+export type ToolSection = ContentSection;
+export type ToolFaq = ContentFaq;
 
 /** The three benefit cards directly under the tool, before the long-form body. */
 export interface ToolBenefit {
