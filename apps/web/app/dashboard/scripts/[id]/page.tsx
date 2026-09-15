@@ -163,7 +163,7 @@ export default function ScriptPage() {
               <span>{script.credits_consumed} credit{script.credits_consumed > 1 ? "s" : ""} used</span>
             </div>
           )}
-          <Link href={`/dashboard/thumbnails/new?scriptId=${scriptId}&prompt=${encodeURIComponent(title || "")}`}>
+          <Link href={`/dashboard/thumbnails/new?scriptId=${scriptId}&title=${encodeURIComponent(title || "")}`}>
             <Button variant="outline" size="sm">
               <ImageIcon className="h-4 w-4 mr-2" />
               Generate Thumbnail

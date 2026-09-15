@@ -6,15 +6,18 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   type CreateThumbnailInput,
+  type SurpriseThumbnailPromptInput,
   hasEnoughCredits,
   THUMBNAIL_CREDIT_MULTIPLIER,
   getMinimumCreditsForThumbnailRequest,
 } from '@repo/validation';
+import { createGoogleAI, GEMINI_TEXT_MODEL } from '../utils/genai';
 
 const BUCKET = 'thumbnails';
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -26,6 +29,7 @@ export class ThumbnailService {
 
   constructor(
     private readonly supabaseService: SupabaseService,
+    private readonly configService: ConfigService,
     @InjectQueue('thumbnail') private readonly queue: Queue,
   ) {}
 
@@ -35,7 +39,7 @@ export class ThumbnailService {
     referenceImage?: Express.Multer.File,
     faceImage?: Express.Multer.File,
   ) {
-    const { prompt, ratio, generateCount, videoLink, personalized, scriptId, storyBuilderId } = input;
+    const { prompt, context, ratio, generateCount, videoLink, personalized } = input;
 
     if (referenceImage) this.validateImageFile(referenceImage, 'Reference image');
     if (faceImage) this.validateImageFile(faceImage, 'Face image');
@@ -84,32 +88,7 @@ export class ThumbnailService {
       );
     }
 
-    let contentContext: string | undefined;
-    if (scriptId) {
-      const { data: script } = await this.supabaseService
-        .getClient()
-        .from('scripts')
-        .select('title, content')
-        .eq('id', scriptId)
-        .eq('user_id', userId)
-        .single();
-
-      if (script) {
-        contentContext = `Script Title: ${script.title}\n${(script.content || '').slice(0, 500)}`;
-      }
-    } else if (storyBuilderId) {
-      const { data: story } = await this.supabaseService
-        .getClient()
-        .from('story_builder_jobs')
-        .select('video_topic, result')
-        .eq('id', storyBuilderId)
-        .eq('user_id', userId)
-        .single();
-
-      if (story) {
-        contentContext = `Story Topic: ${story.video_topic}`;
-      }
-    }
+    const contentContext = await this.resolveSourceContext(userId, input);
 
     const shouldPersonalize = personalized && profile.ai_trained;
 
@@ -130,8 +109,8 @@ export class ThumbnailService {
         error_message: null,
         credits_consumed: 0,
         job_id: bullJobId,
-        script_id: scriptId || null,
-        story_builder_id: storyBuilderId || null,
+        script_id: input.scriptId || null,
+        story_builder_id: input.storyBuilderId || null,
       })
       .select('id')
       .single();
@@ -158,6 +137,7 @@ export class ThumbnailService {
         videoLink: videoLink || null,
         personalized: shouldPersonalize,
         contentContext,
+        userContext: context || undefined,
       },
       {
         jobId: bullJobId,
@@ -248,6 +228,148 @@ export class ThumbnailService {
 
     if (error) throw new InternalServerErrorException('Failed to delete thumbnail job');
     return { success: true, message: 'Thumbnail job deleted' };
+  }
+
+  /**
+   * "Surprise me": one on-brand thumbnail prompt built from the creator's trained
+   * style plus whatever they arrived with (a script, a blueprint, an idea, or free
+   * text). Ungated on purpose — it is cheap and it is how a locked user sees the
+   * feature work before the paywall on Generate.
+   */
+  async surprisePrompt(userId: string, input: SurpriseThumbnailPromptInput) {
+    const [{ data: style }, sourceContext] = await Promise.all([
+      this.supabaseService
+        .getClient()
+        .from('user_style')
+        .select('tone, visual_style, themes, humor_style, narrative_structure')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      this.resolveSourceContext(userId, input),
+    ]);
+
+    const styleLines = style
+      ? [
+          style.tone && `Tone: ${style.tone}`,
+          style.visual_style && `Visual style: ${style.visual_style}`,
+          style.themes && `Themes: ${style.themes}`,
+          style.humor_style && `Humor: ${style.humor_style}`,
+          style.narrative_structure && `Narrative structure: ${style.narrative_structure}`,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      : '';
+
+    const brief = [sourceContext, input.context?.trim()].filter(Boolean).join('\n\n');
+
+    const system = [
+      'You write a single image-generation prompt for a YouTube thumbnail.',
+      'Return ONLY the prompt text — no preamble, no quotes, no markdown, no options list.',
+      'Describe the subject, composition, colors, lighting, mood, and the short text overlay (4 words max, in quotes). Two or three sentences, under 70 words.',
+      'It must read as a click-worthy thumbnail, not a stock photo: high contrast, one clear focal point, room for the text overlay.',
+      brief
+        ? `Base it on the video this thumbnail is for:\n${brief}`
+        : 'The creator has not described a video yet, so invent a broadly appealing, visually striking concept.',
+      styleLines
+        ? `Align it with this creator's established style:\n${styleLines}`
+        : 'The creator has no saved style yet, so keep it broadly appealing.',
+    ].join('\n\n');
+
+    try {
+      const ai = await createGoogleAI(this.configService);
+      const result = await ai.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: [{ role: 'user', parts: [{ text: 'Give me one fresh thumbnail prompt.' }] }],
+        // thinkingLevel minimal: Gemini 3 otherwise spends the whole maxOutputTokens
+        // budget on thoughts and returns a truncated fragment. A one-line prompt needs none.
+        config: {
+          systemInstruction: system,
+          temperature: 1.1,
+          maxOutputTokens: 250,
+          thinkingConfig: { thinkingLevel: 'minimal' },
+        } as any,
+      });
+      const prompt = (
+        (result as any)?.candidates?.[0]?.content?.parts?.[0]?.text ??
+        result?.text ??
+        ''
+      )
+        .trim()
+        .replace(/^["']|["']$/g, '');
+      if (!prompt) throw new Error('empty');
+      return { success: true, prompt };
+    } catch (e) {
+      this.logger.error(`Surprise thumbnail prompt failed for user ${userId}: ${(e as Error).message}`);
+      throw new InternalServerErrorException('Could not generate a prompt right now. Please try again.');
+    }
+  }
+
+  /**
+   * Turn whichever source the creator came from into plain-text context the model
+   * can use. Shared by createJob (passed to the worker) and surprisePrompt.
+   */
+  private async resolveSourceContext(
+    userId: string,
+    { scriptId, storyBuilderId, ideationId, ideaIndex }: SurpriseThumbnailPromptInput,
+  ): Promise<string | undefined> {
+    if (scriptId) {
+      const { data: script } = await this.supabaseService
+        .getClient()
+        .from('scripts')
+        .select('title, content')
+        .eq('id', scriptId)
+        .eq('user_id', userId)
+        .single();
+
+      if (script) return `Script Title: ${script.title}\n${(script.content || '').slice(0, 500)}`;
+      return undefined;
+    }
+
+    if (storyBuilderId) {
+      const { data: story } = await this.supabaseService
+        .getClient()
+        .from('story_builder_jobs')
+        .select('video_topic, result')
+        .eq('id', storyBuilderId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!story) return undefined;
+      const hook = story.result?.structuredBlueprint?.hook;
+      return [
+        `Story Topic: ${story.video_topic}`,
+        hook?.openingLine && `Opening Line: ${hook.openingLine}`,
+        hook?.curiosityStatement && `Curiosity Statement: ${hook.curiosityStatement}`,
+        hook?.visualSuggestion && `Suggested Visual: ${hook.visualSuggestion}`,
+        story.result?.structuredBlueprint?.climax?.biggestInsight &&
+          `Biggest Insight: ${story.result.structuredBlueprint.climax.biggestInsight}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    if (ideationId && ideaIndex != null) {
+      const { data: ideationJob } = await this.supabaseService
+        .getClient()
+        .from('ideation_jobs')
+        .select('result')
+        .eq('id', ideationId)
+        .eq('user_id', userId)
+        .single();
+
+      const idea = ideationJob?.result?.ideas?.[ideaIndex];
+      if (!idea) return undefined;
+      return [
+        `Title: ${idea.title}`,
+        idea.coreTopic && `Core Topic: ${idea.coreTopic}`,
+        idea.uniqueAngle && `Unique Angle: ${idea.uniqueAngle}`,
+        idea.hookAngle && `Hook Angle: ${idea.hookAngle}`,
+        idea.suggestedFormat && `Suggested Format: ${idea.suggestedFormat}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    return undefined;
   }
 
   // ─── Helpers ───

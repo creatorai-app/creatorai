@@ -12,7 +12,7 @@ import { VideoFrameModal } from "@/components/dashboard/thumbnails/VideoFrameMod
 import { useAISetupGate } from "@/hooks/useAISetupGate";
 import { Skeleton } from "@repo/ui/skeleton";
 import { Badge } from "@repo/ui/badge";
-import { FileText, Clapperboard } from "lucide-react"
+import { FileText, Clapperboard, Sparkles } from "lucide-react"
 
 function NewThumbnailPageInner() {
   const router = useRouter()
@@ -22,6 +22,12 @@ function NewThumbnailPageInner() {
 
   const scriptId = searchParams.get("scriptId") ?? undefined
   const storyBuilderId = searchParams.get("storyBuilderId") ?? undefined
+  const ideationId = searchParams.get("ideationId") ?? undefined
+  const ideaIndexParam = searchParams.get("ideaIndex")
+  const ideaIndex = ideaIndexParam != null ? Number(ideaIndexParam) : undefined
+  // `title` is what the source feature is called (script title, video topic, idea).
+  // `prompt` stays supported for older links that put the title straight in the prompt.
+  const sourceTitle = searchParams.get("title") ?? undefined
   const initialPrompt = searchParams.get("prompt") ?? undefined
 
   const {
@@ -34,17 +40,21 @@ function NewThumbnailPageInner() {
     isGenerating, progress, statusMessage,
     generatedImages, creditsConsumed,
     showOutput,
-    handleGenerate, handleRegenerate,
-    handleDownload, handleUsePreset, clearForm,
+    handleGenerate, handleRegenerate, surpriseMe,
+    handleDownload, clearForm,
+    isSurprising, isTyping,
   } = useThumbnailGeneration({
     onComplete: (id) => router.push(`/dashboard/thumbnails/${id}`),
     initialPrompt,
+    initialContext: sourceTitle ? `Video: ${sourceTitle}` : undefined,
     initialScriptId: scriptId,
     initialStoryBuilderId: storyBuilderId,
+    initialIdeationId: ideationId,
+    initialIdeaIndex: ideaIndex,
   })
 
-  const sourceLabel = scriptId ? "Script" : storyBuilderId ? "Story Builder" : null
-  const SourceIcon = scriptId ? FileText : Clapperboard
+  const sourceLabel = scriptId ? "Script" : storyBuilderId ? "Story Builder" : ideationId ? "Ideation" : null
+  const SourceIcon = scriptId ? FileText : storyBuilderId ? Clapperboard : Sparkles
 
   const [showFrameModal, setShowFrameModal] = useState(false)
 
@@ -75,7 +85,11 @@ function NewThumbnailPageInner() {
             <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
               <SourceIcon className="h-3 w-3 mr-1" /> From {sourceLabel}
             </Badge>
-            {initialPrompt && <span className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-md">{initialPrompt}</span>}
+            {(sourceTitle ?? initialPrompt) && (
+              <span className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-md">
+                {sourceTitle ?? initialPrompt}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -125,9 +139,11 @@ function NewThumbnailPageInner() {
                   faceImage={faceImage}
                   setFaceImage={setFaceImage}
                   isGenerating={isGenerating}
+                  isSurprising={isSurprising}
+                  isTyping={isTyping}
                   onGenerate={gate.locked ? gate.requestUnlock : handleGenerate}
+                  onSurpriseMe={surpriseMe}
                   locked={gate.locked}
-                  onUsePreset={handleUsePreset}
                 />
               </motion.div>
             )}

@@ -31,8 +31,10 @@ interface ThumbnailFormProps {
   faceImage: File | null
   setFaceImage: (v: File | null) => void
   isGenerating: boolean
+  isSurprising: boolean
+  isTyping: boolean
   onGenerate: () => void
-  onUsePreset: (prompt: string) => void
+  onSurpriseMe: () => void
   locked?: boolean
 }
 
@@ -43,8 +45,8 @@ export function ThumbnailForm({
   videoLink, setVideoLink,
   referenceImage, setReferenceImage,
   faceImage, setFaceImage,
-  isGenerating,
-  onGenerate, onUsePreset,
+  isGenerating, isSurprising, isTyping,
+  onGenerate, onSurpriseMe,
   locked,
 }: ThumbnailFormProps) {
   const [step, setStep] = useState(1)
@@ -100,7 +102,10 @@ export function ThumbnailForm({
                 context={context}
                 setContext={setContext}
                 promptError={promptError}
-                onUsePreset={onUsePreset}
+                onSurpriseMe={onSurpriseMe}
+                isSurprising={isSurprising}
+                isTyping={isTyping}
+                isGenerating={isGenerating}
               />
             )}
             {step === 2 && (
