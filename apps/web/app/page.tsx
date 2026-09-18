@@ -12,7 +12,6 @@ import PricingSection from "@/components/landingPage/PricingSection";
 import FeatureSection from "@/components/landingPage/FeatureSection";
 import FAQSection from "@/components/landingPage/FAQSection";
 import WhyCreatorAI from "@/components/landingPage/WhyCreatorAI";
-import ReviewsMarquee from "@/components/landingPage/ReviewsMarquee";
 import FreeToolsSection from "@/components/landingPage/FreeToolsSection";
 import { FlipWords } from "@repo/ui/flip-words";
 import dynamic from 'next/dynamic';
@@ -132,14 +131,6 @@ export default function Home() {
 
         <section id="how-it-works" className="relative py-16 sm:py-20 lg:py-24 bg-slate-50 dark:bg-slate-900 overflow-hidden">
           <HowItWorks />
-        </section>
-
-        <section
-          id="reviews"
-          aria-label="Demo testimonials"
-          className="py-16 sm:py-20 lg:py-24 bg-white dark:bg-slate-800 overflow-hidden"
-        >
-          <ReviewsMarquee />
         </section>
 
         <section id="why-creator-ai" className="py-16 sm:py-20 lg:py-24 bg-white dark:bg-slate-800">
