@@ -10,7 +10,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { DubbingService } from './dubbing.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { DUBBING_CANCEL_PREFIX } from '@repo/validation';
-import { deleteGcsObject, moveGcsObject } from '../utils';
+import { deleteGcsObject, moveGcsObject, getSignedUploadUrl } from '../utils';
 
 jest.mock('../utils', () => ({
   getSignedUploadUrl: jest.fn().mockResolvedValue('https://signed-upload-url'),
@@ -259,6 +259,39 @@ describe('DubbingService', () => {
       expect(queue.add).not.toHaveBeenCalled();
     });
 
+    // The dubbed file's name and Content-Type are bound into the signed PUT URL, and GCS
+    // does not inspect the bytes: sign for the wrong type and the upload still succeeds,
+    // it just stores a file that will not play. Modal writes WAV for an audio source, so
+    // this must stay .wav / audio/wav for as long as Modal is the backend.
+    it('signs the audio output for exactly what Modal uploads', async () => {
+      await build();
+      const res = await service.createDub(input, USER);
+      expect(getSignedUploadUrl).toHaveBeenCalledWith(
+        expect.anything(),
+        `dubbed/${res.projectId}.wav`,
+        'audio/wav',
+        'dub-bucket',
+        expect.any(Number),
+      );
+      expect(queue.add).toHaveBeenCalledWith(
+        'dubbing',
+        expect.objectContaining({ outputContentType: 'audio/wav' }),
+        expect.anything(),
+      );
+    });
+
+    it('signs a video output as MP4', async () => {
+      await build();
+      const res = await service.createDub({ ...input, isVideo: true }, USER);
+      expect(getSignedUploadUrl).toHaveBeenCalledWith(
+        expect.anything(),
+        `dubbed/${res.projectId}.mp4`,
+        'video/mp4',
+        'dub-bucket',
+        expect.any(Number),
+      );
+    });
+
     it('inserts the project and enqueues the worker job', async () => {
       await build();
       const res = await service.createDub(input, USER);
@@ -343,6 +376,39 @@ describe('DubbingService', () => {
     it('refuses to delete a running dub', async () => {
       await build({ dubbing_projects: chain({ data: { status: 'processing' }, error: null }) });
       await expect(service.deleteDub(USER, 'p-1')).rejects.toThrow(/Cancel it before deleting/);
+    });
+
+    // Audio dubs are .wav today and were .mp3 on ElevenLabs. Deleting only today's name
+    // leaves every older dub's file behind in the bucket, paid for and unreachable.
+    it('deletes the source and both audio output names', async () => {
+      await build({
+        dubbing_projects: chain({
+          data: {
+            status: 'completed',
+            input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp3`,
+            is_video: false,
+          },
+          error: null,
+        }),
+      });
+      await service.deleteDub(USER, 'p-1');
+      const deleted = (deleteGcsObject as jest.Mock).mock.calls.map((c) => c[1]);
+      expect(deleted).toEqual(
+        expect.arrayContaining([`${USER}/dubbing/a.mp3`, 'dubbed/p-1.wav', 'dubbed/p-1.mp3']),
+      );
+    });
+
+    it('does not chase an mp3 for a video dub', async () => {
+      await build({
+        dubbing_projects: chain({
+          data: { status: 'completed', input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp4`, is_video: true },
+          error: null,
+        }),
+      });
+      await service.deleteDub(USER, 'p-1');
+      const deleted = (deleteGcsObject as jest.Mock).mock.calls.map((c) => c[1]);
+      expect(deleted).toContain('dubbed/p-1.mp4');
+      expect(deleted).not.toContain('dubbed/p-1.mp3');
     });
   });
 });

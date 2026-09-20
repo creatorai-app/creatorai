@@ -58,15 +58,18 @@ const OUTPUT_URL_TTL_MS = 2 * 60 * 60 * 1000; // 2h
 /**
  * Deterministic output object + content type, derivable from projectId alone (for cleanup).
  *
- * Audio output is MP3, not WAV: the ElevenLabs dubbing endpoint streams back MP3 for an
- * audio source and MP4 for a video source. GCS binds Content-Type to the signed PUT URL,
- * so a mismatch here is rejected at upload time rather than failing loudly earlier.
- * Dubs completed under the previous Modal pipeline keep their .wav URLs and still play.
+ * Audio output is WAV because that is what Modal writes: torchaudio saves the
+ * synthesized track and it is uploaded as-is (video sources are muxed to MP4). GCS binds
+ * Content-Type to the signed PUT URL and does not inspect the bytes, so getting this
+ * wrong stores a mislabelled file that uploads fine and will not play.
+ *
+ * Dubs made on ElevenLabs kept .mp3 URLs; those rows still play, and deleteDub cleans up
+ * either extension.
  */
 function dubOutput(projectId: string, isVideo: boolean): { objectName: string; contentType: string } {
   return isVideo
     ? { objectName: `dubbed/${projectId}.mp4`, contentType: 'video/mp4' }
-    : { objectName: `dubbed/${projectId}.mp3`, contentType: 'audio/mpeg' };
+    : { objectName: `dubbed/${projectId}.wav`, contentType: 'audio/wav' };
 }
 
 @Injectable()
@@ -125,7 +128,7 @@ export class DubbingService {
   /**
    * Every plan can dub; Starter is capped on clip LENGTH instead of being locked out.
    * `durationSeconds` is measured in the browser and therefore untrusted — this is the
-   * cheap first gate, and the worker re-checks against the duration the dubbing vendor
+   * cheap first gate, and the worker re-checks against the duration ffprobe
    * reports before it spends anything.
    */
   private assertDurationAllowed(planName: string | null, durationSeconds: number, targetLanguage?: string): void {
@@ -306,7 +309,7 @@ export class DubbingService {
     const cleanupMedia = () => deleteGcsObject(this.configService, finalObject, this.bucket).catch(() => null);
 
     // Take the money now. Atomic and floored at zero, so two dubs started at once can
-    // never both pass — the second is rejected here instead of after ElevenLabs ran.
+    // never both pass. The second is rejected here instead of after the GPU ran.
     const reservedCredits = this.dubCost(durationSeconds, planName);
     try {
       await this.reserveCredits(userId, reservedCredits);
@@ -596,9 +599,13 @@ export class DubbingService {
 
     // Clean up both GCS objects: the source (input_gs_uri) and the dubbed output
     // (deterministic name from projectId + is_video).
+    const isVideo = Boolean(data?.is_video);
     const objectNames = [
       data?.input_gs_uri ? String(data.input_gs_uri).split('/').slice(3).join('/') : null,
-      dubOutput(projectId, Boolean(data?.is_video)).objectName,
+      dubOutput(projectId, isVideo).objectName,
+      // Audio dubs made on ElevenLabs landed as .mp3 rather than today's .wav. Deleting
+      // is already best-effort, so trying both is cheaper than leaking the old ones.
+      isVideo ? null : `dubbed/${projectId}.mp3`,
     ].filter((n): n is string => Boolean(n));
 
     for (const objectName of objectNames) {
