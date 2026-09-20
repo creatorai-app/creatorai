@@ -1,13 +1,20 @@
 # Creator AI — dubbing clone service (Modal, serverless GPU).
 #
-# ⚠️ DORMANT — NOT CURRENTLY CALLED. Dubbing runs on the ElevenLabs Dubbing API
-# (see packages/workers/src/processor/dubbing.processor.ts), which does transcribe +
-# translate + voice-clone + timing + mux in one request and fixes the audio drift the
-# `-shortest` mux below has.
+# LIVE, AND FROZEN. This is the dubbing backend: the worker
+# (packages/workers/src/processor/dubbing.processor.ts) transcribes and translates with
+# Gemini, then calls this to clone the speaker and speak the translation in their voice.
 #
-# This file is kept deployable on purpose: if ElevenLabs disappoints on quality or the
-# startup grant runs out and the per-minute rate stops making sense, the worker's
-# commented Modal branch plus this app is the way back. Nothing here has changed.
+# FROZEN because Modal now refuses to deploy GPU functions without a payment method on
+# file ("Using a GPU requires having a valid payment method on file"), and this workspace
+# has none. The already-deployed app predates that rule and still serves, so the running
+# endpoint cannot be updated. THIS FILE MUST STAY BYTE-FOR-BYTE WHAT IS DEPLOYED: edit it
+# and you change nothing in production, but you do desync it from what the API signs for.
+# Add a card first, deploy, then change things.
+#
+# Known ceilings: translated speech rarely matches the original length, so the
+# `-shortest` mux below drifts against the picture on a video dub, and audio dubs come
+# back as WAV (big; apps/api/.../dubbing.service.ts signs the PUT URL for audio/wav to
+# match). Both are fixable here the moment redeploying is possible again.
 #
 # Implements the contract the worker calls (packages/workers/.../dubbing.processor.ts):
 #   POST <MODAL_API_URL>
@@ -16,7 +23,8 @@
 #
 # It fetches reference_url (a public GCS URL), extracts audio if is_video, clones the
 # speaker's voice from it and synthesizes `text` in `language` using Chatterbox
-# Multilingual (MIT license, 23 languages). The result is uploaded directly to GCS with
+# Multilingual (MIT license, 23 languages; the set the UI offers is pinned to those in
+# packages/validations/src/consts/dubbing.ts). The result is uploaded directly to GCS with
 # the pre-signed PUT URL the API minted, so the dubbed media (a video can be hundreds of
 # MB) never round-trips through the Node worker. Scales to zero between requests.
 #

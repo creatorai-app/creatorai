@@ -21,32 +21,33 @@ import path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { getGenAI, GEMINI_TEXT_MODEL } from './utils/genai';
-import { muxDubbedAudio } from './utils/ffmpeg';
+import { muxDubbedAudio, probeDurationSeconds } from './utils/ffmpeg';
 
 // The clone step (Modal GPU) can run for a few minutes — cap the wait so a hung
 // request fails the job instead of pinning a worker slot forever.
 const MODAL_TIMEOUT_MS = 10 * 60 * 1000;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dubbing runs on ElevenLabs' /v1/dubbing endpoint, which transcribes, translates,
-// clones the speaker and re-times the result in one call.
+// Dubbing runs on our own pipeline: Gemini transcribes the source off gs:// and
+// translates it, then Modal (Chatterbox Multilingual on an L4) clones the speaker
+// from that same source, speaks the translation in their voice, muxes it back over
+// the video and PUTs the finished file into the signed GCS URL itself.
 //
-// Voice cloning is on by default (`disable_voice_cloning` is false): the voice in
-// the output is cloned from the speaker in the uploaded media. Since creators dub
-// their own videos, that is their own voice — which is the whole requirement. It
-// also keeps ElevenLabs' timing alignment and multi-speaker handling, both of which
-// a translate-then-synthesise pipeline gives up.
+// What this costs versus a one-call vendor: the translated speech does not match the
+// original length, so a video dub drifts (see the `-shortest` mux in dubbing_app.py),
+// there is no multi-speaker separation, and `target_accent` has no equivalent, so the
+// accent a creator picks is recorded but not acted on.
 //
-// The Modal + Chatterbox path is kept commented at the bottom of this file as the
-// fallback if ElevenLabs disappoints.
+// What it buys: no per-minute vendor bill, and Chatterbox is MIT so the output is
+// commercially clean.
 //
-// A handful of languages (Bengali today — see DUBBING_V1_LANGUAGES) are not on that
-// endpoint at all: it has no model selector and refuses them outright. Those go through
-// the dubbing *project* API pinned to model_id=dubbing_v1, which speaks everything
-// Eleven v3 does. It is a different shape — create, poll the project, poll the language,
-// then fetch a signed URL — and it returns an audio track only, so the worker muxes the
-// result back over the source itself. Everything else stays on the endpoint above,
-// accents and all.
+// The Modal app is frozen: this workspace cannot deploy GPU functions any more (Modal
+// wants a card on file), and the endpoint we call predates that rule. Anything that
+// would need a change on the Modal side is blocked until billing is sorted, so audio
+// dubs come back as WAV and the API signs for audio/wav to match.
+//
+// The ElevenLabs calls this replaced are commented out further down, next to the
+// helpers they used. Flipping back is uncommenting them and this file's step 1-3.
 // ─────────────────────────────────────────────────────────────────────────────
 const ELEVENLABS_API = 'https://api.elevenlabs.io/v1';
 const ELEVENLABS_POLL_INTERVAL_MS = 5_000;
@@ -74,8 +75,8 @@ interface DubJobData {
   userId: string;
   projectId: string;
   bullJobId: string;
-  inputGsUri: string;   // gs:// — kept for the dormant Modal path
-  inputUrl: string;     // public GCS URL — ElevenLabs fetches the source from this
+  inputGsUri: string;   // gs:// source, read by Gemini
+  inputUrl: string;     // public GCS URL: ffprobe measures it, Modal fetches it
   mimeType: string;
   isVideo: boolean;
   targetLanguage: string;
@@ -113,7 +114,7 @@ export class DubbingProcessor extends WorkerHost {
 
   async process(job: Job<DubJobData>): Promise<{ dubbedUrl: string }> {
     const {
-      userId, projectId, inputUrl, isVideo, targetLanguage, targetAccent,
+      userId, projectId, inputGsUri, inputUrl, mimeType, isVideo, targetLanguage, targetAccent,
       durationSeconds, planName, reservedCredits, outputPutUrl, outputContentType, outputPublicUrl,
     } = job.data;
 
@@ -126,76 +127,45 @@ export class DubbingProcessor extends WorkerHost {
     await job.log('Starting dubbing...');
 
     try {
-      const apiKey = getElevenLabsKey();
+      const modalUrl = process.env.MODAL_API_URL;
+      if (!modalUrl) throw new Error('MODAL_API_URL is not configured');
 
       await this.throwIfCancelled(job.id!);
       await this.updateJob(projectId, { status: 'processing' });
       await job.updateProgress(5);
 
       const languageLabel = supportedLanguages.find((l) => l.value === targetLanguage)?.label ?? targetLanguage;
-
-      // 1. Hand ElevenLabs the public GCS URL. It fetches, transcribes, translates,
-      //    clones the speaker from the source audio and re-times the result. The
-      //    bytes never touch this worker on the way in.
-      await job.log(`Sending to ElevenLabs for ${languageLabel} dubbing...`);
-      let handle: DubHandle;
-      // The two backends report the source duration at different moments: the legacy
-      // endpoint returns it from the create call, the project API only once it has
-      // probed the media, mid-poll. Both have to re-price, so the value is settled
-      // per path rather than once here.
-      let expectedDurationSec: number | null = null;
-      if (usesDubbingV1(targetLanguage)) {
-        handle = await this.createDubbingV1Project(apiKey, inputUrl, targetLanguage);
-      } else {
-        const legacy = await this.createElevenLabsDub(
-          apiKey, inputUrl, targetLanguage, targetAccent,
-        );
-        handle = { kind: 'legacy', dubbingId: legacy.dubbingId };
-        expectedDurationSec = legacy.expectedDurationSec;
-
-        // durationSeconds came from the browser and set both the price and the plan cap.
-        // This is the first independent reading of it, so check before the expensive
-        // part runs rather than after. (The project API reports it a step later, once
-        // the source is probed — see waitForDubbingV1Project.)
-        this.assertDurationWithinPlan(planName, expectedDurationSec, targetLanguage);
-
-        // Re-price against the vendor's reading too, not just the cap. The browser sets
-        // the reservation and a tampered `durationSeconds` would otherwise buy a
-        // 45-minute dub for one second's worth of credits.
-        chargedCredits = await this.reprice(
-          userId, chargedCredits, expectedDurationSec, job, projectId, durationSeconds,
-        );
+      if (targetAccent) {
+        // Chatterbox takes no accent; the choice is kept on the row but nothing acts on it.
+        this.logger.warn(`Dub ${projectId}: accent '${targetAccent}' ignored, Chatterbox has no accent control.`);
       }
 
+      // 1. Measure the source before anything expensive runs. `durationSeconds` came
+      //    from the browser and set both the price and the plan cap, and this is the
+      //    only independent reading of it in the whole pipeline. Without it, a tampered
+      //    value buys a 3-hour dub for one second's worth of credits.
+      const probedDurationSec = await probeDurationSeconds(inputUrl);
+      this.assertDurationWithinPlan(planName, probedDurationSec, targetLanguage);
+      chargedCredits = await this.reprice(
+        userId, chargedCredits, probedDurationSec, job, projectId, durationSeconds,
+      );
+
+      // 2. Gemini reads the media straight from gs:// and hands back the translated
+      //    transcript. The bytes never touch this worker.
+      await this.throwIfCancelled(job.id!);
+      await job.log(`Transcribing and translating to ${languageLabel}...`);
+      const translated = await this.transcribeAndTranslate(inputGsUri, mimeType, languageLabel);
+      await job.updateProgress(30);
+
+      // 3. Modal clones the speaker off the same source, speaks the translation in that
+      //    voice, muxes it over the original video when there is one, and PUTs the
+      //    finished file into the signed GCS URL itself. Nothing streams through here.
       await this.throwIfCancelled(job.id!);
       await this.updateJob(projectId, { status: 'cloning' });
       await job.log('Cloning your voice and generating the dub...');
-
-      // 2. Poll until it reports done.
-      if (handle.kind === 'project') {
-        expectedDurationSec = await this.waitForDubbingV1Project(apiKey, handle, job, planName, targetLanguage);
-        // Same re-pricing the legacy path does up front, just at the first moment the
-        // project API has actually read the source. Still before the dub is handed over.
-        chargedCredits = await this.reprice(
-          userId, chargedCredits, expectedDurationSec, job, projectId, durationSeconds,
-        );
-      } else {
-        await this.waitForElevenLabsDub(apiKey, handle.dubbingId, job);
-      }
-      await job.updateProgress(70);
-
-      // 3. Stream the result straight into the signed GCS PUT URL — piped, never
-      //    buffered, so a large MP4 stays off the heap. (The project API hands back a
-      //    bare audio track instead, which has to be assembled on disk first.)
-      await this.throwIfCancelled(job.id!);
-      await job.log('Storing the dubbed file...');
-      if (handle.kind === 'project') {
-        await this.storeDubbingV1Output(apiKey, handle, {
-          inputUrl, isVideo, putUrl: outputPutUrl, contentType: outputContentType,
-        });
-      } else {
-        await this.streamDubToGcs(apiKey, handle.dubbingId, targetLanguage, outputPutUrl, outputContentType);
-      }
+      await this.callModalDub(
+        modalUrl, translated, inputUrl, isVideo, targetLanguage, outputPutUrl, outputContentType,
+      );
       await job.updateProgress(80);
 
       // The result is now in GCS at the pre-signed location.
@@ -535,9 +505,9 @@ export class DubbingProcessor extends WorkerHost {
   }
 
   /**
-   * Charge what the vendor's own reading of the source says, not what the browser
-   * claimed. Shared by both backends because each learns the real duration at a
-   * different point in the run; a null reading means the client's number stands.
+   * Charge what the measured source says, not what the browser claimed. A null reading
+   * means the container declared no duration and the client's number stands. That is
+   * rare, and not worth failing a paid dub over.
    */
   private async reprice(
     userId: string,
@@ -548,7 +518,7 @@ export class DubbingProcessor extends WorkerHost {
     clientDurationSec: number,
   ): Promise<number> {
     if (!vendorDurationSec) {
-      this.logger.warn(`Dub ${projectId}: ElevenLabs returned no duration — priced on the client's ${clientDurationSec}s.`);
+      this.logger.warn(`Dub ${projectId}: ffprobe read no duration, priced on the client's ${clientDurationSec}s.`);
       return chargedCredits;
     }
     const settled = await this.settleCredits(userId, chargedCredits, vendorDurationSec, job);
@@ -619,19 +589,22 @@ export class DubbingProcessor extends WorkerHost {
     }
   }
 
-  // The one-shot /v1/dubbing helpers lived here (createElevenLabsDub,
-  // waitForElevenLabsDub, streamDubToGcs). That endpoint re-clones the speaker from
-  // each upload and takes no target voice, so it cannot keep one voice per creator.
-
   // ───────────────────────────────────────────────────────────────────────────
-  // PREVIOUS BACKEND — Gemini transcribe/translate + Modal (Chatterbox on an L4).
-  // Kept intact, not deleted: if ElevenLabs disappoints we flip back here. The
-  // Modal app itself still lives at modal/dubbing_app.py and is still deployable.
+  // Everything above this line is the ElevenLabs backend, now DORMANT. Nothing in
+  // process() calls it and no request goes to api.elevenlabs.io. The methods are kept
+  // compiling rather than commented into rot: createElevenLabsDub, waitForElevenLabsDub
+  // and streamDubToGcs (the one-call /v1/dubbing route), plus createDubbingV1Project,
+  // waitForDubbingV1Project, storeDubbingV1Output and their download/upload helpers
+  // (the project route that covered the languages /v1/dubbing refuses).
   //
-  // To restore: uncomment both methods, re-add the MODAL_API_URL guard and the
-  // transcribe → callModalDub steps in process(), and revert dubOutput() in
-  // apps/api/src/dubbing/dubbing.service.ts to .wav / audio/wav (Modal returned WAV
-  // for audio input; ElevenLabs returns MP3).
+  // To flip back: restore the step 1-3 block in process() from git (it read the source
+  // duration off the vendor rather than ffprobe), drop the CHATTERBOX_LANGUAGES filter in
+  // packages/validations/src/consts/dubbing.ts so the full language list is selectable
+  // again, and point dubOutput() in apps/api/src/dubbing/dubbing.service.ts back at
+  // .mp3 / audio/mpeg, which is what ElevenLabs returns for an audio source.
+  //
+  // Below: the live pipeline's own two steps. Gemini for transcribe+translate, Modal
+  // for the clone. The Modal app is modal/dubbing_app.py.
   // ───────────────────────────────────────────────────────────────────────────
 
   private async transcribeAndTranslate(gsUri: string, mimeType: string, targetLanguage: string): Promise<string> {
