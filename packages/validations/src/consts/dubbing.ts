@@ -13,19 +13,19 @@ export function canDub(planName?: string | null): boolean {
 /**
  * How long, and how large, a source file may be.
  *
- * Paid plans get ElevenLabs' own API ceiling rather than a number of ours: 3GB and
- * 180 minutes per source file. Past that the dub is refused by the vendor AFTER the
- * browser has pushed the bytes and the credits are reserved, so failing here is
- * strictly cheaper than letting it through.
+ * Paid plans get 3GB and 180 minutes per source file. These were ElevenLabs' own API
+ * ceilings and are now ours: a 3-hour clip is a long GPU run on Modal, and refusing it
+ * here is strictly cheaper than after the browser has pushed the bytes and the credits
+ * are reserved.
  *
  * Starter keeps 500MB / 45 min. That is an outer bound, not the shape of the trial:
  * its 500-credit grant runs out first (~2.8 min at the Starter rate), and signUpload
  * checks the balance before issuing the upload URL, so a Starter user is told the clip
  * is unaffordable before uploading rather than after.
  *
- * Enforced server-side in DubbingService (signUpload + createDub) and re-checked in
- * the worker against ElevenLabs' own `expected_duration_sec`, because durationSeconds
- * arrives from the browser and cannot be trusted on its own.
+ * Enforced server-side in DubbingService (signUpload + createDub) and re-checked in the
+ * worker against ffprobe's reading of the source, because durationSeconds arrives from
+ * the browser and cannot be trusted on its own.
  */
 export const STARTER_MAX_DUB_SECONDS = 45 * 60;
 export const STARTER_MAX_DUB_BYTES = 500 * 1024 * 1024;
@@ -86,15 +86,12 @@ export function formatDubDuration(seconds: number): string {
 export const DUBBING_CANCEL_PREFIX = 'dubbing:cancel:';
 
 /**
- * Every language the dubbing UI offers. Two backends serve this one list:
+ * Every language this product has ever dubbed into, and the label for each.
  *
- *  - the default: POST /v1/dubbing, which accepts 32 languages and is the only route
- *    that takes `target_accent` and renders video for us;
- *  - DUBBING_V1_LANGUAGES below: POST /v1/dubbing/project with `model_id=dubbing_v1`,
- *    whose coverage is Eleven v3's ~85 languages.
- *
- * A language the chosen backend does not accept is rejected outright (400
- * `unsupported_target_language`), so every entry here must be reachable by one of them.
+ * This is the LABEL TABLE, not the picker: a dub recorded under an older backend keeps
+ * its row, and the history pages look the code up here. Removing an entry would turn
+ * "Tamil" back into "ta" on a dub that already exists. What a creator may pick TODAY is
+ * `dubbableLanguages` below, which is this list narrowed to what the live backend speaks.
  */
 export const supportedLanguages = [
   { value: 'ar', label: 'Arabic' },
@@ -131,8 +128,30 @@ export const supportedLanguages = [
 
 export type SupportedLanguage = typeof supportedLanguages[number]['value'];
 
+/**
+ * What Chatterbox Multilingual (the model behind modal/dubbing_app.py) actually speaks:
+ * 23 languages, per Resemble AI's model card. A `language_id` outside this set is not
+ * refused with an error; it synthesizes something wrong-sounding instead, which is worse,
+ * so the set is enforced here rather than discovered on the GPU.
+ *
+ * https://huggingface.co/ResembleAI/chatterbox
+ */
+export const CHATTERBOX_LANGUAGES: readonly string[] = [
+  'ar', 'da', 'de', 'el', 'en', 'es', 'fi', 'fr', 'he', 'hi', 'it', 'ja',
+  'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ru', 'sv', 'sw', 'tr', 'zh',
+];
+
+/**
+ * The languages a creator can pick right now: the label table narrowed to the live
+ * backend's coverage. Ten entries in `supportedLanguages` (bn, bg, cs, fil, hr, id, ro,
+ * sk, ta, uk) came from ElevenLabs and have no Chatterbox equivalent. They stay listed
+ * for history but cannot be selected while Modal is the backend.
+ */
+export const dubbableLanguages = supportedLanguages.filter((l) => CHATTERBOX_LANGUAGES.includes(l.value));
+
+/** The trust boundary: what the API will accept as a dub target. */
 export function isSupportedDubLanguage(code: string): boolean {
-  return supportedLanguages.some((l) => l.value === code);
+  return dubbableLanguages.some((l) => l.value === code);
 }
 
 /**
@@ -181,8 +200,14 @@ export const accentsByLanguage: Partial<Record<SupportedLanguage, { value: strin
   ],
 };
 
-export function accentsFor(language: string): { value: string; label: string }[] {
-  return accentsByLanguage[language as SupportedLanguage] ?? [];
+/**
+ * No accents while Modal is the backend: Chatterbox reproduces the accent of whoever is
+ * in the reference audio and takes no target accent, so an accent menu would be a
+ * control that does nothing. The table above is kept for the backend that honoured it;
+ * restoring the menu is returning the lookup below.
+ */
+export function accentsFor(_language: string): { value: string; label: string }[] {
+  return [];
 }
 
 // murfLocaleMap lived here — a locale table for Murf, which stopped powering dubbing
