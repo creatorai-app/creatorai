@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@repo/ui/sheet";
 import { useDubbing } from "@/hooks/useDubbing";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
-import { supportedLanguages, accentsFor, formatDubDuration, formatUploadLimit } from "@repo/validation";
+import { supportedLanguages, dubbableLanguages, accentsFor, formatDubDuration, formatUploadLimit } from "@repo/validation";
 import { downloadFile } from "@/lib/download";
 import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress";
 import { DubbingHowItWorks } from "@/components/dashboard/dubbing/DubbingHowItWorks";
@@ -435,7 +435,7 @@ export default function NewDubbing() {
                             <SelectValue placeholder="Select a language" />
                           </SelectTrigger>
                           <SelectContent>
-                            {supportedLanguages.map((lang) => (
+                            {dubbableLanguages.map((lang) => (
                               <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
                             ))}
                           </SelectContent>

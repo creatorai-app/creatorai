@@ -19,6 +19,8 @@ import {
   isDubSizeAllowed,
   formatDubDuration,
   supportedLanguages,
+  dubbableLanguages,
+  CHATTERBOX_LANGUAGES,
   isSupportedDubLanguage,
   DUBBING_V1_LANGUAGES,
   usesDubbingV1,
@@ -153,9 +155,16 @@ assert.equal(
 assert.equal(
   SignDubUploadSchema.safeParse({
     filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 12.5,
-    targetLanguage: 'bn',
+    targetLanguage: 'hi',
   }).success,
   true,
+);
+assert.equal(
+  SignDubUploadSchema.safeParse({
+    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 12.5,
+    targetLanguage: 'bn',
+  }).success,
+  false, // labelled for history, but the live backend has no Bengali voice
 );
 assert.equal(
   SignDubUploadSchema.safeParse({
@@ -214,28 +223,42 @@ assert.equal(CreateDubSchema.safeParse({ targetLanguage: 'es', isVideo: false, m
 // Cancel prefix is stable — the API sets it, the worker polls it.
 assert.equal(DUBBING_CANCEL_PREFIX, 'dubbing:cancel:');
 
-// The dropdown must mirror what the dubbing API accepts: a language neither backend
-// takes is a 400 the user cannot act on.
+// The label table keeps every language ever dubbed, so history pages can still name a
+// dub made under an older backend.
 assert.equal(supportedLanguages.length, 30);
 const languageCodes = supportedLanguages.map((l) => l.value);
 assert.equal(new Set(languageCodes).size, languageCodes.length, 'duplicate language code');
-assert.equal(languageCodes.includes('no' as never), false, 'Norwegian is flash-v2.5 only');
 for (const code of ['en', 'es', 'ar', 'uk', 'ta', 'fil', 'ms', 'sv', 'zh', 'bn']) {
   assert.equal(languageCodes.includes(code as never), true, `missing ${code}`);
 }
-assert.equal(isSupportedDubLanguage('bn'), true);
+
+// The picker is that table narrowed to what the live backend (Chatterbox, via Modal)
+// speaks. A code outside it must not be selectable OR acceptable: Chatterbox does not
+// refuse an unknown language_id, it synthesizes something wrong.
+const dubbableCodes = dubbableLanguages.map((l) => l.value);
+for (const code of dubbableCodes) {
+  assert.equal(CHATTERBOX_LANGUAGES.includes(code), true, `${code} is offered but Chatterbox cannot speak it`);
+  assert.equal(isSupportedDubLanguage(code), true, `${code} is offered but the API would reject it`);
+}
+for (const code of ['bn', 'bg', 'cs', 'fil', 'hr', 'id', 'ro', 'sk', 'ta', 'uk']) {
+  assert.equal(isSupportedDubLanguage(code), false, `${code} has no Chatterbox voice and must not be accepted`);
+  assert.equal(dubbableCodes.includes(code as never), false, `${code} must not be offered`);
+}
+assert.equal(dubbableCodes.length, 20);
+assert.equal(isSupportedDubLanguage('en'), true);
 assert.equal(isSupportedDubLanguage('xx'), false);
 
-// Routing: only the listed languages take the project/dubbing_v1 route, and every one
-// of them must be offered in the dropdown — a code in one list and not the other is a
-// language that either cannot be picked or gets sent to the endpoint that refuses it.
+// Chatterbox takes no target accent, so no language may offer an accent menu.
+for (const code of languageCodes) {
+  assert.deepEqual(accentsFor(code), [], `${code} offers accents the backend cannot honour`);
+}
+
+// The dubbing_v1 routing table is dormant with ElevenLabs, but it still feeds the
+// duration/size caps, so it must stay coherent.
 assert.equal(usesDubbingV1('bn'), true);
 assert.equal(usesDubbingV1('es'), false);
-assert.equal(usesDubbingV1('hi'), false);
 for (const code of DUBBING_V1_LANGUAGES) {
-  assert.equal(languageCodes.includes(code as never), true, `${code} routes via v1 but is not offered`);
-  // dubbing_v1 has no target_accent, so an accent menu there would be a lie.
-  assert.deepEqual(accentsFor(code), [], `${code} routes via v1 and cannot offer accents`);
+  assert.equal(languageCodes.includes(code as never), true, `${code} routes via v1 but has no label`);
 }
 for (const { value, label } of supportedLanguages) {
   assert.equal(/^[a-z]{2,3}$/.test(value), true, `not an ISO code: ${value}`);

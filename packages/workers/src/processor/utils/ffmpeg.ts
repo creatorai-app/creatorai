@@ -11,7 +11,11 @@ const FFMPEG_TIMEOUT_MS = 10 * 60 * 1000;
 // the worker image installs it (Dockerfile.worker), and FFMPEG_PATH covers the dev
 // machines that have it somewhere else. Same env var the API's ffmpeg-config.ts reads.
 const FFMPEG_CANDIDATES = [process.env.FFMPEG_PATH, 'ffmpeg'].filter(Boolean) as string[];
+// ffprobe ships in the same package as ffmpeg, so PATH normally has both; FFPROBE_PATH
+// is the escape hatch for a machine where it does not.
+const FFPROBE_CANDIDATES = [process.env.FFPROBE_PATH, 'ffprobe'].filter(Boolean) as string[];
 let resolvedFfmpeg: string | null = null;
+let resolvedFfprobe: string | null = null;
 
 /**
  * Lay a dubbed audio track over the original media.
@@ -42,27 +46,59 @@ export async function muxDubbedAudio({
   await runFfmpeg(args);
 }
 
+/**
+ * How long the media at `url` actually runs, straight from the container metadata.
+ *
+ * ffprobe reads the header over HTTP with range requests, so a 2GB MP4 costs a few KB
+ * here rather than a download. This is the only independent reading of the source
+ * length the pipeline gets, because `durationSeconds` comes from the browser. It is what
+ * the plan cap and the final price are settled against.
+ *
+ * Returns null when the container declares no duration; the caller then falls back to
+ * the client's figure rather than failing a dub over a missing header.
+ */
+export async function probeDurationSeconds(url: string): Promise<number | null> {
+  const { stdout } = await runBinary(
+    'ffprobe',
+    ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', url],
+  );
+  const seconds = Number(stdout.trim());
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
 /** Run ffmpeg from the first candidate that exists, remembering which one worked. */
 async function runFfmpeg(args: string[]): Promise<void> {
-  const candidates = resolvedFfmpeg ? [resolvedFfmpeg] : FFMPEG_CANDIDATES;
+  await runBinary('ffmpeg', args);
+}
+
+/** Try each candidate path for a binary in turn, caching the one that ran. */
+async function runBinary(tool: 'ffmpeg' | 'ffprobe', args: string[]): Promise<{ stdout: string }> {
+  const resolved = tool === 'ffmpeg' ? resolvedFfmpeg : resolvedFfprobe;
+  const candidates = resolved ? [resolved] : tool === 'ffmpeg' ? FFMPEG_CANDIDATES : FFPROBE_CANDIDATES;
 
   for (const [index, binary] of candidates.entries()) {
     try {
-      await execFileAsync(binary, args, { timeout: FFMPEG_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 });
-      resolvedFfmpeg = binary;
-      return;
+      const { stdout } = await execFileAsync(binary, args, {
+        timeout: FFMPEG_TIMEOUT_MS,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      if (tool === 'ffmpeg') resolvedFfmpeg = binary;
+      else resolvedFfprobe = binary;
+      return { stdout: String(stdout ?? '') };
     } catch (error: any) {
       // Not installed under that name — try the next one before giving up.
       if (error?.code === 'ENOENT' && index < candidates.length - 1) continue;
       if (error?.code === 'ENOENT') {
         throw new Error(
-          `ffmpeg is not installed (tried ${candidates.join(', ')}). Dubs into languages that ` +
-          'run on the dubbing_v1 model are assembled locally and need it — set FFMPEG_PATH or install ffmpeg.',
+          `${tool} is not installed (tried ${candidates.join(', ')}). The dubbing pipeline measures ` +
+          'and assembles media locally and needs it. Set FFMPEG_PATH or install ffmpeg.',
         );
       }
       // ffmpeg says what went wrong on the last lines of stderr; the rest is banner noise.
       const detail = String(error?.stderr || error?.message || '').trim().slice(-400);
-      throw new Error(`ffmpeg failed while assembling the dub: ${detail}`);
+      throw new Error(`${tool} failed while processing the dub: ${detail}`);
     }
   }
+
+  throw new Error(`${tool} is not installed`);
 }
