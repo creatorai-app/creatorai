@@ -15,7 +15,7 @@ import {
   calculateDubbingCreditsByDuration,
   getMinimumCreditsForDubbing,
 } from '@repo/validation';
-import { deleteGcsObject, moveGcsObject } from '../utils';
+import { deleteGcsObject, moveGcsObject, getSignedUploadUrl } from '../utils';
 
 jest.mock('../utils', () => ({
   getSignedUploadUrl: jest.fn().mockResolvedValue('https://signed-upload-url'),
