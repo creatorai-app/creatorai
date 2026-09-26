@@ -32,7 +32,8 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://avatar.vercel.sh https://yt3.ggpht.com https://i.ytimg.com https://www.google-analytics.com https://peerpush.com ${supabaseUrl}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseWs} ${backendUrl} https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseWs} ${backendUrl} https://storage.googleapis.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com`,
+  "media-src 'self' blob: https://storage.googleapis.com",
   // Demo video (Drive) and the checkout overlay.
   "frame-src 'self' https://drive.google.com https://www.youtube-nocookie.com https://www.youtube.com https://app.lemonsqueezy.com",
   "object-src 'none'",
