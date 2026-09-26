@@ -140,7 +140,7 @@ export default function ScriptPage() {
 
   return (
     <div className="container py-8">
-      <div className="mb-8 flex items-center justify-between gap-4">
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -156,29 +156,29 @@ export default function ScriptPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">View and edit your script</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {script.credits_consumed > 0 && (
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+            <div className="flex w-full sm:w-auto items-center gap-1.5 text-sm text-slate-500">
               <CreditCard className="h-4 w-4" />
               <span>{script.credits_consumed} credit{script.credits_consumed > 1 ? "s" : ""} used</span>
             </div>
           )}
-          <Link href={`/dashboard/thumbnails/new?scriptId=${scriptId}&prompt=${encodeURIComponent(title || "")}`}>
+          <Link href={`/dashboard/thumbnails/new?scriptId=${scriptId}&title=${encodeURIComponent(title || "")}`}>
             <Button variant="outline" size="sm">
-              <ImageIcon className="h-4 w-4 mr-2" />
-              Generate Thumbnail
+              <ImageIcon className="h-4 w-4 sm:mr-2" />
+              <span className="sr-only sm:not-sr-only">Generate Thumbnail</span>
             </Button>
           </Link>
           <Link href={`/dashboard/subtitles/new?scriptId=${scriptId}`}>
             <Button variant="outline" size="sm">
-              <Subtitles className="h-4 w-4 mr-2" />
-              Create Subtitles
+              <Subtitles className="h-4 w-4 sm:mr-2" />
+              <span className="sr-only sm:not-sr-only">Create Subtitles</span>
             </Button>
           </Link>
           <Link href="/dashboard/scripts/new">
             <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              New Script
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="sr-only sm:not-sr-only">New Script</span>
             </Button>
           </Link>
         </div>
@@ -188,8 +188,8 @@ export default function ScriptPage() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0">
                   <CardTitle>Script Content</CardTitle>
                   <CardDescription>Edit the title and content. Changes are saved when you click Save.</CardDescription>
                 </div>

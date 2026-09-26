@@ -40,7 +40,7 @@ export function VideoModeCards({
   disabled?: boolean
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
       {ORDER.map((m, i) => {
         const meta = MODE_META[m]
         const Icon = meta.icon
@@ -56,7 +56,7 @@ export function VideoModeCards({
             transition={{ duration: 0.35, delay: i * 0.06 }}
             whileHover={{ y: -3 }}
             className={cn(
-              "relative text-left rounded-2xl border p-5 transition-colors overflow-hidden group",
+              "relative text-left rounded-2xl border p-4 sm:p-5 transition-colors overflow-hidden group",
               "disabled:opacity-60 disabled:cursor-not-allowed",
               active
                 ? "border-purple-500 bg-purple-50/70 dark:bg-purple-900/20 ring-1 ring-purple-500"
@@ -83,7 +83,7 @@ export function VideoModeCards({
                 </span>
               )}
             </div>
-            <h3 className="relative mt-3 font-semibold text-slate-800 dark:text-slate-100">{meta.title}</h3>
+            <h3 className="relative mt-2 sm:mt-3 font-semibold text-slate-800 dark:text-slate-100">{meta.title}</h3>
             <p className="relative mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{meta.blurb}</p>
           </motion.button>
         )

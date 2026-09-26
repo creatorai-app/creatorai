@@ -88,24 +88,25 @@ function SettingsContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="mx-auto max-w-6xl px-3 sm:px-4 md:px-6 py-8 md:py-16">
+      <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 lg:py-16">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-12"
+          className="mb-5 sm:mb-8 lg:mb-12"
         >
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Settings
           </h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="hidden sm:block mt-2 text-sm text-slate-500 dark:text-slate-400">
             Manage your account, preferences, and billing information.
           </p>
         </motion.div>
 
-        <div className="flex flex-col gap-8 md:flex-row md:gap-16">
+        {/* Side nav only from lg up: at tablet width it squeezed the content column. */}
+        <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
           {/* Desktop Sidebar Navigation */}
-          <aside className="hidden w-full md:flex md:w-1/4 lg:w-1/5">
+          <aside className="hidden w-full lg:flex lg:w-1/5">
             <nav
               className="flex w-full flex-col space-y-1 relative"
               aria-label="Settings navigation"
@@ -141,10 +142,10 @@ function SettingsContent() {
             </nav>
           </aside>
 
-          <main className="flex-1">
+          <main className="flex-1 min-w-0">
             {/* Mobile Tab Bar with Labels */}
             <nav
-              className="relative mb-6 rounded-2xl bg-white p-1.5 shadow-sm dark:bg-slate-800/60 md:hidden"
+              className="relative mb-6 rounded-2xl bg-white p-1.5 shadow-sm dark:bg-slate-800/60 lg:hidden"
               aria-label="Settings navigation"
             >
               <div className="flex items-center relative justify-around gap-1">

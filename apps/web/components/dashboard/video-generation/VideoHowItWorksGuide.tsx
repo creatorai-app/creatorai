@@ -3,6 +3,7 @@
 import * as motion from "motion/react-m";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion";
+import { useGuideOpenOnDesktop } from "@/hooks/use-guide-open";
 import { Button } from "@repo/ui/button";
 import { Clapperboard, Camera, Sparkles, ArrowUpRight } from "lucide-react"
 
@@ -27,13 +28,14 @@ const tips = [
 ]
 
 export function VideoHowItWorksGuide() {
+  const [guideOpen, setGuideOpen] = useGuideOpenOnDesktop("how-it-works")
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, delay: 0.1 }}
     >
-      <Accordion type="single" collapsible defaultValue="how-it-works" className="w-full">
+      <Accordion type="single" collapsible value={guideOpen} onValueChange={setGuideOpen} className="w-full">
         <AccordionItem value="how-it-works">
           <AccordionTrigger className="font-semibold">How does AI video generation work?</AccordionTrigger>
           <AccordionContent className="pt-4">

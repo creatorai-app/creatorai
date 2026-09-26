@@ -1,6 +1,7 @@
 "use client"
 import * as motion from "motion/react-m";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion";
+import { useGuideOpenOnDesktop } from "@/hooks/use-guide-open";
 import { PenTool, Bot, Youtube } from "lucide-react"
 
 const itemVariants = {
@@ -15,9 +16,10 @@ const steps = [
 ]
 
 export function HowItWorksGuide() {
+  const [guideOpen, setGuideOpen] = useGuideOpenOnDesktop("how-it-works")
     return (
         <motion.div variants={itemVariants}>
-            <Accordion type="single" collapsible defaultValue="how-it-works" className="w-full">
+            <Accordion type="single" collapsible value={guideOpen} onValueChange={setGuideOpen} className="w-full">
                 <AccordionItem value="how-it-works">
                     <AccordionTrigger className="font-semibold">How does model training work?</AccordionTrigger>
                     <AccordionContent className="pt-4">

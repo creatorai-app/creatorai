@@ -61,7 +61,7 @@ export default function ComparisonMetricsView({
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-slate-400">#{i + 1}</p>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2 sm:line-clamp-1">
                     {idea.title}
                   </p>
                 </div>

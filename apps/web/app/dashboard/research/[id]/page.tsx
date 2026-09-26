@@ -44,7 +44,7 @@ export default function IdeationDetailPage() {
     return (
       <div className="container py-8 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-6 w-96" />
+        <Skeleton className="h-6 w-full max-w-96" />
         <div className="space-y-4 sm:space-y-6 mt-8">
           <Skeleton className="h-72 w-full rounded-lg" />
           <Skeleton className="h-72 w-full rounded-lg" />
@@ -103,7 +103,7 @@ export default function IdeationDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back to Ideation
       </Link>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 break-words">
             {job.niche_focus || (job.auto_mode ? "Auto-generated Ideas" : "Ideation Results")}
@@ -131,7 +131,8 @@ export default function IdeationDetailPage() {
               }}
             >
               <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
-              Comparison metrics
+              <span className="sm:hidden">Metrics</span>
+              <span className="hidden sm:inline">Comparison metrics</span>
             </Button>
           )}
           <IdeationExportMenu ideationId={job.id} />

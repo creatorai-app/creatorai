@@ -109,17 +109,17 @@ export default function StoryBuilderDetailPage() {
                                     Generated on {new Date(job.created_at).toLocaleDateString()}
                                 </p>
                             </div>
-                            <div className="flex gap-2 shrink-0">
-                                <Link href={`/dashboard/thumbnails/new?storyBuilderId=${jobId}&prompt=${encodeURIComponent(job.video_topic || "")}`}>
+                            <div className="flex flex-wrap gap-2">
+                                <Link href={`/dashboard/thumbnails/new?storyBuilderId=${jobId}&title=${encodeURIComponent(job.video_topic || "")}`}>
                                     <Button variant="outline" size="sm" className="gap-1.5">
                                         <ImageIcon className="h-3.5 w-3.5" />
-                                        Thumbnail
+                                        <span className="sr-only sm:not-sr-only">Thumbnail</span>
                                     </Button>
                                 </Link>
                                 <Link href="/dashboard/story-builder/new">
                                     <Button variant="outline" size="sm" className="gap-1.5">
                                         <Plus className="h-3.5 w-3.5" />
-                                        New Blueprint
+                                        <span className="sr-only sm:not-sr-only">New Blueprint</span>
                                     </Button>
                                 </Link>
                                 <Button
@@ -129,7 +129,7 @@ export default function StoryBuilderDetailPage() {
                                     onClick={() => router.push("/dashboard/story-builder/new")}
                                 >
                                     <RefreshCw className="h-3.5 w-3.5" />
-                                    Regenerate
+                                    <span className="sr-only sm:not-sr-only">Regenerate</span>
                                 </Button>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -140,7 +140,7 @@ export default function StoryBuilderDetailPage() {
                                             disabled={loading}
                                         >
                                             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                            Delete
+                                            <span className="sr-only sm:not-sr-only">Delete</span>
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>

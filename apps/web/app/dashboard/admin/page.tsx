@@ -33,7 +33,7 @@ const QUICK_ACTIONS: Array<{ label: string; description: string; href: string; i
   { label: "Users", description: "Manage accounts and roles", href: "/dashboard/admin/users", icon: Users, gradient: "from-blue-500 to-cyan-500" },
   { label: "Applications", description: "Review job applications", href: "/dashboard/admin/applications", icon: ClipboardList, gradient: "from-pink-500 to-rose-500" },
   { label: "Affiliates", description: "Requests, links and sales", href: "/dashboard/admin/affiliates", icon: Link2, gradient: "from-indigo-500 to-purple-500" },
-  { label: "Activities", description: "Audit trail across the app", href: "/dashboard/admin/activities", icon: Activity, gradient: "from-amber-500 to-orange-500" },
+  { label: "Activities", description: "What users are doing across the app", href: "/dashboard/admin/activities", icon: Activity, gradient: "from-amber-500 to-orange-500" },
 ]
 
 /**

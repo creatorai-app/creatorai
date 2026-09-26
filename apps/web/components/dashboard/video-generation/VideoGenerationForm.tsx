@@ -94,7 +94,7 @@ function ImageInputs({ vm }: { vm: Vm }) {
               type="button"
               onClick={() => vm.setImages(vm.images.filter((_, idx) => idx !== i))}
               disabled={vm.isGenerating}
-              className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
             >
               <X className="h-3 w-3" />
             </button>

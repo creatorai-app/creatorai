@@ -128,3 +128,112 @@ describe('AdminService.replyToApplication', () => {
     expect(writes).toHaveLength(0);
   });
 });
+
+/**
+ * Table-aware stub for the activity feed: every source resolves to the rows the
+ * test registered for it, and each `select`/`order` pair is recorded so the test
+ * can assert which column a source is read and sorted by.
+ */
+function makeFeedDb(rows: Record<string, Record<string, unknown>[]>) {
+  const reads: { table: string; cols: string; order?: string }[] = [];
+  const client = {
+    from: (table: string) => ({
+      select: (cols: string) => {
+        const read = { table, cols } as { table: string; cols: string; order?: string };
+        reads.push(read);
+        return {
+          order: (col: string) => {
+            read.order = col;
+            return { limit: () => Promise.resolve({ data: rows[table] ?? [] }) };
+          },
+          in: () => Promise.resolve({ data: rows[table] ?? [] }),
+        };
+      },
+    }),
+  };
+  return { client, reads };
+}
+
+function buildFeed(rows: Record<string, Record<string, unknown>[]>) {
+  const { client, reads } = makeFeedDb(rows);
+  return Test.createTestingModule({
+    providers: [
+      AdminService,
+      { provide: ConfigService, useValue: { get: () => undefined } },
+      { provide: SupabaseService, useValue: { getAdminClient: () => client } },
+    ],
+  })
+    .compile()
+    .then((module: TestingModule) => ({ service: module.get<AdminService>(AdminService), reads }));
+}
+
+describe('AdminService.getActivityFeed', () => {
+  it('surfaces a completed AI training, timed by updated_at', async () => {
+    const { service, reads } = await buildFeed({
+      user_style: [
+        {
+          id: 'style-1',
+          user_id: 'u1',
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-09-01T00:00:00.000Z',
+          credits_consumed: 40,
+        },
+      ],
+      profiles: [{ user_id: 'u1', full_name: 'Ada', name: null, email: 'ada@x.com', avatar_url: null }],
+    });
+
+    const { data } = await service.getActivityFeed(1, 30, 'feature');
+    const training = data.find((e) => e.label === 'AI Training');
+
+    expect(training).toBeDefined();
+    expect(training!.category).toBe('feature');
+    expect(training!.action).toBe('completed');
+    expect(training!.credits_consumed).toBe(40);
+    // A retrain rewrites the row, so the event time is updated_at, not created_at.
+    expect(training!.created_at).toBe('2026-09-01T00:00:00.000Z');
+    expect(training!.profiles?.email).toBe('ada@x.com');
+
+    const styleRead = reads.find((r) => r.table === 'user_style');
+    expect(styleRead!.order).toBe('updated_at');
+    expect(styleRead!.cols).not.toContain('status');
+  });
+
+  it('files a failed script under errors with its message', async () => {
+    const { service } = await buildFeed({
+      scripts: [
+        {
+          id: 'script-1',
+          user_id: 'u1',
+          created_at: '2026-09-02T00:00:00.000Z',
+          credits_consumed: 0,
+          status: 'failed',
+          error_message: 'Gemini timed out',
+        },
+      ],
+      profiles: [],
+    });
+
+    const { data } = await service.getActivityFeed(1, 30, 'error');
+    const failed = data.find((e) => e.label === 'Script');
+
+    expect(failed).toBeDefined();
+    expect(failed!.category).toBe('error');
+    expect(failed!.status).toBe('failed');
+    expect(failed!.error_message).toBe('Gemini timed out');
+  });
+
+  it('reads the YouTube connect event without asking for a credits column', async () => {
+    const { service, reads } = await buildFeed({
+      youtube_channels: [{ id: 'ch-1', user_id: 'u1', created_at: '2026-09-03T00:00:00.000Z' }],
+      profiles: [],
+    });
+
+    const { data } = await service.getActivityFeed(1, 30, 'feature');
+    const connect = data.find((e) => e.label === 'YouTube channel');
+
+    expect(connect).toBeDefined();
+    expect(connect!.action).toBe('connected');
+    expect(connect!.credits_consumed).toBe(0);
+    expect(reads.find((r) => r.table === 'youtube_channels')!.cols).not.toContain('credits_consumed');
+  });
+});

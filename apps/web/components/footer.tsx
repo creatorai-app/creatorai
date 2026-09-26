@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from 'next/link';
 import dynamic from "next/dynamic";
 import * as motion from "motion/react-m";
-import { IconBrandDiscordFilled as Discord, IconBrandLinkedin as Linkedin, IconBrandX as Twitter, IconBrandGithub as Github, IconBrandFacebook as Facebook } from '@tabler/icons-react';
+import { IconBrandDiscordFilled as Discord, IconBrandLinkedin as Linkedin, IconBrandX as Twitter, IconBrandGithub as Github, IconBrandFacebook as Facebook, IconBrandYoutube as Youtube } from '@tabler/icons-react';
 import { footerItems } from '@repo/ui';
 import { FloatingDock } from "@repo/ui/floating-dock";
 // One footer link that opens a form, but it reaches the API client and the
@@ -63,6 +63,7 @@ const sampleArcs = [
 
 const socialLinks = [
   { name: 'Twitter', href: 'https://x.com/joincreatorai', icon: Twitter },
+  { name: 'YouTube', href: 'https://www.youtube.com/@joincreatorai', icon: Youtube },
   { name: 'Discord', href: 'https://discord.gg/k9sZcq2gNG', icon: Discord },
   { name: 'GitHub', href: 'https://github.com/scriptaiapp/scriptai', icon: Github },
   { name: 'LinkedIn', href: 'https://www.linkedin.com/company/creatoraiapp', icon: Linkedin },

@@ -358,17 +358,6 @@ export interface ActivityFeedItem {
   profiles: { user_id: string; full_name: string | null; name: string | null; email: string | null; avatar_url: string | null } | null
 }
 
-export interface Activity {
-  id: string
-  actor_id: string
-  action: string
-  entity_type: string
-  entity_id?: string
-  metadata?: Record<string, unknown>
-  created_at: string
-  profiles?: { full_name: string; email: string; avatar_url?: string }
-}
-
 export interface PaginatedResponse<T> {
   data: T[]
   total: number

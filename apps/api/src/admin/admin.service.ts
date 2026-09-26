@@ -384,19 +384,6 @@ export class AdminService {
     return { success: true, credits: plan.credits_monthly + bonus, subscription: newSub, profile };
   }
 
-  // Feature tables that record per-user credit usage — same set billing uses for
-  // usage history. Each has user_id, created_at and credits_consumed.
-  private static readonly ACTIVITY_TABLES: Record<string, string> = {
-    scripts: 'Script',
-    ideation_jobs: 'Ideation',
-    thumbnail_jobs: 'Thumbnail',
-    subtitle_jobs: 'Subtitle',
-    dubbing_projects: 'Dubbing',
-    story_builder_jobs: 'Story Builder',
-    documentation_generations: 'Documentation',
-    video_generation_jobs: 'Video Generation',
-  };
-
   // Never expose password-reset OTP columns to the admin UI.
   private static readonly PROFILE_SECRET_FIELDS = [
     'password_reset_otp',
@@ -435,17 +422,25 @@ export class AdminService {
     };
   }
 
+  // Same sources as the global feed, so a feature can never appear in one and be
+  // missing from the other.
   private async getUserActivity(userId: string, perTable = 10) {
-    const entries = Object.entries(AdminService.ACTIVITY_TABLES);
     const results = await Promise.all(
-      entries.map(async ([table, label]) => {
+      AdminService.FEATURE_SOURCES.map(async (src) => {
+        const time = src.time ?? 'created_at';
+        const cols = src.credits === false ? `id, ${time}` : `id, ${time}, credits_consumed`;
         const { data } = await this.db
-          .from(table)
-          .select('id, created_at, credits_consumed')
+          .from(src.table)
+          .select(cols)
           .eq('user_id', userId)
-          .order('created_at', { ascending: false })
+          .order(time, { ascending: false })
           .limit(perTable);
-        return (data ?? []).map((r) => ({ ...r, feature: label }));
+        return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((r) => ({
+          id: r.id,
+          created_at: r[time],
+          credits_consumed: Number(r.credits_consumed ?? 0),
+          feature: src.label,
+        }));
       }),
     );
 
@@ -600,16 +595,34 @@ export class AdminService {
   // ==================== ACTIVITIES ====================
 
   // Feature tables that record per-user work. `status`/`error` flag which optional
-  // columns each has (scripts has neither job-status nor error_message).
-  private static readonly FEATURE_SOURCES: Array<{ table: string; label: string; status: boolean; error: boolean }> = [
-    { table: 'scripts', label: 'Script', status: false, error: false },
+  // columns each has; `credits` is true unless the table bills nothing, `time` is the
+  // column that marks when the event happened, and `action` overrides the verb for
+  // sources that aren't a generation.
+  private static readonly FEATURE_SOURCES: Array<{
+    table: string;
+    label: string;
+    status: boolean;
+    error: boolean;
+    credits?: boolean;
+    time?: string;
+    action?: string;
+  }> = [
+    { table: 'scripts', label: 'Script', status: true, error: true },
     { table: 'ideation_jobs', label: 'Ideation', status: true, error: true },
     { table: 'thumbnail_jobs', label: 'Thumbnail', status: true, error: true },
     { table: 'subtitle_jobs', label: 'Subtitle', status: true, error: true },
-    { table: 'dubbing_projects', label: 'Dubbing', status: true, error: false },
+    { table: 'dubbing_projects', label: 'Dubbing', status: true, error: true },
     { table: 'story_builder_jobs', label: 'Story Builder', status: true, error: true },
-    { table: 'documentation_generations', label: 'Documentation', status: true, error: true },
     { table: 'video_generation_jobs', label: 'Video Generation', status: true, error: true },
+    // ponytail: user_style is upserted one row per user, so the feed can only ever show
+    // each user's MOST RECENT training — earlier runs are overwritten in the table, not
+    // just hidden here. `updated_at` is therefore the training time, and a retrain moves
+    // the existing entry rather than adding one. Add a training_runs table if the full
+    // history is ever needed. Failed trainings already arrive via error_logs.
+    { table: 'user_style', label: 'AI Training', status: false, error: false, time: 'updated_at', action: 'completed' },
+    // Same shape: upserted per (user, channel), so this is the connect event. Read
+    // created_at, not updated_at — the row is rewritten on every OAuth token refresh.
+    { table: 'youtube_channels', label: 'YouTube channel', status: false, error: false, credits: false, action: 'connected' },
   ];
 
   // ponytail: bounded "recent" feed — pull the newest FEED_CAP rows per source,
@@ -629,18 +642,20 @@ export class AdminService {
     const wantAff = !category || category === 'affiliate';
     const wantUnsub = !category || category === 'unsubscribe';
 
-    const recent = (table: string, cols: string) =>
-      this.db.from(table).select(cols).order('created_at', { ascending: false }).limit(cap);
+    const recent = (table: string, cols: string, time = 'created_at') =>
+      this.db.from(table).select(cols).order(time, { ascending: false }).limit(cap);
 
     const tasks: Promise<FeedEvent[]>[] = [];
 
     if (wantFeature) {
       for (const src of AdminService.FEATURE_SOURCES) {
-        const cols = ['id', 'user_id', 'created_at', 'credits_consumed'];
+        const time = src.time ?? 'created_at';
+        const cols = ['id', 'user_id', time];
+        if (src.credits !== false) cols.push('credits_consumed');
         if (src.status) cols.push('status');
         if (src.error) cols.push('error_message');
         tasks.push(
-          recent(src.table, cols.join(', ')).then(({ data }) =>
+          recent(src.table, cols.join(', '), time).then(({ data }) =>
             ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => {
               const failed = r.status === 'failed';
               return {
@@ -648,11 +663,11 @@ export class AdminService {
                 user_id: r.user_id as string,
                 category: failed ? 'error' : 'feature',
                 label: src.label,
-                action: r.status ? String(r.status) : 'generated',
+                action: r.status ? String(r.status) : (src.action ?? 'generated'),
                 status: (r.status as string) ?? null,
                 error_message: (r.error_message as string) ?? null,
                 credits_consumed: Number(r.credits_consumed ?? 0),
-                created_at: r.created_at as string,
+                created_at: r[time] as string,
               };
             }),
           ),
@@ -736,6 +751,19 @@ export class AdminService {
             user_id: r.sales_rep_id as string,
             category: 'affiliate',
             label: `Affiliate sale · $${Number(r.amount ?? 0).toFixed(2)}`,
+            action: String(r.status),
+            status: r.status as string,
+            error_message: null,
+            credits_consumed: 0,
+            created_at: r.created_at as string,
+          })),
+        ),
+        recent('affiliate_withdrawals', 'id, affiliate_id, created_at, status, amount, method').then(({ data }) =>
+          ((data ?? []) as Array<Record<string, unknown>>).map((r): FeedEvent => ({
+            id: `affiliate_withdrawals:${r.id as string}`,
+            user_id: r.affiliate_id as string,
+            category: 'affiliate',
+            label: `Affiliate payout · $${Number(r.amount ?? 0).toFixed(2)} via ${r.method as string}`,
             action: String(r.status),
             status: r.status as string,
             error_message: null,
@@ -902,14 +930,6 @@ export class AdminService {
       : { data: [] };
     const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
     return rows.map((r) => ({ ...r, profiles: r.user_id ? pmap.get(r.user_id) ?? null : null }));
-  }
-
-  async logActivity(actorId: string, action: string, entityType: string, entityId?: string, metadata?: Record<string, unknown>) {
-    const { error } = await this.db
-      .from('activities')
-      .insert({ actor_id: actorId, action, entity_type: entityType, entity_id: entityId, metadata });
-
-    if (error) console.error('Failed to log activity:', error.message);
   }
 
   // ==================== MAILS ====================

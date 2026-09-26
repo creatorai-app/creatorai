@@ -108,7 +108,8 @@ export default function SubtitleEditorPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+        // Fill the space under the 4rem dashboard header instead of a full h-screen, which overflowed it
+        <div className="h-[calc(100dvh-4rem)] flex flex-col bg-slate-50 dark:bg-slate-950">
             <SubtitleHeader
                 filename={subtitleData?.filename || 'Loading...'}
                 videoPath={subtitleData?.video_path || 'Loading...'}

@@ -93,7 +93,7 @@ export const SubtitleItem = memo(function SubtitleItem({
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 md:self-center self-end animate-in fade-in slide-in-from-right-2">
+                        <div className="flex items-center gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 md:self-center self-end animate-in fade-in slide-in-from-right-2">
                             <button
                                 onClick={handleEdit}
                                 className={cn(

@@ -105,20 +105,20 @@ export default function DubbingList() {
         transition={{ duration: 0.5 }}
       >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">My Dubbings</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Dubbings</h1>
+            <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
               Manage all your dubbed audio and video files
             </p>
           </div>
           <Button
-            className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10"
+            className="shrink-0 px-3 sm:px-4 bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10 dark:hover:shadow-purple-400/10"
             asChild
           >
             <Link href="/dashboard/dubbing/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Dubbing
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="sr-only sm:not-sr-only">New Dubbing</span>
             </Link>
           </Button>
         </div>

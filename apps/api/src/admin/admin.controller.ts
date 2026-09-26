@@ -116,9 +116,7 @@ export class AdminController {
   setUserPlan(
     @Param('userId') userId: string,
     @Body() body: { planId: string; validityMonths?: number },
-    @Req() req: AuthRequest,
   ) {
-    this.adminService.logActivity(this.getUserId(req), 'set_user_plan', 'user', userId, body);
     return this.adminService.setUserPlan(userId, body.planId, body.validityMonths);
   }
 
@@ -129,17 +127,14 @@ export class AdminController {
   updateUser(
     @Param('userId') userId: string,
     @Body() body: Record<string, unknown>,
-    @Req() req: AuthRequest,
   ) {
-    this.adminService.logActivity(this.getUserId(req), 'update_user', 'user', userId, body);
     return this.adminService.updateUser(userId, body);
   }
 
   @Delete('users/:userId')
   @ApiOperation({ summary: 'Delete user' })
   @ApiParam({ name: 'userId' })
-  deleteUser(@Param('userId') userId: string, @Req() req: AuthRequest) {
-    this.adminService.logActivity(this.getUserId(req), 'delete_user', 'user', userId);
+  deleteUser(@Param('userId') userId: string) {
     return this.adminService.deleteUser(userId);
   }
 
@@ -238,7 +233,6 @@ export class AdminController {
     @Req() req: AuthRequest,
   ) {
     const userId = this.getUserId(req);
-    this.adminService.logActivity(userId, 'create_blog', 'blog', undefined, { title: body.title });
     return this.adminService.createBlog(userId, body);
   }
 
@@ -249,17 +243,14 @@ export class AdminController {
   updateBlog(
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
-    @Req() req: AuthRequest,
   ) {
-    this.adminService.logActivity(this.getUserId(req), 'update_blog', 'blog', id);
     return this.adminService.updateBlog(id, body);
   }
 
   @Delete('blogs/:id')
   @ApiOperation({ summary: 'Delete blog post' })
   @ApiParam({ name: 'id' })
-  deleteBlog(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.adminService.logActivity(this.getUserId(req), 'delete_blog', 'blog', id);
+  deleteBlog(@Param('id') id: string) {
     return this.adminService.deleteBlog(id);
   }
 
@@ -269,7 +260,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Cross-feature user activity feed' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'category', required: false, description: 'feature | error | subscription | affiliate' })
+  @ApiQuery({ name: 'category', required: false, description: 'feature | error | subscription | affiliate | unsubscribe' })
   getActivities(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -354,7 +345,6 @@ export class AdminController {
     @Req() req: AuthRequest,
   ) {
     const userId = this.getUserId(req);
-    this.adminService.logActivity(userId, 'reply_mail', 'mail_message', id, { subject: body.subject });
     return this.adminService.replyToMail(id, userId, body.subject, body.html);
   }
 
@@ -410,11 +400,7 @@ export class AdminController {
       },
     },
   })
-  createJob(
-    @Body() body: Record<string, unknown>,
-    @Req() req: AuthRequest,
-  ) {
-    this.adminService.logActivity(this.getUserId(req), 'create_job', 'job_post', undefined, { title: body.title });
+  createJob(@Body() body: Record<string, unknown>) {
     return this.adminService.createJobPost(body);
   }
 
@@ -425,17 +411,14 @@ export class AdminController {
   updateJob(
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
-    @Req() req: AuthRequest,
   ) {
-    this.adminService.logActivity(this.getUserId(req), 'update_job', 'job_post', id);
     return this.adminService.updateJobPost(id, body);
   }
 
   @Delete('jobs/:id')
   @ApiOperation({ summary: 'Delete job post' })
   @ApiParam({ name: 'id' })
-  deleteJob(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.adminService.logActivity(this.getUserId(req), 'delete_job', 'job_post', id);
+  deleteJob(@Param('id') id: string) {
     return this.adminService.deleteJobPost(id);
   }
 
@@ -477,7 +460,6 @@ export class AdminController {
     @Req() req: AuthRequest,
   ) {
     const userId = this.getUserId(req);
-    this.adminService.logActivity(userId, 'update_application', 'job_application', id, body);
     return this.adminService.updateApplicationStatus(id, body.status, userId, body.notes);
   }
 
@@ -491,15 +473,13 @@ export class AdminController {
     @Req() req: AuthRequest,
   ) {
     const userId = this.getUserId(req);
-    this.adminService.logActivity(userId, 'reply_application', 'job_application', id, { subject: body.subject });
     return this.adminService.replyToApplication(id, userId, body.subject, body.html);
   }
 
   @Delete('applications/:id')
   @ApiOperation({ summary: 'Delete job application' })
   @ApiParam({ name: 'id' })
-  deleteApplication(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.adminService.logActivity(this.getUserId(req), 'delete_application', 'job_application', id);
+  deleteApplication(@Param('id') id: string) {
     return this.adminService.deleteApplication(id);
   }
 
@@ -549,9 +529,7 @@ export class AdminController {
   updateAffiliateLink(
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
-    @Req() req: AuthRequest,
   ) {
-    this.adminService.logActivity(this.getUserId(req), 'update_affiliate_link', 'affiliate_link', id, body);
     return this.adminService.updateAffiliateLink(id, body);
   }
 
@@ -562,9 +540,7 @@ export class AdminController {
   updateAffiliateSaleStatus(
     @Param('id') id: string,
     @Body() body: { status: string },
-    @Req() req: AuthRequest,
   ) {
-    this.adminService.logActivity(this.getUserId(req), 'update_sale_status', 'affiliate_sale', id, body);
     return this.adminService.updateAffiliateSaleStatus(id, body.status);
   }
 }

@@ -87,17 +87,17 @@ export default function IdeationListPage() {
 
   return (
     <div className="container py-8 md:py-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Ideation</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Ideation</h1>
+          <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
             AI-powered video idea generation with trend intelligence
           </p>
         </div>
         <Link href="/dashboard/research/new">
-          <Button className="bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10">
-            <Plus className="mr-2 h-4 w-4" />
-            Generate Ideas
+          <Button className="shrink-0 px-3 sm:px-4 bg-slate-900 hover:bg-slate-800 text-white transition-all hover:shadow-lg hover:shadow-purple-500/10">
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="sr-only sm:not-sr-only">Generate Ideas</span>
           </Button>
         </Link>
       </div>
@@ -213,7 +213,8 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
                 {ideaCount === 1 ? "idea" : "ideas"}
               </span>
             </div>
-            <div className="flex-grow min-w-0">
+            {/* pr-8 keeps the title clear of the always-visible ⋯ menu on touch screens */}
+            <div className="flex-grow min-w-0 pr-8 lg:pr-0 lg:group-hover:pr-8">
               <h3 className="font-semibold text-base sm:text-lg text-slate-800 dark:text-slate-100 truncate">
                 {job.niche_focus || (job.auto_mode ? "AI Curated ideas" : "Custom ideation")}
               </h3>
@@ -230,12 +231,12 @@ function IdeationJobCard({ job, onDelete, setToDelete, onExport }: {
           </div>
         </Link>
 
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-2.5 right-2 sm:top-4 sm:right-4 z-10">
           <AlertDialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  className="h-8 w-8 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                  className="h-8 w-8 rounded-full opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

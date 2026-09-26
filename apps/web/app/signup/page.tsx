@@ -43,7 +43,7 @@ function SignupForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [termsError, setTermsError] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referrerName, setReferrerName] = useState<string | null>(null);

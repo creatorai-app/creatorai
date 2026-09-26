@@ -50,13 +50,33 @@ tryscriptai.com, www.tryscriptai.com {
 	import old_domain
 }
 
+# The API is a JSON backend with nothing to rank. It sits on a subdomain of the
+# same Domain property, so Search Console crawls it and files the health check
+# under "Crawled - currently not indexed". robots.txt is served rather than
+# proxied because the API has no route for it, and the header covers URLs that
+# a crawler reaches from a link without reading robots.txt first.
+(api_host) {
+	header X-Robots-Tag "noindex, nofollow"
+
+	handle /robots.txt {
+		header Content-Type "text/plain; charset=utf-8"
+		respond `User-Agent: *
+Disallow: /
+` 200
+	}
+
+	handle {
+		reverse_proxy api:8000
+	}
+}
+
 api.trycreatorai.com {
-	reverse_proxy api:8000
+	import api_host
 }
 
 # The old API host is proxied, not redirected: a browser drops the body of a
 # POST across a 301 and blocks credentialed CORS requests that redirect, so any
 # still-cached bundle pointing here would break. It serves the same API instead.
 api.tryscriptai.com {
-	reverse_proxy api:8000
+	import api_host
 }

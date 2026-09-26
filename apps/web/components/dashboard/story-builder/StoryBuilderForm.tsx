@@ -154,7 +154,7 @@ export function StoryBuilderForm({
         {/* Idea Selector from Ideation */}
         {allIdeas.length > 0 && (
           <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
+            <Label className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <Lightbulb className="h-4 w-4" />
               Select from Generated Ideas
               <span className="text-slate-400 font-normal">(optional)</span>
@@ -244,13 +244,13 @@ export function StoryBuilderForm({
                   type="button"
                   onClick={() => setStoryMode(sm)}
                   disabled={isGenerating}
-                  className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left ${
+                  className={`relative min-w-0 px-2.5 sm:px-3 py-2 rounded-lg text-[13px] sm:text-sm font-medium transition-all duration-200 text-left ${
                     storyMode === sm
                       ? "bg-purple-600 text-white shadow-sm"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
-                  <span>{STORY_MODE_LABELS[sm]}</span>
+                  <span className="block truncate">{STORY_MODE_LABELS[sm]}</span>
                 </button>
               ))}
             </div>
@@ -315,7 +315,7 @@ export function StoryBuilderForm({
 
         {/* Target Audience */}
         <div className="space-y-2">
-          <Label htmlFor="targetAudience" className="flex items-center gap-1.5">
+          <Label htmlFor="targetAudience" className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <Users className="h-4 w-4" />
             Target Audience
             <span className="text-slate-400 font-normal">(optional)</span>
@@ -332,7 +332,7 @@ export function StoryBuilderForm({
 
         {/* Tone */}
         <div className="space-y-2">
-          <Label htmlFor="tone" className="flex items-center gap-1.5">
+          <Label htmlFor="tone" className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <Palette className="h-4 w-4" />
             Tone Preference
             <span className="text-slate-400 font-normal">

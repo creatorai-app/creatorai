@@ -224,7 +224,7 @@ export default function NewDubbing() {
             <Mic className="h-6 w-6 sm:h-7 sm:w-7 text-purple-500" />
             New Dubbing
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm sm:text-base">
+          <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1 text-base">
             Upload an audio or video file and dub it into another language in the original voice.
           </p>
         </div>

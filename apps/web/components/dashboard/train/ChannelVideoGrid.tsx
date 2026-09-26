@@ -105,10 +105,10 @@ export function ChannelVideoGrid({
     >
       <Card className="shadow-lg relative">
         <CardHeader className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <CardTitle>Select Your Videos</CardTitle>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${selectedVideoIds.length >= 3
+              <span className={`shrink-0 whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-full ${selectedVideoIds.length >= 3
                   ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
                   : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 }`}>
@@ -120,7 +120,7 @@ export function ChannelVideoGrid({
               onClick={onStartTraining}
               size="default"
               disabled={uploading || !isYtConnected || selectedVideoIds.length < 3}
-              className="bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg transition-shadow shrink-0"
+              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg transition-shadow shrink-0"
             >
               {uploading ? (
                 <>

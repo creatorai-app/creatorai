@@ -67,10 +67,10 @@ export default function ChannelStatsPage() {
 
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">
             Channel Hub
           </h1>
-          <p className="text-lg text-slate-500 dark:text-slate-400">
+          <p className="hidden sm:block text-lg text-slate-500 dark:text-slate-400">
             Live analytics &amp; sync status for your connected channel.
           </p>
         </div>

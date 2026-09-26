@@ -16,8 +16,8 @@ export default function ScriptGenerationStepper({
             {steps.map((s, index) => (
                 <motion.div
                     key={s.id}
-                    // - The `w-full` was removed here; it's not needed as the inner `flex-1` line handles width.
-                    className="flex items-center flex-1"
+                    // Connector steps grow; the last step only takes its own width so it sits at the right edge.
+                    className={`flex items-center ${index < steps.length - 1 ? "flex-1" : "flex-none"}`}
                 >
                     <div className="flex flex-col items-center text-center">
                         <motion.div
@@ -31,7 +31,7 @@ export default function ScriptGenerationStepper({
                             {currentStep > s.id ? "✓" : s.id}
                         </motion.div>
                         <p
-                            className={`mt-2 text-xs font-normal transition-colors md:font-medium md:text-sm truncate max-w-[150px] ${
+                            className={`mt-2 text-xs font-normal leading-tight transition-colors md:font-medium md:text-sm max-w-[9rem] ${
                                 // - Step names are now hidden on mobile and appear on small screens and up.
                                 "hidden sm:block"
                                 } ${currentStep >= s.id

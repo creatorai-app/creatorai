@@ -185,28 +185,30 @@ function InfoHint({ text }: { text: string }) {
 
 function HubHeader() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-purple-200/60 dark:border-purple-900/40 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-purple-950/30 dark:via-slate-900 dark:to-indigo-950/30 p-6">
+    <div className="relative overflow-hidden rounded-2xl border border-purple-200/60 dark:border-purple-900/40 bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-purple-950/30 dark:via-slate-900 dark:to-indigo-950/30 p-4 sm:p-6">
       <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-purple-300/20 blur-3xl" />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               Use, promote and Earn
             </h1>
-            <Badge className="bg-purple-600 text-white hover:bg-purple-600 gap-1">
+            <Badge className="whitespace-nowrap bg-purple-600 text-white hover:bg-purple-600 gap-1">
               <Repeat className="h-3 w-3" /> 20% recurring
             </Badge>
           </div>
-          <p className="max-w-xl text-sm text-slate-600 dark:text-slate-400">
+          <p className="hidden sm:block max-w-xl text-sm text-slate-600 dark:text-slate-400">
             Share your links and promo codes, earn 20% recurring commission on every
             subscription you refer, and withdraw your earnings whenever you like.
           </p>
         </div>
         <Link
           href="/affiliate-program"
-          className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-white/70 dark:bg-slate-900/50 px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-white dark:hover:bg-slate-900 transition-colors"
+          className="inline-flex w-fit shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-white/70 dark:bg-slate-900/50 px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-white dark:hover:bg-slate-900 transition-colors"
         >
-          <Sparkles className="h-4 w-4" /> How the program works
+          <Sparkles className="h-4 w-4" />
+          <span className="sm:hidden">How it works</span>
+          <span className="hidden sm:inline">How the program works</span>
         </Link>
       </div>
     </div>
@@ -268,9 +270,9 @@ function ProgramHighlights({ minWithdrawal }: { minWithdrawal: number }) {
       {items.map((it) => (
         <div
           key={it.label}
-          className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-4"
+          className="flex items-start gap-2 sm:gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-3 sm:p-4"
         >
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+          <div className="hidden sm:block rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
             <it.icon className={`h-4 w-4 ${it.accent}`} />
           </div>
           <div className="min-w-0">
@@ -278,7 +280,7 @@ function ProgramHighlights({ minWithdrawal }: { minWithdrawal: number }) {
               {it.label}
               <InfoHint text={it.hint} />
             </div>
-            <div className="text-base font-bold text-slate-900 dark:text-slate-100">
+            <div className="whitespace-nowrap text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
               {it.value}
             </div>
           </div>
@@ -301,7 +303,7 @@ function SecondaryStats({ stats }: { stats: ReturnType<typeof useAffiliateHub>["
       {items.map((it) => (
         <div
           key={it.label}
-          className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 px-4 py-3"
+          className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 px-3 sm:px-4 py-3"
         >
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <it.icon className="h-3.5 w-3.5" />
@@ -354,7 +356,7 @@ function StatCards({ stats }: { stats: ReturnType<typeof useAffiliateHub>["stats
   ];
 
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       {cards.map((c, i) => (
         <motion.div
           key={c.label}
@@ -364,15 +366,15 @@ function StatCards({ stats }: { stats: ReturnType<typeof useAffiliateHub>["stats
         >
           <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className={`h-1 bg-gradient-to-r ${c.bar}`} />
-            <CardContent className="pt-5 pb-4">
+            <CardContent className="px-4 sm:px-6 pt-4 sm:pt-5 pb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                   {c.label}
                   <InfoHint text={c.hint} />
                 </span>
-                <c.icon className={`h-4 w-4 ${c.accent}`} />
+                <c.icon className={`hidden sm:block h-4 w-4 ${c.accent}`} />
               </div>
-              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {c.value}
               </div>
             </CardContent>
@@ -493,10 +495,12 @@ function LinksSection({
             <Link2 className="h-4 w-4 text-purple-500" />
             Your Links
           </CardTitle>
-          <CardDescription>Tracking links that attribute sales to you</CardDescription>
+          <CardDescription className="hidden sm:block">Tracking links that attribute sales to you</CardDescription>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> Generate New Link
+        <Button size="sm" className="shrink-0 gap-1.5" onClick={() => setOpen(true)}>
+          <Plus className="h-4 w-4" />
+          <span className="sm:hidden">New link</span>
+          <span className="hidden sm:inline">Generate New Link</span>
         </Button>
       </CardHeader>
       <CardContent>
@@ -525,8 +529,9 @@ function LinksSection({
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onCopy(link.code)}>
-                    <Copy className="h-3.5 w-3.5" /> Copy
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onCopy(link.code)} aria-label="Copy link">
+                    <Copy className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Copy</span>
                   </Button>
                   <Button
                     variant="ghost"

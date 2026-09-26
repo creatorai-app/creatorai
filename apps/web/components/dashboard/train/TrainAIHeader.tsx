@@ -17,11 +17,11 @@ export function TrainAIHeader({ isYtConnected, isAiTrained, freeTrainingUsed, la
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-8 w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      className="mb-8 w-full flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
     >
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">AI Studio</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">AI Studio</h1>
+        <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
           Train your model on your unique content style.
         </p>
       </div>

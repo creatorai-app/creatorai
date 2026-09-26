@@ -733,24 +733,42 @@ export class BillingService {
     }
     const since = new Date(now.getTime() - daysBack * 86400000).toISOString();
 
-    const tables = ['scripts', 'ideation_jobs', 'thumbnail_jobs', 'subtitle_jobs', 'dubbing_projects', 'story_builder_jobs', 'documentation_generations'] as const;
+    // Every table that bills credits. video_generation_jobs and user_style were both
+    // missing, so the chart under-reported: a user who generated video or paid to
+    // retrain saw none of those credits here. user_style is upserted per user, so the
+    // charge lands on updated_at, not created_at.
+    const tables = [
+      ['scripts', 'created_at'],
+      ['ideation_jobs', 'created_at'],
+      ['thumbnail_jobs', 'created_at'],
+      ['subtitle_jobs', 'created_at'],
+      ['dubbing_projects', 'created_at'],
+      ['story_builder_jobs', 'created_at'],
+      ['video_generation_jobs', 'created_at'],
+      ['user_style', 'updated_at'],
+    ] as const;
     type UsageRow = { credits_consumed: number; created_at: string };
 
     const rows: UsageRow[] = [];
-    for (const table of tables) {
+    for (const [table, timeCol] of tables) {
       const { data } = await supabase
         .from(table)
-        .select('credits_consumed, created_at')
+        .select(`credits_consumed, ${timeCol}`)
         .eq('user_id', userId)
-        .gte('created_at', since)
+        .gte(timeCol, since)
         .gt('credits_consumed', 0);
 
-      if (data) rows.push(...(data as UsageRow[]));
+      for (const r of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+        rows.push({ credits_consumed: Number(r.credits_consumed ?? 0), created_at: r[timeCol] as string });
+      }
     }
 
     const buckets: Record<string, number> = {};
     for (const row of rows) {
       const d = new Date(row.created_at);
+      // A row with a null/unparseable timestamp would make toISOString() throw and
+      // take the whole chart down. Drop it instead.
+      if (Number.isNaN(d.getTime())) continue;
       let key: string;
       if (range === 'daily') {
         key = d.toISOString().split('T')[0]!;

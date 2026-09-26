@@ -20,10 +20,10 @@ export function BackgroundGlow() {
 export function DashboardHeader({ profile, isSetupComplete }: { profile: any; isSetupComplete: boolean }) {
   return (
     <motion.header variants={itemVariants} className="space-y-2 mb-4">
-      <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">
         Welcome back{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
       </h1>
-      <p className="text-lg text-slate-500 dark:text-slate-400">
+      <p className="hidden sm:block text-lg text-slate-500 dark:text-slate-400">
         {isSetupComplete
           ? "Here is an overview of your creative workspace today."
           : "Let's get your AI personalized to start creating."}
@@ -36,21 +36,23 @@ export function QuickActionsGrid({ isSetupComplete }: { isSetupComplete: boolean
   return (
     <motion.section variants={itemVariants} aria-label="Quick Actions">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* 7 actions: 2 cols on phones and 4 on tablets with the last card spanning 2 so no row is left
+          with a lone card; all 7 in one row on wide screens. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
         {QUICK_ACTIONS.map((action) => {
           const locked = !isSetupComplete;
           return (
             <TooltipProvider key={action.label} delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className={locked ? "cursor-not-allowed" : "h-full"}>
+                  <div className={`last:col-span-2 xl:last:col-span-1 ${locked ? "cursor-not-allowed" : "h-full"}`}>
                     <Link
                       href={locked ? "#" : action.href}
                       className={`block h-full ${locked ? "pointer-events-none opacity-60 grayscale-[50%]" : ""}`}
                       aria-disabled={locked}
                       tabIndex={locked ? -1 : undefined}
                     >
-                      <button className="w-full h-full bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-white/60 dark:border-slate-800/50 rounded-2xl p-5 flex flex-col items-start gap-4 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)] hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300 group text-left relative overflow-hidden">
+                      <button className="w-full h-full bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-white/60 dark:border-slate-800/50 rounded-2xl p-4 sm:p-5 flex flex-col items-start gap-3 sm:gap-4 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)] hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300 group text-left relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/0 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         <div className="w-10 h-10 rounded-lg bg-slate-100/80 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:bg-purple-500/10 transition-all duration-300 transform group-hover:scale-110 relative z-10">
                           <action.icon className="h-5 w-5 transition-transform duration-300 group-hover:rotate-3" />

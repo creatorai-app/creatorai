@@ -59,9 +59,10 @@ function SectionScoreRow({ score }: { score: SectionScore }) {
     v >= 8 ? "bg-green-500" : v >= 6 ? "bg-yellow-500" : v >= 4 ? "bg-orange-500" : "bg-red-500"
 
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 w-28 shrink-0 truncate">{score.section}</span>
-      <div className="flex-1 grid grid-cols-3 gap-2">
+    // Phones: name + overall score on the first line, the three bars full-width below.
+    <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+      <span className="order-1 flex-1 min-w-0 sm:flex-none sm:w-28 shrink-0 truncate text-sm font-medium text-slate-700 dark:text-slate-300">{score.section}</span>
+      <div className="order-3 sm:order-2 basis-full sm:basis-auto sm:flex-1 grid grid-cols-3 gap-2">
         {[
           { label: "Curiosity", value: score.curiosityDensity },
           { label: "Emotion", value: score.emotionalShift },
@@ -78,7 +79,7 @@ function SectionScoreRow({ score }: { score: SectionScore }) {
           </div>
         ))}
       </div>
-      <div className="shrink-0 w-10 text-center">
+      <div className="order-2 sm:order-3 shrink-0 w-10 text-center">
         <span className={`text-sm font-bold ${score.overallScore >= 7 ? "text-green-600" : score.overallScore >= 5 ? "text-yellow-600" : "text-red-600"}`}>
           {score.overallScore}
         </span>
@@ -173,9 +174,9 @@ export function StoryBuilderResults({ result, onRegenerate, isGenerating }: Stor
       className="space-y-5"
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-purple-500" />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <h2 className="text-xl font-semibold flex flex-wrap items-center gap-2">
+          <FileText className="h-5 w-5 shrink-0 text-purple-500" />
           Story Blueprint
           {result.storyMode && (
             <Badge variant="secondary" className="text-xs capitalize ml-1">{result.storyMode.replace(/_/g, ' ')}</Badge>
@@ -184,7 +185,7 @@ export function StoryBuilderResults({ result, onRegenerate, isGenerating }: Stor
             <Badge variant="outline" className="text-xs ml-1">AI suggests: {result.detectedContentType}</Badge>
           )}
         </h2>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={copyFullBlueprint} className="gap-1.5">
             <Copy className="h-3.5 w-3.5" /> Copy All
           </Button>

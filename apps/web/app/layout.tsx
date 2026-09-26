@@ -48,7 +48,7 @@ const organizationJsonLd = {
   name: siteConfig.name,
   url: siteConfig.url,
   description: siteConfig.description,
-  sameAs: [`https://twitter.com/${siteConfig.twitterHandle.replace("@", "")}`],
+  sameAs: [`https://x.com/${siteConfig.twitterHandle.replace("@", "")}`],
 }
 
 // Tells Google which name to render as the site title in search results.
@@ -58,7 +58,6 @@ const webSiteJsonLd = {
   name: siteConfig.name,
   alternateName: ["Creator AI App", "Script AI"],
   url: siteConfig.url,
-  sameAs: ["https://tryscriptai.com/"],
 }
 
 const webAppJsonLd = {

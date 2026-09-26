@@ -42,7 +42,7 @@ export default function NewStoryBuilderPage() {
     return (
       <div className="container py-8 space-y-4">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-6 w-96" />
+        <Skeleton className="h-6 w-full max-w-96" />
         <Skeleton className="h-[600px] rounded-lg mt-8" />
       </div>
     )
@@ -56,8 +56,8 @@ export default function NewStoryBuilderPage() {
       transition={{ duration: 0.5 }}
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Create Story Blueprint</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create Story Blueprint</h1>
+        <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
           Build modular story blueprints with structured hooks, escalation segments, and retention scoring
         </p>
         {searchParams.get("ideationId") && hook.videoTopic && (

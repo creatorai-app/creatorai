@@ -44,10 +44,10 @@ export default function VideoGenerationPage() {
     <div className="container py-8 md:py-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             Video Generation
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
             Turn a prompt, an image, or reference subjects into a fully generated video clip with AI
           </p>
         </div>

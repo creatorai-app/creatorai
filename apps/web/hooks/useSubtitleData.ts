@@ -14,14 +14,35 @@ function isSubtitleLineArray(value: unknown): value is SubtitleLine[] {
     );
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+    amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
+};
+
+// Some transcripts come back HTML-escaped (&quot; &#39; &amp;), which the editor showed literally.
+function decodeHtmlEntities(text: string): string {
+    return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) => {
+        if (entity.startsWith('#')) {
+            const isHex = entity[1]?.toLowerCase() === 'x';
+            const code = parseInt(entity.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+            const isSurrogate = code >= 0xd800 && code <= 0xdfff;
+            return Number.isFinite(code) && code > 0 && code <= 0x10ffff && !isSurrogate ? String.fromCodePoint(code) : match;
+        }
+        return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
+    });
+}
+
+function decodeLines(lines: SubtitleLine[]): SubtitleLine[] {
+    return lines.map((line) => ({ ...line, text: decodeHtmlEntities(line.text) }));
+}
+
 function parseSubtitles(value: SubtitleResponse['subtitles_json']): SubtitleLine[] {
     if (!value) return [];
-    if (isSubtitleLineArray(value)) return value;
+    if (isSubtitleLineArray(value)) return decodeLines(value);
     if (typeof value !== 'string') return [];
 
     try {
         const parsed = JSON.parse(value);
-        return isSubtitleLineArray(parsed) ? parsed : [];
+        return isSubtitleLineArray(parsed) ? decodeLines(parsed) : [];
     } catch {
         return [];
     }

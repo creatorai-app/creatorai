@@ -56,7 +56,7 @@ function NewScriptPageInner() {
     return (
       <div className="container py-8 space-y-4">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-6 w-96" />
+        <Skeleton className="h-6 w-full max-w-96" />
         <Skeleton className="h-[600px] rounded-lg mt-8" />
       </div>
     )
@@ -70,8 +70,8 @@ function NewScriptPageInner() {
       transition={{ duration: 0.5 }}
     >
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Create New Script</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create New Script</h1>
+        <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
           Generate AI-powered scripts personalized to your channel style
         </p>
         {ideaTitle && (
@@ -151,7 +151,7 @@ export default function NewScriptPage() {
     <Suspense fallback={
       <div className="container py-8 space-y-4">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-6 w-96" />
+        <Skeleton className="h-6 w-full max-w-96" />
         <Skeleton className="h-[600px] rounded-lg mt-8" />
       </div>
     }>

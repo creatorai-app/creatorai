@@ -11,6 +11,7 @@ import { Textarea } from "@repo/ui/textarea";
 import { Switch } from "@repo/ui/switch";
 import { Skeleton } from "@repo/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion";
+import { useGuideOpenOnDesktop } from "@/hooks/use-guide-open";
 import { Sparkles, Loader2, ArrowLeft, Lock, Wand2, Compass, Bot, Lightbulb } from "lucide-react";
 import IdeationProgress from "@/components/dashboard/research/IdeationProgress";
 import { useIdeation } from "@/hooks/useIdeation";
@@ -35,6 +36,7 @@ export default function NewIdeationPage() {
   // before they had an account. Claim it, then redirect to the real record.
   const { claiming } = useClaimFreeRun("idea");
   const [customCount, setCustomCount] = useState("3");
+  const [guideOpen, setGuideOpen] = useGuideOpenOnDesktop("how-it-works");
   const {
     context, setContext,
     nicheFocus, setNicheFocus,
@@ -87,7 +89,7 @@ export default function NewIdeationPage() {
   if (isLoadingProfile || planLoading || claiming) {
     content = (
       <motion.div
-        className="max-w-xl mx-auto space-y-4"
+        className="lg:max-w-xl lg:mx-auto space-y-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -107,14 +109,14 @@ export default function NewIdeationPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="max-w-xl mx-auto"
+            className="lg:max-w-xl lg:mx-auto"
           >
             <IdeationProgress progress={progress} statusMessage={statusMessage} />
           </motion.div>
         ) : (
           <motion.div
             key="form"
-            className="max-w-xl mx-auto space-y-6"
+            className="lg:max-w-xl lg:mx-auto space-y-6"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
@@ -280,7 +282,7 @@ export default function NewIdeationPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Accordion type="single" collapsible defaultValue="how-it-works" className="w-full">
+            <Accordion type="single" collapsible value={guideOpen} onValueChange={setGuideOpen} className="w-full">
               <AccordionItem value="how-it-works" className="border-b-0">
                 <AccordionTrigger className="font-semibold">How does ideation work?</AccordionTrigger>
                 <AccordionContent className="pt-4">

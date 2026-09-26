@@ -19,6 +19,13 @@ import { AffiliateService } from '../src/affiliate/affiliate.service';
 import { CourseController } from '../src/course/course.controller';
 import { CourseService } from '../src/course/course.service';
 import { DubbingController } from '../src/dubbing/dubbing.controller';
+import { EmailCampaignController } from '../src/email-campaign/email-campaign.controller';
+import { EmailCampaignService } from '../src/email-campaign/email-campaign.service';
+import { FreeToolsController } from '../src/free-tools/free-tools.controller';
+import { FreeToolsService } from '../src/free-tools/free-tools.service';
+import { FreeToolRunsService } from '../src/free-tools/free-tool-runs.service';
+import { HannahController } from '../src/hannah/hannah.controller';
+import { HannahService } from '../src/hannah/hannah.service';
 import { DubbingService } from '../src/dubbing/dubbing.service';
 import { IdeationController } from '../src/ideation/ideation.controller';
 import { IdeationService } from '../src/ideation/ideation.service';
@@ -37,6 +44,8 @@ import { ThumbnailService } from '../src/thumbnail/thumbnail.service';
 import { TrainAiController } from '../src/train-ai/train-ai.controller';
 import { UploadController } from '../src/upload/upload.controller';
 import { UploadService } from '../src/upload/upload.service';
+import { VideoGenerationController } from '../src/video-generation/video-generation.controller';
+import { VideoGenerationService } from '../src/video-generation/video-generation.service';
 import { YoutubeController } from '../src/youtube/youtube.controller';
 import { YoutubeService } from '../src/youtube/youtube.service';
 import { SupabaseService } from '../src/supabase/supabase.service';
@@ -68,6 +77,9 @@ describe('Swagger / OpenAPI Specification', () => {
         AffiliateController,
         CourseController,
         DubbingController,
+        EmailCampaignController,
+        FreeToolsController,
+        HannahController,
         IdeationController,
         ReferralController,
         ScriptController,
@@ -77,6 +89,7 @@ describe('Swagger / OpenAPI Specification', () => {
         ThumbnailController,
         TrainAiController,
         UploadController,
+        VideoGenerationController,
         YoutubeController,
       ],
       providers: [
@@ -84,7 +97,7 @@ describe('Swagger / OpenAPI Specification', () => {
         { provide: SupabaseService, useValue: stub(['getClient', 'getAdminClient']) },
         { provide: AuthService, useValue: stub(['forgotPassword', 'verifyOtp', 'resetPassword']) },
         { provide: BillingService, useValue: stub(['getPlans', 'getBillingInfo', 'getUsageHistory', 'createCheckoutSession', 'getCustomerPortalUrl', 'cancelActiveSubscription', 'verifyWebhookSignature', 'handleSubscriptionCreated', 'handleSubscriptionUpdated', 'handleSubscriptionCancelled', 'handleSubscriptionExpired', 'handleSubscriptionPaymentSuccess']) },
-        { provide: AdminService, useValue: stub(['getDashboardStats', 'getUsers', 'getUser', 'updateUser', 'deleteUser', 'getBlogs', 'getBlog', 'createBlog', 'updateBlog', 'deleteBlog', 'getActivityFeed', 'getMails', 'getMail', 'replyToMail', 'updateMailStatus', 'getAllSubscriptions', 'getJobPosts', 'getJobPost', 'createJobPost', 'updateJobPost', 'deleteJobPost', 'getApplications', 'getApplication', 'updateApplicationStatus', 'deleteApplication', 'getAllAffiliateLinks', 'getAllAffiliateSales', 'updateAffiliateLink', 'updateAffiliateSaleStatus', 'logActivity']) },
+        { provide: AdminService, useValue: stub(['getDashboardStats', 'getUsers', 'getUser', 'updateUser', 'deleteUser', 'getBlogs', 'getBlog', 'createBlog', 'updateBlog', 'deleteBlog', 'getActivityFeed', 'getMails', 'getMail', 'replyToMail', 'updateMailStatus', 'getAllSubscriptions', 'getJobPosts', 'getJobPost', 'createJobPost', 'updateJobPost', 'deleteJobPost', 'getApplications', 'getApplication', 'updateApplicationStatus', 'deleteApplication', 'getAllAffiliateLinks', 'getAllAffiliateSales', 'updateAffiliateLink', 'updateAffiliateSaleStatus']) },
         { provide: AffiliateService, useValue: stub(['submitRequest', 'getRequestStatus', 'getRequests', 'reviewRequest', 'createAffiliateLinkForRep', 'getLsAffiliates', 'getLsAffiliateSignupUrl', 'getHubStats', 'getUserLinks', 'createUserLink', 'updateUserLink', 'deleteUserLink', 'getUserPromoCodes', 'getUserSales', 'getPayoutMethod', 'upsertPayoutMethod', 'getUserWithdrawals', 'requestWithdrawal', 'getPromoCodes', 'createPromoCode', 'updatePromoCode', 'getLsDiscounts', 'getWithdrawals', 'updateWithdrawal']) },
         { provide: CourseService, useValue: stub(['generate']) },
         { provide: DubbingService, useValue: stub(['createDub', 'streamDubbingStatus', 'listDubs', 'getDub', 'deleteDub']) },
@@ -95,13 +108,20 @@ describe('Swagger / OpenAPI Specification', () => {
         { provide: SubtitleService, useValue: stub(['create', 'findAll', 'upload', 'update', 'findOne', 'remove', 'updateSubtitles', 'burnSubtitle']) },
         { provide: SupportService, useValue: stub(['reportIssue']) },
         { provide: ThumbnailService, useValue: stub(['createJob', 'listJobs', 'getJob', 'deleteJob']) },
+        { provide: EmailCampaignService, useValue: stub(['getTemplates', 'createTemplate', 'updateTemplate', 'getFromAddresses', 'previewRecipients', 'getStats', 'sendCampaign', 'getCampaign', 'getHistory']) },
+        { provide: FreeToolsService, useValue: stub(['generateIdea', 'generateScript', 'generateStory']) },
+        { provide: FreeToolRunsService, useValue: stub(['record', 'claim']) },
+        { provide: HannahService, useValue: stub(['chat']) },
         { provide: UploadService, useValue: stub(['uploadAvatar', 'deleteAvatar']) },
+        { provide: VideoGenerationService, useValue: stub(['getAccess', 'createJob', 'editJob', 'surprisePrompt', 'cancelJob', 'listJobs', 'getJob', 'deleteJob']) },
         { provide: YoutubeService, useValue: stub(['getVideoMetadata', 'getChannelVideos']) },
         { provide: getQueueToken('train-ai'), useValue: mockQueue },
         { provide: getQueueToken('script'), useValue: mockQueue },
         { provide: getQueueToken('ideation'), useValue: mockQueue },
         { provide: getQueueToken('story-builder'), useValue: mockQueue },
         { provide: getQueueToken('thumbnail'), useValue: mockQueue },
+        { provide: getQueueToken('dubbing'), useValue: mockQueue },
+        { provide: getQueueToken('video-generation'), useValue: mockQueue },
       ],
     }).compile();
 
@@ -298,7 +318,11 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', ''],
       ['get', '{id}'],
       ['delete', '{id}'],
-      ['get', 'status/{projectId}'],
+      ['get', 'access'],
+      ['post', 'sign-upload'],
+      ['post', '{id}/regenerate'],
+      ['post', 'stop/{jobId}'],
+      ['get', 'status/{jobId}'],
     ])('%s /%s', (method, path) => {
       const full = path ? `${base}/${path}` : base;
       expect((spec.paths[full] as any)?.[method]).toBeDefined();
@@ -380,7 +404,9 @@ describe('Swagger / OpenAPI Specification', () => {
     it.each([
       ['post', ''],
       ['get', ''],
-      ['post', 'upload'],
+      ['get', 'upload/limit'],
+      ['post', 'upload/sign'],
+      ['post', 'upload/finalize'],
       ['patch', ''],
       ['get', '{id}'],
       ['delete', '{id}'],
@@ -453,6 +479,75 @@ describe('Swagger / OpenAPI Specification', () => {
     });
   });
 
+  // ─── Free tools (anonymous) ───
+
+  describe('Free tools', () => {
+    const base = '/api/v1/free-tools';
+
+    it.each([
+      ['post', 'idea'],
+      ['post', 'script'],
+      ['post', 'story'],
+      ['post', 'claim'],
+    ])('%s /%s', (method, path) => {
+      expect((spec.paths[`${base}/${path}`] as any)?.[method]).toBeDefined();
+    });
+  });
+
+  // ─── Hannah (anonymous) ───
+
+  describe('Hannah', () => {
+    const base = '/api/v1/hannah';
+
+    it.each([
+      ['post', 'chat'],
+      ['post', 'chat/dashboard'],
+    ])('%s /%s', (method, path) => {
+      expect((spec.paths[`${base}/${path}`] as any)?.[method]).toBeDefined();
+    });
+  });
+
+  // ─── Video generation ───
+
+  describe('Video generation', () => {
+    const base = '/api/v1/video-generation';
+
+    it.each([
+      ['get', 'access'],
+      ['post', 'surprise'],
+      ['post', 'generate'],
+      ['post', '{id}/edit'],
+      ['post', 'cancel/{jobId}'],
+      ['get', ''],
+      ['get', '{id}'],
+      ['delete', '{id}'],
+      ['get', 'status/{jobId}'],
+    ])('%s /%s', (method, path) => {
+      const full = path ? `${base}/${path}` : base;
+      expect((spec.paths[full] as any)?.[method]).toBeDefined();
+    });
+  });
+
+  // ─── Email campaigns (admin) ───
+
+  describe('Email campaigns', () => {
+    const base = '/api/v1/admin';
+
+    it.each([
+      ['get', 'email-templates'],
+      ['post', 'email-templates'],
+      ['put', 'email-templates/{id}'],
+      ['get', 'email-from-addresses'],
+      ['post', 'email-campaigns/preview-recipients'],
+      ['post', 'email-campaigns/send'],
+      ['get', 'email-campaigns/history'],
+      ['get', 'email-campaigns/stats'],
+      ['get', 'email-campaigns/{id}'],
+    ])('%s /%s', (method, path) => {
+      expect((spec.paths[`${base}/${path}`] as any)?.[method]).toBeDefined();
+    });
+  });
+
   // ─── Tag coverage ───
 
   describe('Tag coverage', () => {
@@ -460,7 +555,7 @@ describe('Swagger / OpenAPI Specification', () => {
       'health', 'auth', 'billing', 'admin', 'course', 'dubbing',
       'ideation', 'referral', 'script', 'story-builder',
       'subtitle', 'support', 'thumbnail', 'train-ai', 'upload', 'youtube', 'app',
-      'affiliate',
+      'affiliate', 'free-tools', 'hannah', 'video-generation',
     ];
 
     it('every expected tag should appear on at least one operation', () => {
@@ -483,121 +578,168 @@ describe('Swagger / OpenAPI Specification', () => {
   describe('Completeness', () => {
     const ALL_ENDPOINTS: [string, string][] = [
       ['get', '/'],
-      ['get', '/api/v1/test-db'],
-      ['post', '/api/v1/auth/forgot-password'],
-      ['post', '/api/v1/auth/verify-otp'],
-      ['post', '/api/v1/auth/reset-password'],
-      ['get', '/api/v1/billing/plans'],
-      ['get', '/api/v1/billing/info'],
-      ['get', '/api/v1/billing/usage'],
-      ['post', '/api/v1/billing/checkout'],
-      ['post', '/api/v1/billing/portal'],
-      ['post', '/api/v1/billing/cancel'],
-      ['post', '/api/v1/lemonsqueezy/webhook'],
-      ['get', '/api/v1/admin/stats'],
-      ['get', '/api/v1/admin/users'],
-      ['get', '/api/v1/admin/users/{userId}'],
-      ['put', '/api/v1/admin/users/{userId}'],
-      ['delete', '/api/v1/admin/users/{userId}'],
-      ['get', '/api/v1/admin/blogs'],
-      ['get', '/api/v1/admin/blogs/{id}'],
-      ['post', '/api/v1/admin/blogs'],
-      ['put', '/api/v1/admin/blogs/{id}'],
-      ['delete', '/api/v1/admin/blogs/{id}'],
       ['get', '/api/v1/admin/activities'],
-      ['get', '/api/v1/admin/mails'],
-      ['put', '/api/v1/admin/mails/{id}'],
-      ['get', '/api/v1/admin/jobs'],
-      ['get', '/api/v1/admin/jobs/{id}'],
-      ['post', '/api/v1/admin/jobs'],
-      ['put', '/api/v1/admin/jobs/{id}'],
-      ['delete', '/api/v1/admin/jobs/{id}'],
+      ['get', '/api/v1/admin/affiliates/links'],
+      ['put', '/api/v1/admin/affiliates/links/{id}'],
+      ['get', '/api/v1/admin/affiliates/sales'],
+      ['put', '/api/v1/admin/affiliates/sales/{id}'],
       ['get', '/api/v1/admin/applications'],
       ['get', '/api/v1/admin/applications/{id}'],
       ['put', '/api/v1/admin/applications/{id}'],
       ['delete', '/api/v1/admin/applications/{id}'],
-      ['get', '/api/v1/admin/affiliates/links'],
-      ['get', '/api/v1/admin/affiliates/sales'],
-      ['put', '/api/v1/admin/affiliates/links/{id}'],
-      ['put', '/api/v1/admin/affiliates/sales/{id}'],
-      ['post', '/api/v1/affiliate/apply'],
-      ['get', '/api/v1/affiliate/status'],
-      ['get', '/api/v1/affiliate/requests'],
-      ['put', '/api/v1/affiliate/requests/{id}'],
-      ['get', '/api/v1/affiliate/hub'],
-      ['get', '/api/v1/affiliate/links'],
-      ['post', '/api/v1/affiliate/links'],
-      ['put', '/api/v1/affiliate/links/{id}'],
-      ['delete', '/api/v1/affiliate/links/{id}'],
-      ['get', '/api/v1/affiliate/promo-codes'],
-      ['get', '/api/v1/affiliate/sales'],
-      ['get', '/api/v1/affiliate/payout-method'],
-      ['put', '/api/v1/affiliate/payout-method'],
-      ['get', '/api/v1/affiliate/withdrawals'],
-      ['post', '/api/v1/affiliate/withdrawals'],
+      ['post', '/api/v1/admin/applications/{id}/reply'],
+      ['get', '/api/v1/admin/blogs'],
+      ['post', '/api/v1/admin/blogs'],
+      ['get', '/api/v1/admin/blogs/{id}'],
+      ['put', '/api/v1/admin/blogs/{id}'],
+      ['delete', '/api/v1/admin/blogs/{id}'],
+      ['get', '/api/v1/admin/email-campaigns/history'],
+      ['post', '/api/v1/admin/email-campaigns/preview-recipients'],
+      ['post', '/api/v1/admin/email-campaigns/send'],
+      ['get', '/api/v1/admin/email-campaigns/stats'],
+      ['get', '/api/v1/admin/email-campaigns/{id}'],
+      ['get', '/api/v1/admin/email-from-addresses'],
+      ['get', '/api/v1/admin/email-templates'],
+      ['post', '/api/v1/admin/email-templates'],
+      ['put', '/api/v1/admin/email-templates/{id}'],
+      ['get', '/api/v1/admin/errors'],
+      ['get', '/api/v1/admin/errors/summary'],
+      ['get', '/api/v1/admin/errors/{id}'],
+      ['get', '/api/v1/admin/funnel'],
+      ['get', '/api/v1/admin/funnel/events'],
+      ['get', '/api/v1/admin/jobs'],
+      ['post', '/api/v1/admin/jobs'],
+      ['get', '/api/v1/admin/jobs/{id}'],
+      ['put', '/api/v1/admin/jobs/{id}'],
+      ['delete', '/api/v1/admin/jobs/{id}'],
+      ['get', '/api/v1/admin/mails'],
+      ['get', '/api/v1/admin/mails/{id}'],
+      ['put', '/api/v1/admin/mails/{id}'],
+      ['post', '/api/v1/admin/mails/{id}/reply'],
+      ['get', '/api/v1/admin/plans'],
+      ['get', '/api/v1/admin/revenue-by-tier'],
+      ['get', '/api/v1/admin/stats'],
+      ['get', '/api/v1/admin/subscriptions'],
+      ['get', '/api/v1/admin/users'],
+      ['get', '/api/v1/admin/users/{userId}'],
+      ['put', '/api/v1/admin/users/{userId}'],
+      ['delete', '/api/v1/admin/users/{userId}'],
+      ['put', '/api/v1/admin/users/{userId}/plan'],
       ['post', '/api/v1/affiliate/admin/create-link'],
       ['get', '/api/v1/affiliate/admin/ls-affiliates'],
+      ['get', '/api/v1/affiliate/admin/ls-discounts'],
       ['get', '/api/v1/affiliate/admin/ls-signup-url'],
       ['get', '/api/v1/affiliate/admin/promo-codes'],
       ['post', '/api/v1/affiliate/admin/promo-codes'],
       ['put', '/api/v1/affiliate/admin/promo-codes/{id}'],
       ['delete', '/api/v1/affiliate/admin/promo-codes/{id}'],
-      ['get', '/api/v1/affiliate/admin/ls-discounts'],
       ['get', '/api/v1/affiliate/admin/withdrawals'],
       ['put', '/api/v1/affiliate/admin/withdrawals/{id}'],
+      ['post', '/api/v1/affiliate/apply'],
+      ['get', '/api/v1/affiliate/hub'],
+      ['get', '/api/v1/affiliate/links'],
+      ['post', '/api/v1/affiliate/links'],
+      ['put', '/api/v1/affiliate/links/{id}'],
+      ['delete', '/api/v1/affiliate/links/{id}'],
+      ['get', '/api/v1/affiliate/payout-method'],
+      ['put', '/api/v1/affiliate/payout-method'],
+      ['get', '/api/v1/affiliate/promo-codes'],
+      ['get', '/api/v1/affiliate/requests'],
+      ['put', '/api/v1/affiliate/requests/{id}'],
+      ['get', '/api/v1/affiliate/sales'],
+      ['get', '/api/v1/affiliate/status'],
+      ['get', '/api/v1/affiliate/withdrawals'],
+      ['post', '/api/v1/affiliate/withdrawals'],
+      ['post', '/api/v1/auth/forgot-password'],
+      ['post', '/api/v1/auth/reset-password'],
+      ['post', '/api/v1/auth/verify-otp'],
+      ['post', '/api/v1/billing/cancel'],
+      ['post', '/api/v1/billing/checkout'],
+      ['post', '/api/v1/billing/expiry-reminder/{id}/seen'],
+      ['post', '/api/v1/billing/funnel'],
+      ['get', '/api/v1/billing/info'],
+      ['get', '/api/v1/billing/plans'],
+      ['post', '/api/v1/billing/portal'],
+      ['get', '/api/v1/billing/usage'],
       ['post', '/api/v1/course/generate'],
-      ['post', '/api/v1/dubbing'],
       ['get', '/api/v1/dubbing'],
+      ['post', '/api/v1/dubbing'],
+      ['get', '/api/v1/dubbing/access'],
+      ['post', '/api/v1/dubbing/sign-upload'],
+      ['get', '/api/v1/dubbing/status/{jobId}'],
+      ['post', '/api/v1/dubbing/stop/{jobId}'],
       ['get', '/api/v1/dubbing/{id}'],
       ['delete', '/api/v1/dubbing/{id}'],
-      ['get', '/api/v1/dubbing/status/{projectId}'],
-      ['post', '/api/v1/ideation'],
+      ['post', '/api/v1/dubbing/{id}/regenerate'],
+      ['post', '/api/v1/free-tools/claim'],
+      ['post', '/api/v1/free-tools/idea'],
+      ['post', '/api/v1/free-tools/script'],
+      ['post', '/api/v1/free-tools/story'],
+      ['post', '/api/v1/hannah/chat'],
+      ['post', '/api/v1/hannah/chat/dashboard'],
       ['get', '/api/v1/ideation'],
+      ['post', '/api/v1/ideation'],
       ['get', '/api/v1/ideation/profile-status'],
       ['get', '/api/v1/ideation/status/{jobId}'],
-      ['get', '/api/v1/ideation/{id}/export/pdf'],
-      ['get', '/api/v1/ideation/{id}/export/json'],
+      ['post', '/api/v1/ideation/surprise'],
       ['get', '/api/v1/ideation/{id}'],
       ['delete', '/api/v1/ideation/{id}'],
+      ['get', '/api/v1/ideation/{id}/export/json'],
+      ['get', '/api/v1/ideation/{id}/export/pdf'],
+      ['post', '/api/v1/lemonsqueezy/webhook'],
       ['get', '/api/v1/referral'],
       ['post', '/api/v1/referral/generate'],
       ['post', '/api/v1/referral/track'],
-      ['post', '/api/v1/script/generate'],
+      ['get', '/api/v1/referral/validate/{code}'],
       ['get', '/api/v1/script'],
-      ['get', '/api/v1/script/{id}/export'],
+      ['post', '/api/v1/script/generate'],
+      ['get', '/api/v1/script/status/{jobId}'],
       ['get', '/api/v1/script/{id}'],
       ['patch', '/api/v1/script/{id}'],
       ['delete', '/api/v1/script/{id}'],
-      ['get', '/api/v1/script/status/{jobId}'],
+      ['get', '/api/v1/script/{id}/export'],
+      ['get', '/api/v1/story-builder'],
       ['post', '/api/v1/story-builder/generate'],
       ['get', '/api/v1/story-builder/profile-status'],
-      ['get', '/api/v1/story-builder'],
+      ['get', '/api/v1/story-builder/status/{jobId}'],
       ['get', '/api/v1/story-builder/{id}'],
       ['delete', '/api/v1/story-builder/{id}'],
-      ['get', '/api/v1/story-builder/status/{jobId}'],
-      ['post', '/api/v1/subtitle'],
       ['get', '/api/v1/subtitle'],
+      ['post', '/api/v1/subtitle'],
+      ['patch', '/api/v1/subtitle'],
+      ['post', '/api/v1/subtitle/burn'],
+      ['post', '/api/v1/subtitle/upload/finalize'],
       ['get', '/api/v1/subtitle/upload/limit'],
       ['post', '/api/v1/subtitle/upload/sign'],
-      ['post', '/api/v1/subtitle/upload/finalize'],
-      ['patch', '/api/v1/subtitle'],
       ['get', '/api/v1/subtitle/{id}'],
-      ['delete', '/api/v1/subtitle/{id}'],
       ['patch', '/api/v1/subtitle/{id}'],
-      ['post', '/api/v1/subtitle/burn'],
+      ['delete', '/api/v1/subtitle/{id}'],
       ['post', '/api/v1/support/report-issue'],
-      ['post', '/api/v1/thumbnail/generate'],
+      ['get', '/api/v1/test-db'],
       ['get', '/api/v1/thumbnail'],
+      ['post', '/api/v1/thumbnail/generate'],
+      ['get', '/api/v1/thumbnail/status/{jobId}'],
       ['get', '/api/v1/thumbnail/{id}'],
       ['delete', '/api/v1/thumbnail/{id}'],
-      ['get', '/api/v1/thumbnail/status/{jobId}'],
       ['post', '/api/v1/train-ai'],
-      ['post', '/api/v1/train-ai/stop/{jobId}'],
       ['get', '/api/v1/train-ai/status/{jobId}'],
+      ['post', '/api/v1/train-ai/stop/{jobId}'],
       ['post', '/api/v1/upload/avatar'],
       ['delete', '/api/v1/upload/avatar'],
-      ['get', '/api/v1/youtube/video-metadata'],
+      ['get', '/api/v1/video-generation'],
+      ['get', '/api/v1/video-generation/access'],
+      ['post', '/api/v1/video-generation/cancel/{jobId}'],
+      ['post', '/api/v1/video-generation/generate'],
+      ['get', '/api/v1/video-generation/status/{jobId}'],
+      ['post', '/api/v1/video-generation/surprise'],
+      ['get', '/api/v1/video-generation/{id}'],
+      ['delete', '/api/v1/video-generation/{id}'],
+      ['post', '/api/v1/video-generation/{id}/edit'],
+      ['get', '/api/v1/youtube/channel-stats'],
       ['get', '/api/v1/youtube/channel-videos'],
+      ['get', '/api/v1/youtube/trained-videos'],
+      ['post', '/api/v1/youtube/trained-videos'],
+      ['get', '/api/v1/youtube/video-metadata'],
     ];
 
     it(`should document all ${ALL_ENDPOINTS.length} endpoints`, () => {

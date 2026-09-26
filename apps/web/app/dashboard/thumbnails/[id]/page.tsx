@@ -97,7 +97,7 @@ export default function ThumbnailPage() {
         return (
             <div className="container py-8 space-y-4">
                 <Skeleton className="h-10 w-64" />
-                <Skeleton className="h-6 w-96" />
+                <Skeleton className="h-6 w-full max-w-96" />
                 <Skeleton className="h-[140px] rounded-lg mt-8" />
                 <Skeleton className="h-[400px] rounded-lg" />
             </div>
@@ -232,7 +232,7 @@ export default function ThumbnailPage() {
                         )}
 
                         {imageCount > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
                                 {job.image_urls.map((url, i) => (
                                     <div key={url} className="relative group rounded-lg overflow-hidden border bg-slate-50 dark:bg-slate-800/50">
                                         <img
@@ -242,7 +242,7 @@ export default function ThumbnailPage() {
                                             loading="lazy"
                                             onClick={() => setModal({ type: "view", index: i, url })}
                                         />
-                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute top-2 right-2 flex gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                             <IconBtn
                                                 title="Download"
                                                 onClick={() => handleDownload(url, i)}

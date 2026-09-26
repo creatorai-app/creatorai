@@ -32,7 +32,7 @@ export function SubtitleHeader({
     canRedo
 }: SubtitleHeaderProps) {
     return (
-        <div className="h-auto sm:h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-4 lg:px-6 py-2 sm:py-0 shrink-0 gap-2 sm:gap-0">
+        <div className="h-auto lg:h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-3 sm:px-4 lg:px-6 py-2 lg:py-0 shrink-0 gap-2 lg:gap-0">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                 <Button
                     asChild
@@ -60,7 +60,7 @@ export function SubtitleHeader({
                 ) : null}
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap lg:flex-nowrap">
                 <div className="flex items-center gap-1 border-r border-slate-200 dark:border-slate-800 pr-1.5 sm:pr-2 mr-1.5 sm:mr-2">
                     <Button
                         variant="ghost"

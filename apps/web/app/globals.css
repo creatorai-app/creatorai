@@ -94,3 +94,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Tighter .container gutters on tablets and phones (Tailwind's container config only has a 2xl
+   screen, so per-breakpoint padding there never applies). Desktop keeps the 2rem gutter. */
+@layer components {
+  @media (max-width: 1023.98px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  @media (max-width: 639.98px) {
+    .container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+}

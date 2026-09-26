@@ -55,12 +55,13 @@ export function VideoGenerationHistory({
     <div className="space-y-4">
       {jobs.map((job) => (
         <Card key={job.id}>
-          <CardContent className="p-4 flex gap-4">
-            <div className="flex-shrink-0 w-40">
+          {/* Phones: preview on its own row so the prompt text isn't squeezed into a sliver */}
+          <CardContent className="p-4 flex flex-wrap sm:flex-nowrap gap-3 sm:gap-4">
+            <div className="flex-shrink-0 basis-full sm:basis-auto sm:w-40">
               {job.status === "completed" && job.video_url ? (
                 <video src={job.video_url} controls className="w-full rounded-md border border-slate-200 dark:border-slate-700" />
               ) : (
-                <div className="w-full aspect-video rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <div className="w-full h-16 sm:h-auto sm:aspect-video rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                   {job.status === "failed"
                     ? <span className="text-xs text-red-500">Failed</span>
                     : job.status === "cancelled"

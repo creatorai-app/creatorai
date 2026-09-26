@@ -115,14 +115,14 @@ export function BillingInfo() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-50 p-4 dark:bg-slate-900">
+          <div className="flex flex-col gap-3 rounded-lg bg-slate-50 p-4 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/40">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/40">
                 <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold whitespace-nowrap text-slate-900 dark:text-slate-100">
                     {currentPlanName} Plan
                   </p>
                   {hasActiveSubscription && (
@@ -148,7 +148,7 @@ export function BillingInfo() {
                 )}
               </div>
             </div>
-            <div className="text-right">
+            <div className="flex items-baseline gap-1.5 border-t border-slate-200 pt-3 dark:border-slate-800 sm:block sm:border-0 sm:pt-0 sm:text-right">
               <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {billingInfo?.credits ?? 0}
               </p>

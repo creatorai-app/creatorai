@@ -158,7 +158,7 @@ export function ProfileSettingsForm() {
                         {/* --- Security --- */}
                         <div className="border-t border-border pt-6 space-y-3">
                             <Label className="text-sm font-medium">Security</Label>
-                            <div className="flex items-center gap-4">
+                            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
                                 <Button
                                     variant="outline"
                                     onClick={changePassword}

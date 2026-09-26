@@ -155,8 +155,8 @@ export default function Referrals() {
   return (
     <div className="container py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Referral Program</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">Invite friends and earn credits when they upgrade</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Referral Program</h1>
+        <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">Invite friends and earn credits when they upgrade</p>
       </div>
 
       {/* How the reward works */}

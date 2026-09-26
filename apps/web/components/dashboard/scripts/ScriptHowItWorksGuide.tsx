@@ -2,6 +2,7 @@
 
 import * as motion from "motion/react-m";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@repo/ui/accordion";
+import { useGuideOpenOnDesktop } from "@/hooks/use-guide-open";
 import { PenTool, Sparkles, Settings2 } from "lucide-react"
 
 const steps = [
@@ -26,13 +27,14 @@ const steps = [
 ]
 
 export function ScriptHowItWorksGuide() {
+  const [guideOpen, setGuideOpen] = useGuideOpenOnDesktop("how-it-works")
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, delay: 0.1 }}
     >
-      <Accordion type="single" collapsible defaultValue="how-it-works" className="w-full">
+      <Accordion type="single" collapsible value={guideOpen} onValueChange={setGuideOpen} className="w-full">
         <AccordionItem value="how-it-works">
           <AccordionTrigger className="font-semibold">How does script generation work?</AccordionTrigger>
           <AccordionContent className="pt-4">

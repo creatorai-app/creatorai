@@ -16,6 +16,11 @@ import { Separator } from "@repo/ui/separator";
 const SEGMENT_TITLES: Record<string, string> = {
   research: "Ideation",
   train: "AI Studio",
+  "story-builder": "Story Builder",
+  "video-generation": "Video Generation",
+  "channel-stats": "Channel Stats",
+  dubbing: "Audio Dubbing",
+  affiliate: "Affiliate Hub",
 };
 
 export default function DashboardHeader() {
@@ -37,7 +42,10 @@ export default function DashboardHeader() {
     } else {
       const segment = path[1] ?? "";
       const title = SEGMENT_TITLES[segment]
-        ?? (segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : "");
+        ?? segment
+          .split("-")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ");
       setPageTitle(title);
     }
     // Close the popover when the pathname changes
@@ -51,9 +59,10 @@ export default function DashboardHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/40 bg-background/80 px-4 backdrop-blur-sm sm:px-6">
-      <div className="flex-1">
-        <h1 className="text-lg font-semibold">{pageTitle}</h1>
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/40 bg-background/80 pl-14 pr-4 backdrop-blur-sm sm:pr-6 md:px-6">
+      {/* pl-14 on mobile leaves room for the fixed sidebar menu button */}
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate text-base font-semibold sm:text-lg">{pageTitle}</h1>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

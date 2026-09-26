@@ -146,6 +146,9 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }: DashboardSidebarProps) {
   const [open, setOpen] = useState(false)
   const isMobile = useMobile()
+  // Must run before the mobile early return so the hook order never changes
+  // when the viewport crosses the md breakpoint.
+  const pathname = usePathname()
   const { profile } = useSupabase()
 
   const effectiveOpen = pinned ? true : open
@@ -175,7 +178,7 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
         <Button
           variant="ghost"
           size="icon"
-          className="fixed left-4 top-4 z-40 md:hidden"
+          className="fixed left-2 top-3 z-40 md:hidden"
           onClick={() => setCollapsed(true)}
         >
           <Menu className="h-5 w-5" />
@@ -197,11 +200,17 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
     )
   }
 
-  const pathname = usePathname();
-
   return (
+    // Tablets (md–lg): the sidebar keeps an 80px slot and expands OVER the page on hover/tap
+    // instead of pushing it, which squeezed the header and content. From lg it sits in the flow.
+    <div className="relative h-full w-20 shrink-0 lg:w-auto">
     <Sidebar open={effectiveOpen} setOpen={handleSetOpen} animate={!pinned}>
-      <SidebarBody className="justify-between gap-10">
+      <SidebarBody
+        className={cn(
+          "justify-between gap-10 absolute inset-y-0 left-0 z-40 lg:relative lg:inset-auto lg:z-auto",
+          effectiveOpen && "shadow-xl lg:shadow-none",
+        )}
+      >
         <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
           <div className="flex items-center justify-between">
             {effectiveOpen ? <Logo showText={true} /> : <Logo showText={false} />}
@@ -209,7 +218,7 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="hidden h-8 w-8 lg:inline-flex"
                 onClick={() => setPinned?.(!pinned)}
               >
                 <PanelLeft className="h-4 w-4" />
@@ -240,5 +249,6 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
         <div />
       </SidebarBody>
     </Sidebar>
+    </div>
   )
 }

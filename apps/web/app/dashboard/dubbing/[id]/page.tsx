@@ -41,13 +41,13 @@ function StatCard({ icon: Icon, label, value, iconClassName }: {
   iconClassName?: string
 }) {
   return (
-    <div className="group bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-white/60 dark:border-slate-800/50 rounded-2xl p-5 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)] hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300">
+    <div className="group bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-white/60 dark:border-slate-800/50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-2 sm:gap-4 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)] hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300">
       <div className={`w-10 h-10 rounded-lg bg-slate-100/80 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:bg-purple-500/10 transition-all duration-300 group-hover:scale-110 shrink-0 ${iconClassName ?? ""}`}>
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0">
         <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-        <p className="font-semibold text-slate-900 dark:text-slate-50 truncate">{value}</p>
+        <p className="font-semibold text-slate-900 dark:text-slate-50">{value}</p>
       </div>
     </div>
   )
@@ -211,7 +211,7 @@ export default function DubbingDetailPage() {
         {/* 2. Main media section — full width */}
         <section aria-label="Preview">
           <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 space-y-0">
               <div className="min-w-0">
                 <CardTitle className="flex items-center gap-2">
                   <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor} ${isProcessing ? "animate-spin" : ""}`} />

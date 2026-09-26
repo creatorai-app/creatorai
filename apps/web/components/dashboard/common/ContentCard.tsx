@@ -150,12 +150,12 @@ export function ContentCard({
                                 </div>
                             )}
 
-                            <div className="flex-grow min-w-0">
-                                <h3 className="md:font-semibold md:text-lg text-slate-800 dark:text-slate-100 md:leading-tight text-base font-medium truncate">
+                            <div className="flex-grow min-w-0 pr-8 lg:pr-0 lg:group-hover:pr-8">
+                                <h3 className="md:font-semibold md:text-lg text-slate-800 dark:text-slate-100 md:leading-tight text-base font-medium line-clamp-2 break-words lg:line-clamp-1">
                                     {title}
                                 </h3>
-                                <div className="mt-1.5 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                                    <CalendarDays className="h-4 w-4" />
+                                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                    <CalendarDays className="h-4 w-4 shrink-0" />
                                     <span>{creationDate}</span>
                                     {statusBadge}
                                 </div>
@@ -175,7 +175,7 @@ export function ContentCard({
                                         e.preventDefault();
                                         e.stopPropagation();
                                     }}
-                                    className="h-8 w-8 rounded-full transform-gpu transition-all duration-200 opacity-100 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0"
+                                    className="h-8 w-8 rounded-full transform-gpu transition-all duration-200 opacity-100 lg:opacity-0 lg:translate-x-2 lg:group-hover:opacity-100 lg:group-hover:translate-x-0"
                                 >
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>

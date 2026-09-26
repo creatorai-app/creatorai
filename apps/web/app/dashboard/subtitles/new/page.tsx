@@ -21,7 +21,7 @@ function NewSubtitlePageInner() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc]">
-            <div className="mx-auto max-w-7xl px-4 py-8 md:px-8 lg:py-12">
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -33,7 +33,7 @@ function NewSubtitlePageInner() {
                                 Back to Subtitles
                             </Button>
                         </Link>
-                        <h1 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 mb-2">
                             Subtitle Generator
                         </h1>
                         <p className="text-lg text-slate-500 max-w-2xl">
@@ -99,7 +99,7 @@ export default function NewSubtitlePage() {
         <Suspense fallback={
             <div className="container py-8 space-y-4">
                 <Skeleton className="h-10 w-64" />
-                <Skeleton className="h-6 w-96" />
+                <Skeleton className="h-6 w-full max-w-96" />
                 <Skeleton className="h-[400px] rounded-lg mt-8" />
             </div>
         }>

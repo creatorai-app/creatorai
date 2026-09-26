@@ -79,18 +79,18 @@ export function ConnectedDashboardView(props: SharedProps) {
           {/* Activity Chart */}
           <div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-4">Activity Overview</h2>
-            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl p-6 lg:p-8 flex flex-col shadow-sm">
-              <div className="flex justify-between items-center mb-2">
+            <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-2">
                 <div className="space-y-1">
                   <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Items this period</span>
                   <div className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-50">{totalActivity}</div>
                 </div>
-                <div className="flex bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+                <div className="flex self-start sm:self-auto bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
                   {(["weekly", "monthly", "yearly"] as const).map((period) => (
                     <button
                       key={period}
                       onClick={() => setActivityPeriod(period)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 capitalize ${
+                      className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap rounded-md transition-all duration-200 capitalize ${
                         activityPeriod === period
                           ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-50 shadow-sm"
                           : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
@@ -132,18 +132,18 @@ export function ConnectedDashboardView(props: SharedProps) {
 
           {/* Recent Activity Table */}
           <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-6 pb-0 flex justify-between items-center mb-4">
+            <div className="p-4 sm:p-6 pb-0 sm:pb-0 flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Recent Activity</h2>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+              <table className="w-full text-left border-collapse sm:min-w-[600px]">
                 <thead>
                   <tr className="border-b border-slate-200/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-800/30">
-                    <th className="py-3 px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider">Project Name</th>
-                    <th className="py-3 px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider">Type</th>
-                    <th className="py-3 px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider">Status</th>
-                    <th className="py-3 px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider text-right">Modified</th>
+                    <th className="py-3 px-4 sm:px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider">Project Name</th>
+                    <th className="hidden sm:table-cell py-3 px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider">Type</th>
+                    <th className="hidden sm:table-cell py-3 px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider">Status</th>
+                    <th className="py-3 px-4 sm:px-6 text-xs font-medium text-slate-500 dark:text-slate-400 tracking-wider text-right">Modified</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/50 dark:divide-slate-800/50">
@@ -156,22 +156,22 @@ export function ConnectedDashboardView(props: SharedProps) {
                         onClick={() => router.push(getRouteForActivity(item.type, item.id))}
                         className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
                       >
-                        <td className="py-3.5 px-6">
-                          <div className="flex items-center gap-3">
-                            <Icon className={`w-4 h-4 text-slate-400 group-hover:${cfg.color} transition-colors`} />
-                            <span className="text-sm font-medium text-slate-900 dark:text-slate-50">{item.title}</span>
+                        <td className="py-3.5 px-4 sm:px-6">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Icon className={`w-4 h-4 shrink-0 text-slate-400 group-hover:${cfg.color} transition-colors`} />
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-50 line-clamp-2 break-words">{item.title}</span>
                           </div>
                         </td>
-                        <td className="py-3.5 px-6 text-sm text-slate-500 dark:text-slate-400 capitalize">{item.type}</td>
-                        <td className="py-3.5 px-6">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${item.status === 'completed' || item.status === 'done' || item.status === 'dubbed'
+                        <td className="hidden sm:table-cell py-3.5 px-6 text-sm text-slate-500 dark:text-slate-400 capitalize">{item.type}</td>
+                        <td className="hidden sm:table-cell py-3.5 px-6">
+                          <span className={`inline-flex whitespace-nowrap items-center px-2 py-0.5 rounded text-[11px] font-medium border ${item.status === 'completed' || item.status === 'done' || item.status === 'dubbed'
                             ? 'bg-purple-50/80 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/50 dark:border-purple-500/20'
                             : 'bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200/50 dark:border-slate-700/50'
                             }`}>
                             {item.status || 'In Progress'}
                           </span>
                         </td>
-                        <td className="py-3.5 px-6 text-sm text-slate-500 dark:text-slate-400 text-right">
+                        <td className="py-3.5 px-4 sm:px-6 text-sm text-slate-500 dark:text-slate-400 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-2">
                             <span>{formatTimeAgo(item.date)}</span>
                             <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 group-hover:text-purple-500 transition-all transform group-hover:translate-x-1" />
@@ -200,16 +200,16 @@ export function ConnectedDashboardView(props: SharedProps) {
 
         </div>
 
-        {/* Right Sidebar Area */}
-        <div className="flex flex-col gap-6 lg:gap-8">
+        {/* Right Sidebar Area — two columns on tablets, stacked beside the chart on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-col gap-6 lg:gap-8">
 
           {/* Connected Channels */}
           {props.isYoutubeConnected && (
             <div className="shrink-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-slate-800/50 rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden group shadow-sm">
               <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500 to-pink-500"></div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-slate-100/80 dark:bg-slate-800 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-slate-100/80 dark:bg-slate-800 flex items-center justify-center shrink-0">
                   <Youtube className="h-6 w-6 text-red-500" />
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
@@ -217,11 +217,14 @@ export function ConnectedDashboardView(props: SharedProps) {
                     <h3 className="text-sm font-medium text-slate-900 dark:text-slate-50 truncate block">{channel?.channelName || props.profile?.youtube_channel_name || "Connected Channel"}</h3>
                     <span className="shrink-0 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-sm text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">YT</span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Language • {props.profile?.language || "EN"}</p>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded text-emerald-600 dark:text-emerald-400 text-[11px] font-medium shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                  <span className="hidden sm:inline">Connected</span>
+                  {/* Status sits under the name so the channel name keeps its width in narrow cards */}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="truncate">Language • {props.profile?.language || "EN"}</span>
+                    <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 rounded text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                      Connected
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -259,7 +262,7 @@ export function ConnectedDashboardView(props: SharedProps) {
                   className="h-8 gap-1.5 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400"
                 >
                   <Unlink className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Disconnect</span>
+                  <span>Disconnect</span>
                 </Button>
               </div>
             </div>

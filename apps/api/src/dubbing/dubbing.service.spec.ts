@@ -9,8 +9,13 @@ import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bullmq';
 import { DubbingService } from './dubbing.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { DUBBING_CANCEL_PREFIX } from '@repo/validation';
-import { deleteGcsObject, moveGcsObject, getSignedUploadUrl } from '../utils';
+import {
+  DUBBING_CANCEL_PREFIX,
+  DUBBING_CREDIT_MULTIPLIER,
+  calculateDubbingCreditsByDuration,
+  getMinimumCreditsForDubbing,
+} from '@repo/validation';
+import { deleteGcsObject, moveGcsObject } from '../utils';
 
 jest.mock('../utils', () => ({
   getSignedUploadUrl: jest.fn().mockResolvedValue('https://signed-upload-url'),
@@ -36,6 +41,16 @@ function chain(result: unknown) {
 }
 
 const USER = 'user-1';
+
+// Every fixture dub here is the same length, and its price is whatever the current
+// rate makes it — derived, not written down, so a repricing (see the
+// DUBBING_CREDIT_MULTIPLIER promo note) moves the expectations with it instead of
+// leaving them asserting last quarter's price. The suite runs on 'Creator', a paid
+// plan, so the paid multiplier applies.
+const DUB_SECONDS = 30 * 60;
+const DUB_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, DUBBING_CREDIT_MULTIPLIER);
+// One second's worth: the most a balance can hold and still not cover the clip.
+const DUB_FLOOR = getMinimumCreditsForDubbing(DUBBING_CREDIT_MULTIPLIER);
 
 describe('DubbingService', () => {
   let service: DubbingService;
@@ -106,7 +121,7 @@ describe('DubbingService', () => {
   });
 
   describe('signUpload', () => {
-    const input = { filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 30 };
+    const input = { filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: DUB_SECONDS };
 
     it('accepts a Starter clip within the 45 min cap', async () => {
       await build({ subscriptions: chain(planResult('Starter')) });
@@ -175,10 +190,8 @@ describe('DubbingService', () => {
     // Regression: the balance was only checked at createDub, so a user short on credits
     // pushed up to 500MB to GCS and was only then told they could not afford it.
     it('rejects an unaffordable dub before the upload starts', async () => {
-      await build({ profiles: chain({ data: { credits: 10 }, error: null }) });
-      await expect(service.signUpload({ ...input, durationSeconds: 30 * 60 }, USER)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await build({ profiles: chain({ data: { credits: DUB_FLOOR }, error: null }) });
+      await expect(service.signUpload(input, USER)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -188,8 +201,7 @@ describe('DubbingService', () => {
       targetLanguage: 'es',
       isVideo: false,
       mediaName: 'My clip',
-      // 30 min at Creator's 10 credits/min = 300 credits.
-      durationSeconds: 30 * 60,
+      durationSeconds: DUB_SECONDS,
     };
 
     it("rejects an object outside the user's prefix", async () => {
@@ -208,14 +220,16 @@ describe('DubbingService', () => {
     // could not cover the whole dub still got enqueued and only failed after
     // ElevenLabs had run — at which point we'd already paid for it.
     it('rejects when credits cover the floor but not the full duration', async () => {
-      await build({ profiles: chain({ data: { credits: 50 }, error: null }) });
-      await expect(service.createDub(input, USER)).rejects.toThrow(/costs 300 credits and you have 50/);
+      await build({ profiles: chain({ data: { credits: DUB_FLOOR }, error: null }) });
+      await expect(service.createDub(input, USER)).rejects.toThrow(
+        new RegExp(`costs ${DUB_COST} credits and you have ${DUB_FLOOR}`),
+      );
       expect(queue.add).not.toHaveBeenCalled();
     });
 
     // Regression: a rejected dub used to leave the uploaded media sitting in the bucket.
     it('deletes the staged upload when the dub is rejected', async () => {
-      await build({ profiles: chain({ data: { credits: 50 }, error: null }) });
+      await build({ profiles: chain({ data: { credits: DUB_FLOOR }, error: null }) });
       await expect(service.createDub(input, USER)).rejects.toThrow(ForbiddenException);
       expect(deleteGcsObject).toHaveBeenCalledWith(expect.anything(), input.objectName, 'dub-bucket');
     });
@@ -236,10 +250,10 @@ describe('DubbingService', () => {
     it('reserves the full cost before enqueueing', async () => {
       await build();
       await service.createDub(input, USER);
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -300 });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
       expect(queue.add).toHaveBeenCalledWith(
         'dubbing',
-        expect.objectContaining({ reservedCredits: 300 }),
+        expect.objectContaining({ reservedCredits: DUB_COST }),
         expect.anything(),
       );
     });
@@ -247,7 +261,7 @@ describe('DubbingService', () => {
     it('refunds and cleans up when the reservation succeeds but the insert fails', async () => {
       await build({ dubbing_projects: chain({ data: null, error: { message: 'boom' } }) });
       await expect(service.createDub(input, USER)).rejects.toThrow();
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: 300 });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
       expect(deleteGcsObject).toHaveBeenCalledWith(expect.anything(), `${USER}/dubbing/123_a.mp3`, 'dub-bucket');
       expect(queue.add).not.toHaveBeenCalled();
     });
@@ -302,7 +316,7 @@ describe('DubbingService', () => {
       expect(res.jobId).not.toContain(USER);
       expect(queue.add).toHaveBeenCalledWith(
         'dubbing',
-        expect.objectContaining({ userId: USER, targetLanguage: 'es', durationSeconds: 30 * 60 }),
+        expect.objectContaining({ userId: USER, targetLanguage: 'es', durationSeconds: DUB_SECONDS }),
         expect.objectContaining({ jobId: res.jobId }),
       );
     });
@@ -322,14 +336,14 @@ describe('DubbingService', () => {
       await build();
       const remove = jest.fn();
       queue.getJob.mockResolvedValue({
-        data: { userId: USER, projectId: 'p-1', reservedCredits: 90 },
+        data: { userId: USER, projectId: 'p-1', reservedCredits: DUB_COST },
         getState: () => Promise.resolve('waiting'),
         remove,
       });
       const res = await service.stopDub(USER, 'job-1');
       expect(remove).toHaveBeenCalled();
       // The worker never ran it, so the API owns the refund here.
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: 90 });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
       expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'failed', error_message: 'Cancelled by user' }),
       );
@@ -357,7 +371,7 @@ describe('DubbingService', () => {
       target_language: 'es',
       target_accent: null,
       is_video: false,
-      duration_seconds: 30 * 60,
+      duration_seconds: DUB_SECONDS,
     };
 
     it.each(['queued', 'processing', 'cloning'])('refuses to regenerate a %s dub', async (status) => {
@@ -369,7 +383,7 @@ describe('DubbingService', () => {
     it('regenerates a completed dub, reserving credits again', async () => {
       await build({ dubbing_projects: chain({ data: { ...row, status: 'completed' }, error: null }) });
       await service.regenerateDub(USER, 'p-1');
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -300 });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
       expect(queue.add).toHaveBeenCalled();
     });
 
