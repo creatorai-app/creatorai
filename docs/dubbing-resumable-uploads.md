@@ -11,10 +11,14 @@ of the whole file and the single-language, single-voice pipeline described in
 |---|---|---|
 | Engine | Gemini + Modal only | **Cypher (in-house dubbing)** or **ElevenLabs**, picked per dub, on every plan |
 | Price | One rate | Per engine, per second, per language: Cypher 1 credit/s, ElevenLabs 1/6 credit/s (Starter 3/s on both) |
-| Languages offered | 20 (Cypher only) | **33** in total: ElevenLabs all 33, Cypher all **23** Chatterbox speaks |
+| Languages offered | 20 (Cypher only) | **34** in total: ElevenLabs all 34, Cypher all **23** Chatterbox speaks |
+| ElevenLabs route | One legacy `POST /v1/dubbing` per language | One **project** per dub on `dubbing_v2` (plus `dubbing_v1` for Bengali), one language target per language |
+| Voice | Fixed | **Voice mode** (keep my voice and accent / balanced / sound native), **dialects** on ElevenLabs, **names and terms** kept as they are |
+| Music and effects (Cypher) | Lost: the dub was speech only | Kept: the voices are separated from the background and the dub is mixed back over it |
 | Languages per dub | 1 | Starter 1, Creator/Pro **2**, Business/Scale **3**. One output each |
 | Speakers | One cloned voice for everyone | Every speaker detected and dubbed in their own cloned voice |
-| Timing | Speech concatenated end to end | Each line placed back at its original time |
+| Timing | Speech concatenated end to end | Each line placed back at its original time, word-timed where forced alignment holds up, each turn fitted to its slot |
+| Timeline | None | Every language shows its lines: time, speaker, original, translation |
 | Bytes before dubbing starts | The whole file (1 GB) | The audio track only (tens of MB) |
 | Video upload | One request, before dubbing | Parallel parts, **while** dubbing runs |
 | Dropped connection / closed tab | Start over | Continue from what GCS already has |
@@ -30,8 +34,9 @@ Constants live in `packages/validations/src/consts/dubbing.ts` (`DUB_ENGINES`,
 | | Cypher (in-house dubbing) | ElevenLabs |
 |---|---|---|
 | Runs on | Gemini (Vertex) + Chatterbox on Modal | ElevenLabs Dubbing API |
-| Languages | 23: every language Chatterbox Multilingual speaks | 33: 29 on the default route, plus Bengali, Hebrew, Norwegian and Swahili on the `dubbing_v1` route |
-| Accents | None (Chatterbox copies the accent of the voice sample) | Yes, for en, es, pt, fr, zh (not on `dubbing_v1`) |
+| Languages | 23: every language Chatterbox Multilingual speaks | 34: 33 on Dubbing v2, plus Bengali on `dubbing_v1` |
+| Dialects | None (Chatterbox copies the accent of the voice sample) | v2 dialects for en, es, pt, fr, zh, ar (none for Bengali) |
+| Voice mode | Only once the Cypher TTS v2 service is live (Chatterbox `cfg_weight`) | Always (Dubbing v2 cloning strength) |
 | Speakers | Our own algorithm, below | ElevenLabs' own detection |
 | Price (paid plans) | 1 credit per second, per language | 1/6 credit per second, per language |
 | Our cost | ~$0.054 per minute (breakdown below) | ~$0.24 per minute at list price, per language |
@@ -65,6 +70,11 @@ vendor cost (`creditsForCost`). Cypher's cost per source minute, per language:
 | GCS egress | voice samples to Modal, the video to the worker, ~$0.12/GB | 0.0050 |
 | **Total** | | **~0.054** ($0.0009/s) |
 
+Not in this table yet: since the stems and word-timing stages, a Cypher dub with
+`ELEVENLABS_API_KEY` set also calls ElevenLabs stem separation and forced alignment once
+per minute of source (not per language). Check their per-minute price against this rate
+before relying on it; without the key those stages are skipped and the table stands.
+
 `creditsForCost(0.0009)` = **1 credit per second**. What a month buys:
 
 | Plan | Credits | ElevenLabs | Cypher |
@@ -81,42 +91,119 @@ comment there explains how to raise it when the grant ends. At list prices Cyphe
 us about a quarter of what ElevenLabs does. If Cypher should be the cheaper option for
 users, lower `CYPHER_DUBBING_CREDIT_MULTIPLIER`; the public pages follow the constants.
 
-### ElevenLabs and speakers (research)
+## ElevenLabs: the dubbing project API
 
-From the [create dubbing API](https://elevenlabs.io/docs/api-reference/dubbing/create) and
-[dubbing overview](https://elevenlabs.io/docs/capabilities/dubbing):
+Every new ElevenLabs dub runs on the dubbing **project** API
+([create project](https://elevenlabs.io/docs/api-reference/dubbing/create-project)).
+The legacy `POST /v1/dubbing` is only followed for dubs already started on it
+(`vendor_dub_id = dub:<id>`); nothing new is sent there. The code is in
+`packages/workers/src/processor/utils/elevenlabs-dubbing.ts`, the flow in
+`dubWithElevenLabs` / `dubElevenLabsModel` in the processor.
 
-- `num_speakers`: "Set to 0 to automatically detect the number of speakers". We send 0.
-- It detects "multiple speakers, even with overlapping speech", up to 32 per file.
-- Voice cloning is on by default, per speaker (`disable_voice_cloning` would use library voices instead).
-- `target_lang` takes one language, so N languages are N dubs. They run in parallel on ElevenLabs.
-- API limits: 3 GB and 180 minutes per source, the same as our paid caps.
-- The dubbed file comes back as MP3 or MP4 ([get audio](https://elevenlabs.io/docs/api-reference/dubbing/audio/get)). We always convert it to MP3.
+```
+per dub, per model (dubbing_v2, and dubbing_v1 only when Bengali is picked)
+  find a live project with reference = <our projectId>[#generation]     (a lost create's answer)
+  or POST /v1/dubbing/project  multipart: source_url, model_id, reference,
+                               source_language (if the user picked one), keyterms (one field per term)
+  -> store its id on dubbing_projects.vendor_projects[model]           BEFORE any target
+  (v2 with no source language: wait for `ready`, read the detected language off the source transcript)
+  per language without a stored target:
+     find a live target for the language, or
+     POST /v1/dubbing/project/{id}/language  JSON: target_language (base code or v2 dialect tag),
+                                                   voice_settings: { cloning_strength } (v2 only)
+     -> store project:<projectId>:<languageId> on dubbing_outputs.vendor_dub_id
+  per language: poll the target (queued -> processing -> completed | stale | failed)
+     re-read it for a fresh outputs.lossless_audio (signed, 1 hour), download, convert to MP3
+     read the source and target transcripts -> the language's timeline; store warnings
+```
 
-So ElevenLabs needed no speaker work from us.
+What each rule is for:
 
-### ElevenLabs models and languages (research)
+- **Charging.** Creating a project charges one language up front, which the first target
+  uses. So a project is stored before anything else, a resume never creates a second
+  one, and before creating a project or a target the worker looks for one this dub
+  already made (`findProjectByReference`, `findLanguageTarget`), in case a create went
+  through but its answer never arrived. Regenerate bumps `vendor_projects.generation`,
+  which is part of the reference, so a fresh start never finds the old project.
+- **Failures.** A failed project or target carries `error: { message_type, error }`; the
+  reason is read from `error.error` (the old code read `error.message` and always said
+  "no reason given"). A target that failed with `project_failed` reads the project for
+  the real cause. A failed project is forgotten (a retry makes a new one); a failed
+  target only clears that language's target (a retry adds one to the same project).
+- **`stale`** means a target has an output that no longer matches an edited transcript.
+  Nothing here edits transcripts (editing and regenerating are Enterprise only), so it is
+  taken as done and logged.
+- **Concurrency.** Self-serve workspaces run 3 dubbing jobs at once per model (Enterprise
+  10). A 429 or a body naming `too_many_concurrent_requests` / `system_busy` is waited out
+  with jittered backoff (5 s doubling to a minute) until the dub's deadline (90 minutes,
+  or 1.5 times the source length), checking for a cancel before and after every wait. It
+  never fails or refunds a language by itself. Reads also survive 5xx and dropped
+  connections; creates do not retry those, since they may have gone through.
+- **Warnings.** `voices_not_permitted` (a speaker got a replacement voice) is stored on the
+  output and shown on the dub page. Warnings are keyed on `type`, never on the message.
+- **Source URL.** A project returns before ElevenLabs fetches the source, so the URL must
+  stay readable for hours. The bucket is public-read, so the public URL does;
+  `vendorSourceUrl` in the processor is the one place to switch to long-lived signed URLs.
+- **Timeline.** After a language is delivered, both transcripts are read and mapped to the
+  shared timeline shape (below). A transcript that cannot be read leaves the timeline
+  empty and is logged; it never fails a delivered dub.
 
-ElevenLabs now documents two dubbing models ([languages](https://elevenlabs.io/docs/help-center/product/dubbing/which-languages-are-supported-in-dubbing)):
-Dubbing v2 (alpha, 104 languages, the default in their app) and Dubbing v1 (88 languages,
-"the same languages as the Eleven v3 model", Bengali among them). The plain
-`POST /v1/dubbing` route this code calls does not document which model it runs; what is
-known is that it has served our 29 languages in production and refused Bengali. So:
+### Why only Bengali is on dubbing_v1
 
-- the 29 stay on `POST /v1/dubbing`;
-- Bengali, Hebrew, Norwegian and Swahili go through the project API pinned to
-  `model_id=dubbing_v1` (`DUBBING_V1_LANGUAGES`), which the v1 table lists for all four.
-  That route caps at 1 GB / 45 min and takes no accent, and only on ElevenLabs:
-  `maxDubSecondsForPlan(plan, languages, engine)` does not hold a Cypher dub in
-  Norwegian to an ElevenLabs route limit.
+A project is fixed to one model and every target inherits it. Dubbing v2 is the default
+and the better model (it has the cloning strength control and the dialect tags), and its
+language table covers every language offered here except Bengali, which only the v1
+table lists. So Bengali gets its own `dubbing_v1` project (no dialect, no cloning
+strength, the smaller 1 GB / 45 min cap), and everything else, Hebrew, Norwegian and
+Swahili included, is on v2 with the plan's own caps. A dub with Bengali and another
+language is two ElevenLabs projects.
 
-Chatterbox Multilingual's [model card](https://huggingface.co/ResembleAI/chatterbox) lists 23
-languages; Cypher previously offered 20 because Hebrew, Norwegian and Swahili had no label.
-All 23 are offered now, and every one is also on ElevenLabs, so the total is 33. The code is in
-`packages/workers/src/processor/utils/elevenlabs-dubbing.ts` (moved out of the processor,
-where it sat unused while Cypher was the only engine). The dub id is saved on the output
-row the moment it is created, so a resumed run follows that dub instead of paying for a
-second one. If ElevenLabs itself reports the dub failed, the id is cleared so a retry starts fresh.
+## Languages, dialects and voice
+
+All in `packages/validations/src/consts/dubbing.ts`; public pages read the counts from
+`dubbableLanguagesFor`.
+
+| | Cypher | ElevenLabs |
+|---|---|---|
+| Languages | 23 (`CHATTERBOX_LANGUAGES`) | 34: `ELEVENLABS_V2_LANGUAGES` (33) plus `DUBBING_V1_LANGUAGES` (`bn`) |
+| Only here | none | bg, bn, cs, fil, hr, id, ro, sk, ta, uk, yue |
+
+The new-dub menu shows the chosen engine's count and lists, greyed out, the languages
+only the other engine speaks. Cantonese is its own language on v2 (`yue`); `cmn` is not
+added next to `zh`.
+
+**Dialects** (ElevenLabs v2 only). The stored `accent` values are kept and mapped to v2
+target tags in one place, `elevenLabsTargetTag`:
+
+| Language | Stored value | Tag |
+|---|---|---|
+| English | american / british / australian / canadian | en-US / en-GB / en-AU / en-CA |
+| English | indian (retired: no v2 dialect; label kept for history) | en |
+| Spanish | castilian / latin american / argentinian / chilean | es-ES / es-MX / es-AR / es-CL |
+| Portuguese | brazilian / european | pt-BR / pt-PT |
+| French | french / canadian | fr-FR / fr-CA |
+| Chinese | mandarin / taiwanese / cantonese | zh / zh-TW / yue |
+| Arabic | egyptian | ar-EG |
+
+**Voice mode** (`DUB_VOICE_MODES`, default `balanced`), stored on the project:
+
+| Mode | Label | ElevenLabs cloning strength (0 to 10) | Chatterbox (TTS v2 only) |
+|---|---|---|---|
+| `like_me` | Keep my voice and accent | 9 | cfg_weight 0.5, exaggeration 0.5 |
+| `balanced` | Balanced | 7 (ElevenLabs' default) | cfg_weight 0.5, exaggeration 0.5 |
+| `native` | Sound native | 4 | cfg_weight 0 (drops the sample's accent), exaggeration 0.5 |
+
+`cloningStrengthFor` takes one off when the source and target are in different groups
+(Latin-script European, Cyrillic, Arabic-script, Indic, CJK, Southeast Asian, African;
+`DUB_LANGUAGE_GROUPS`), clamps to 0..10, and makes no adjustment for an unknown source or
+a language in no group. These are starting values, to tune by ear. The form shows the
+voice mode on ElevenLabs always, and on Cypher only when `/dubbing/access` reports it
+(`CYPHER_TTS_V2_URL` set on the API), since the frozen Modal app takes no voice controls.
+
+**Source language** (optional, "Detect automatically" by default) and **names and terms**
+(up to 50; each at most 50 characters and 5 words, none of `<>{}[]\`; trimmed and
+deduplicated) are stored on the project. ElevenLabs gets them as `source_language` and
+`keyterms`; Cypher gives Gemini the source language and keeps the terms untranslated.
 
 ## Several languages in one dub
 
@@ -130,10 +217,10 @@ One project (the upload), one row in `dubbing_outputs` per language. Each langua
 The per-plan limit is `maxDubLanguagesForPlan`: Starter 1, Creator 2, Pro 2, Business 3,
 Scale 3 (unknown plans get 1). The API enforces it; the page shows it
 (`DubLanguageTargets`). When several languages are picked, the plan's duration and size
-caps are tightened by the strictest of them (Bengali's `dubbing_v1` route: 1 GB / 45 min).
+caps are tightened by the strictest of them (Bengali's `dubbing_v1` model: 1 GB / 45 min).
 
 Cypher dubs the languages one after another (each line is a GPU call, and running
-languages side by side would only start more Modal containers). ElevenLabs dubs them in parallel.
+languages side by side would only start more containers). ElevenLabs dubs them in parallel.
 
 ## Cypher's speaker algorithm
 
@@ -159,52 +246,109 @@ documented only for the Interactions API (not Vertex) and caps diarized audio at
 
 ### What Cypher does instead: the audio is the clock
 
-`packages/workers/src/processor/utils/dub-segments.ts` and `cypher-analysis.ts`:
+`packages/workers/src/processor/utils/` (`dub-segments.ts`, `cypher-analysis.ts`,
+`cypher-align.ts`, `cypher-fit.ts`, `elevenlabs-audio.ts`, `cypher-tts.ts`) and the
+Cypher section of the processor. Every stage stores its result on
+`dubbing_projects.analysis` or in GCS before the next starts, so a failure resumes at the
+next step. Stages marked *optional* need `ELEVENLABS_API_KEY` and fall back without
+failing the dub.
 
-1. **Map the speech.** One ffmpeg `silencedetect` pass over the audio track (`detectSpeech`)
-   gives every stretch of sound between pauses of 0.3 s or more, with exact times.
-2. **Cut windows at pauses.** The source is analysed in ~10-minute windows
-   (`planWindows`), each boundary moved to the longest pause within a minute of where it
-   would fall, so no word is split between windows.
-3. **Ask Gemini who said what.** For each window, Gemini returns the speakers and the
-   lines in order, speaker and text only, no times (`analyzeWindow`). It is given the
-   speakers heard in earlier windows (id plus a short voice description) so one person
-   keeps one id across the recording.
-4. **Place every line on the speech** (`alignToSpeech`). Consecutive lines of one speaker
-   form a turn. A dynamic programme splits the window's stretches of speech into one
-   consecutive group per turn, choosing the split whose group lengths best match each
-   turn's share of the text. Every turn boundary lands on a real pause, which is where
-   speakers change. Within a turn, its sentences are spread over the turn's own speech by
-   their share of the text.
-5. **Cut a voice sample per speaker** (`pickReferenceLines`, `assignVoices`). Each speaker's
-   longest lines, trimmed 0.15 s at each edge, up to about 45 s, joined into one WAV. A
-   speaker with under 3 s of usable speech (an interjection, a misattribution) borrows the
-   voice of whoever speaks most. If nobody has 3 s, everyone gets the first 2 minutes.
-6. **Translate line by line** (`translateLines`), in batches of 80, saved after every batch.
-7. **Dub turn by turn** (`buildTurns`). Consecutive lines of one speaker, less than 1.5 s
-   apart and under 1,500 characters together, are one Modal call using that speaker's
-   sample. Each result is stored as raw 16-bit PCM, so its byte count is its exact duration.
-8. **Assemble on the timeline** (`placeOnTimeline`). Each turn starts at its original
-   time, or straight after the previous turn if that one ran long (translations often
-   do), never overlapping. Gaps are silence. The track is encoded to MP3.
+1. **Map the speech on the mix.** One ffmpeg `silencedetect` pass (`detectSpeech`, preset
+   `mix`: -35 dB, 0.3 s pauses) gives every stretch of sound.
+2. **Cut windows at pauses.** ~10-minute windows (`planWindows`), each boundary on the
+   longest pause within a minute of where it would fall.
+3. **Separate the voices from the music** *(optional)*. Each window goes to ElevenLabs
+   stem separation (`two_stems_v1`), asking for `pcm_44100`, then `mp3_44100_192`, then
+   `mp3_44100_128` when the tier refuses a format (the format used is logged and stored).
+   The ZIP is unpacked in a stream; the vocal stem is the file whose name says "vocal",
+   the background the other one, and anything else means no stems. Each window's stems
+   are padded or cut to exactly its length and stored, then joined into
+   `work/stems/vocals.flac` and `background.flac`. Fallback: `analysis.stems.status =
+   failed` (tried once more on the next run while the analysis is unfinished) or
+   `skipped` (no key), and Cypher works on the mix as before.
+4. **Re-map the speech on the vocals.** With a vocal stem, the speech map is redone on it
+   (preset `vocals`: -40 dB, 0.25 s), so music under the speech no longer hides the
+   pauses. A vocal stem with no speech (a music-only file) fails the dub, with a refund.
+5. **Ask Gemini who said what** per window, listening to the vocal stem when there is one,
+   told the source language when the user gave it (`analyzeWindow`). Lines are placed on
+   the speech by pauses (`alignToSpeech`, unchanged).
+6. **Time every word** *(optional)*. Each window's audio and its lines (joined by
+   newlines) go to ElevenLabs forced alignment; the words are mapped back to lines in
+   order (`mapAlignmentToLines`; characters for unspaced scripts such as Chinese,
+   Japanese and Thai). A window takes the new times only when every line was found and
+   the overall loss is under `CYPHER_ALIGNMENT_MAX_LOSS` (default 1.5; every window's loss
+   is logged, to tune it). Otherwise it keeps the pause placement.
+   `analysis.alignment.windows[w].timingSource` says which one each window uses.
+7. **Cut a voice sample per speaker** from the vocal stem at 24 kHz (`pickReferenceLines`,
+   `assignVoices`): the speaker's longest clean lines, **best first** (Chatterbox builds
+   its prompt from the first 6 to 10 s of the sample and only averages the rest), skipping
+   lines within 0.3 s of another speaker's (likely overlap), up to about 45 s. A speaker
+   with under 3 s of clean speech borrows the main voice; if nobody has 3 s, everyone gets
+   the first 2 minutes. Samples live under `work/voices/v2/`.
+8. **Translate with a time budget** (`translateLines`): each line goes with its speaker and
+   its length in seconds, and the prompt asks for a line that fits that time at a natural
+   pace, keeps names, brands and every keyterm untranslated, and keeps the tone. Each batch
+   of 80 sees the last 5 translated lines before it. Saved after every batch.
+9. **Build turns** (`buildTurns`): consecutive lines of one speaker, never across a pause
+   over 1.5 s, at most **300 characters** (the chunk size of the Modal app itself, so no
+   call glues sentences together). Each turn carries its source end and the time it has
+   before the next one starts (`available`).
+10. **Speak and fit each turn** (`synthesizeTurn`): synthesize, trim the silence at both
+    ends, measure; speed up with `atempo` up to `CYPHER_MAX_TEMPO` (default 1.15); if it
+    still overruns by more than 0.3 s, Gemini shortens the line once (`shortenLine`) and it
+    is spoken again. A take over 2.5 times the expected length for its text is a runaway:
+    one retry, then it is cut to its slot plus 0.5 s. Each fitted turn is stored as PCM with
+    a record `{ turnText, speaker, text, rawSeconds, fittedSeconds, tempo, shortened }`; a
+    resume reuses a stored turn only if its record matches the turn it is about to speak.
+11. **Assemble** (`assembleTurns`): each turn at its original time, or straight after the
+    one before if that ran long (`placeOnTimeline`). If the last turns would run past the
+    end of the source they are sped up within the same cap (`compressTail`), and anything
+    still over is cut.
+12. **Match the loudness and mix.** The original voices' integrated loudness (EBU R128 on
+    the vocal stem, or on the source without one) is measured once; the dubbed speech is
+    moved to it (at most 20 dB either way), mixed over the background stem with
+    `amix ... normalize=0` at 44.1 kHz stereo, limited (`alimiter`, auto-level off) and
+    encoded as MP3. Without stems it is the speech alone, at the matched loudness.
 
-Measured on the same test recordings:
+Speech comes from `cypherTtsFromEnv`: the Cypher TTS v2 service when `CYPHER_TTS_V2_URL`
+is set (it takes the voice mode's `cfg_weight` and `exaggeration`), otherwise the frozen
+Modal app with its old contract, unchanged.
+
+Every ffmpeg command is built by a pure function (`silenceDetectArgs`, `stemToFlacArgs`,
+`fitTurnArgs`, `loudnessArgs`, `mixArgs`, `muxArgs`, ...) tested as data in
+`ffmpeg.spec.ts`, and run against real media in `ffmpeg.check.ts`.
+
+Measured before these changes, on the same test recordings:
 
 - 3.2 min, 24 lines: every line placed within 0.5 s of its true start, all speakers right.
 - 30 s end to end, real Gemini and the real Modal endpoint: 2 speakers, 2 voice samples,
   5 turns each dubbed in the right voice, each turn within about 0.3 s of its original
-  start; longer Spanish lines pushed the later ones back (7.28 s instead of 6.44 s)
-  without overlap. The first Modal call was a 97 s cold start, the rest 7 to 9 s each.
-
-The Modal app is unchanged. Called without `output_put_url`, its existing endpoint
-returns the WAV bytes, and each call simply gets a different `reference_url` per speaker.
+  start. The first Modal call was a 97 s cold start, the rest 7 to 9 s each.
 
 ### Mux
 
-For a video, each language's MP3 is muxed over the original (`-c:v copy`, `+faststart`).
-The dubbed audio is padded with silence to the video's length (`apad` + `-shortest`),
-because a dub now ends at its last spoken line and a silent or music-only ending would
-otherwise be cut off.
+For a video, each language's MP3 is muxed over the original (`-c:v copy`, AAC 192k,
+`+faststart`), padded with silence (`apad` + `-shortest`). The dubbed track should run as
+long as the video (ElevenLabs' always does, Cypher's does once it has a background); a
+gap over 0.5 s is logged as a warning.
+
+## Timelines
+
+Every language stores `dubbing_outputs.timeline`, one entry per line, the same shape for
+both engines (`DubTimelineSegment` in `packages/validations`):
+
+```ts
+{ id, speaker, start, end, sourceText, translation, dubStart?, dubEnd? }
+```
+
+Times are seconds from the start of the source. ElevenLabs fills it from its source and
+target transcripts (`id` is ElevenLabs' segment id, `speaker` its `speaker_id`); Cypher
+from its lines, translations and final placements (`id` is the line index, and
+`dubStart`/`dubEnd` say where the dub of that line actually plays). A line with no
+translation has `translation: null`. The dub page shows it as a collapsible list per
+language; clicking a row plays the dub from that line. Nothing edits a timeline yet: the
+ids are what an editor would address later (ElevenLabs segment edits and regeneration
+are Enterprise only).
 
 ## Uploads: audio first, video alongside, both resumable
 
@@ -300,7 +444,8 @@ Output (per language): `pending → dubbing → (awaiting_video) → completed |
 
 ## Database
 
-Migration `packages/supabase/migrations/20260926000000_dubbing_resumable_uploads.sql`.
+Migrations `packages/supabase/migrations/20260926000000_dubbing_resumable_uploads.sql`
+and `20260928000000_dubbing_voice_mode_and_timelines.sql`.
 
 `dubbing_projects` gains:
 
@@ -310,11 +455,16 @@ Migration `packages/supabase/migrations/20260926000000_dubbing_resumable_uploads
 | `audio_object`, `audio_size`, `audio_content_type`, `audio_extracted`, `audio_session_uri` | The audio the dub reads and its upload session |
 | `video_object`, `video_upload_id`, `video_part_size`, `video_size`, `video_content_type`, `video_status` | The multipart video upload |
 | `source_fingerprint` | Refuses a different file on resume |
-| `analysis` | Cypher: speech map, windows, speakers, placed lines |
+| `analysis` | Cypher: speech map, windows, speakers, placed lines; since version 2 also `stems`, `alignment`, `loudness` |
+| `source_language` | What the source is spoken in; null means detect it |
+| `voice_mode` | `like_me`, `balanced` (default) or `native` |
+| `keyterms` | Names and terms kept as they are (`text[]`, default empty) |
+| `vendor_projects` | ElevenLabs project per model and the regenerate generation: `{ dubbing_v2, dubbing_v1, generation }` |
 
 New table `dubbing_outputs`: `language`, `accent`, `status`, `translation` (Cypher),
 `segment_count` / `segments_done`, `vendor_dub_id` (ElevenLabs), `dubbed_audio_url`,
-`dubbed_url`, `credits_consumed`, `error_message`. Unique per project and language, owner-only
+`dubbed_url`, `credits_consumed`, `error_message`, and since the second migration
+`timeline` and `warnings`. Unique per project and language, owner-only
 RLS select. No foreign key: `dubbing_projects.project_id` has no unique index, and adding one
 could fail on existing data, so the API deletes a project's outputs itself.
 
@@ -348,8 +498,12 @@ Unchanged: regenerate, stop, status SSE, delete (which now also removes the outp
   audio.m4a | audio.webm            extracted audio (or the original file itself)
   <original file name>              original video (multipart)
   work/analysis/window-000.flac     Cypher: windows Gemini listens to
-  work/voices/S1.wav ...            Cypher: one voice sample per speaker
-  work/<language>/turn-0000.pcm     Cypher: dubbed turns
+  work/stems/window-000-vocals.flac Cypher: each window's stems, as they land
+  work/stems/vocals.flac            Cypher: the voices, joined
+  work/stems/background.flac        Cypher: music and effects, joined
+  work/voices/v2/S1.wav ...         Cypher: one voice sample per speaker (best line first, 24 kHz)
+  work/<language>/turn-0000.pcm     Cypher: dubbed turns, fitted
+  work/<language>/turn-0000.json    Cypher: each turn's record (text, tempo, shortened)
 dubbed/<projectId>/<language>.mp3   dubbed track (every dub)
 dubbed/<projectId>/<language>.mp4   dubbed video
 ```
@@ -404,17 +558,35 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
   per-second rate. Leave unset to use the default of 1. Set it in both places or the
   reserve and the settle will disagree.
 - `MODAL_API_URL`, `GOOGLE_*` and `GCS_DUBBING_BUCKET`: unchanged.
+- `ELEVENLABS_API_KEY` on the **worker** now also turns on Cypher's stem separation and
+  forced alignment. A scoped key needs dubbing, speech to text / forced alignment, and
+  music (stem separation) access.
+- `CYPHER_ALIGNMENT_MAX_LOSS` (worker, optional, default `1.5`): the highest forced
+  alignment loss a window's word timing is used at. Every window's loss is logged.
+- `CYPHER_MAX_TEMPO` (worker, optional, default `1.15`, clamped to 1..1.5): the most a
+  dubbed turn is sped up to fit its slot.
+- `CYPHER_TTS_V2_URL` and `CYPHER_TTS_V2_TOKEN` (worker): the Cypher TTS v2 service base
+  URL and its bearer token. Leave unset until the service is deployed; the frozen Modal
+  app is used meanwhile. Set `CYPHER_TTS_V2_URL` on the **API** too, to show the voice
+  mode on Cypher. See `services/cypher-tts/README.md`.
+- `SMOKE_ELEVENLABS=1` (a developer machine only): lets `packages/workers/scripts/dubbing-smoke.ts` run.
 
 ### Deploy
 
 1. Apply the migrations (`supabase db push` or your usual flow):
-   `20260926000000_dubbing_resumable_uploads.sql` (schema) and
-   `20260927000000_blog_dubbing_language_count.sql` (blog copy, 29 to 33 languages).
-2. Regenerate `llms.txt` once the blog migration is in, so the two comparison-table rows
-   it quotes pick up the new count: `pnpm --filter web llms:generate`.
+   `20260926000000_dubbing_resumable_uploads.sql` (schema),
+   `20260927000000_blog_dubbing_language_count.sql` (blog copy, 29 to 33 languages),
+   `20260928000000_dubbing_voice_mode_and_timelines.sql` (schema: the worker reads the new
+   columns, so this must be in before the worker is deployed) and
+   `20260928000100_blog_dubbing_language_count_34.sql` (blog copy, 33 to 34).
+2. Regenerate `llms.txt` once the blog migrations are in, so the two comparison-table rows
+   it quotes pick up the new count: `pnpm --filter web llms:generate`. (The header line was
+   already moved to 34 by hand in this change; the generator writes the same line.)
 3. Apply the CORS and lifecycle config above.
 4. Deploy API, worker and web together (new routes, new job shape, new response shape).
-5. Modal: nothing to deploy. `modal/dubbing_app.py` is untouched.
+5. Modal: nothing to deploy. `modal/dubbing_app.py` is untouched. The Cypher TTS v2
+   service (`services/cypher-tts`, `modal/dubbing_app_v2.py`) is deployed separately,
+   whenever a GPU host is picked; see its README.
 
 ## Public pages
 
@@ -430,8 +602,8 @@ or language change updates the pages with it:
   credits per minute for the user's plan).
 - **`llms.txt` / `llms-full.txt`**: the generator's header now quotes the counts and the
   every-plan pricing, and no longer claims a 60-second Starter cap.
-- **Blog**: a migration moves "29 languages" to 33 in the two comparison tables and the
-  dubbing CTA. Sentences about other tools' language counts are unchanged.
+- **Blog**: migrations move "29 languages" to 33, then to 34, in the two comparison tables
+  and the dubbing CTA. Sentences about other tools' language counts are unchanged.
 
 Still to decide: the dubbing CTA on six posts is titled "Dub a 60-second video now" and
 says "The free plan dubs up to 60 seconds per video". Starter's cap is 45 minutes per
@@ -440,50 +612,81 @@ free plan does. It is marketing copy, so it was left for a decision.
 
 ## Testing
 
-Automated:
+Automated (`pnpm test`, plus the two self-checks):
 
-- `apps/api/src/dubbing/dubbing.service.spec.ts` (62 tests): plan and language limits
-  (Starter 1, Creator/Pro 2, Business/Scale 3), per-language pricing, stricter caps with
-  a `dubbing_v1` language, one output row per language, start idempotency and the two-tab
-  race, per-language refunds on queue failure and cancel, resume re-charging only
-  undelivered languages, regenerate resetting everything, older single-language dubs,
-  multipart completion checks, delete cleanup.
-- `packages/workers/src/processor/utils/dub-segments.spec.ts` (25 tests): silence-log
-  parsing, window planning at pauses, alignment (turns on pauses, sentences within turns,
-  no line starting in a pause, the no-pause fallback), turns, timeline placement, voice
-  samples, voice assignment, sentence splitting.
-- `packages/workers/src/processor/utils/cypher-analysis.spec.ts`: merging windows.
-- `packages/validations/src/consts/dubbing.check.ts`: engines, languages per engine
-  (23 and 33), `dubbing_v1` routing and its ElevenLabs-only caps, accents, per-plan
-  limits, per-engine rates and env overrides, the published allowances, the init schema
+- `packages/validations/src/consts/dubbing.check.ts`: engines and language counts, Bengali
+  as the only v1 language, the caps it tightens, dialect tags for every stored accent
+  (including the retired `indian`), voice modes, cloning strength (modes, near and far
+  pairs, unknown source, clamping), Chatterbox parameters, and the init schema's
+  `sourceLanguage`, `voiceMode` and `keyterms` rules
   (`npx tsx packages/validations/src/consts/dubbing.check.ts`).
-- The API spec also checks each engine's rate in `/access`, that an env override moves
-  only its own engine, that an ElevenLabs dub reserves at the ElevenLabs rate, and that a
-  Cypher dub in Norwegian is not held to the ElevenLabs route cap.
+- `packages/workers/src/processor/utils/elevenlabs-dubbing.spec.ts`: the exact project form
+  (and no `target_language`), target JSON with and without `voice_settings`, the fallback
+  when voice settings are refused, every project and target status including `stale`,
+  reasons read from `error.error`, 429 / concurrency backoff and a cancel during it, a
+  fresh signed URL before each download and after an expired one, legacy `dub:` rows,
+  transcript-to-timeline mapping, and the lookups for lost creates.
+- `packages/workers/src/processor/dubbing.processor.spec.ts`: ElevenLabs end to end against
+  an in-memory database: one project stored before any target, resume after the project
+  and after one of several targets, Bengali plus another language as two projects, a
+  concurrency error that does not refund, a transcript failure that does not fail a
+  delivered dub, failed targets and projects, cancel, legacy dubs, repricing.
+- `packages/workers/src/processor/dubbing.processor.cypher.spec.ts`: Cypher end to end:
+  stems, speech on the vocals, alignment, voice samples from the vocals, the mix over the
+  background; each fallback (stems failing or unidentifiable, no key, alignment loss);
+  older analyses upgraded without new Gemini calls; music-only, silent and audio-less
+  files failing with a refund; runaway and shortened turns; resume reuse; cancel.
+- `cypher-align.spec.ts`, `cypher-fit.spec.ts`, `dub-segments.spec.ts`,
+  `cypher-analysis.spec.ts`, `elevenlabs-audio.spec.ts`, `cypher-tts.spec.ts`,
+  `ffmpeg.spec.ts`: the pure logic and the argument builders.
+- `packages/workers/src/processor/utils/ffmpeg.check.ts`: every ffmpeg command against real
+  media (needs ffmpeg): both speech presets, raw PCM stems, joining, trimming, atempo,
+  loudness, the mix and the mux (`npx tsx packages/workers/src/processor/utils/ffmpeg.check.ts`).
+- `apps/api/src/dubbing/dubbing.service.spec.ts`: the new fields stored and passed to the
+  job, regenerate's new generation, resume keeping the project, timelines in `getDub`,
+  voice mode engines in `/access`.
+- `apps/web/components/__tests__/dubbing-options.test.tsx`: keyterm chips and their rules,
+  the voice mode picker, the timeline and its seek.
+- `services/cypher-tts/test_server.py`: request validation with the model replaced
+  (`python -m pytest -q` in that folder).
 
-Against the real services (throwaway `__upload-self-test/` and `__cypher-self-test/`
-prefixes, deleted after): multipart upload, abort, resumable session and resume, CORS
-preflights, Gemini speaker analysis and translation, and the Cypher end-to-end run above.
+Against the real ElevenLabs API, with a key (spends credits: one language, one stem
+separation, one alignment):
 
-Manual, after the migration and bucket changes:
+```bash
+SMOKE_ELEVENLABS=1 ELEVENLABS_API_KEY=... \
+  npx tsx packages/workers/scripts/dubbing-smoke.ts ./clip.mp4 --target es --source en --mode balanced --keyterm "Creator AI"
+```
 
-1. Cypher, a video with two or more people, two languages: the detail page shows
-   "Speakers: N", and each language has every person in their own voice.
-2. ElevenLabs, same video, an English target with an accent.
-3. On Starter, a second language cannot be added; on Creator, a third cannot.
-4. The engine cards show 23 and 33 languages and each engine's credits per minute; the
-   cost badge changes when you switch engine.
-5. Mid video upload, close the tab; the list shows "Upload unfinished"; pick the same
-   file on the dub's page and it continues from the missing parts.
-6. Stop the worker mid-dub, restart it, press **Retry**: the log resumes at "line k of N".
+Manual, after the migrations and bucket changes:
+
+1. Cypher, a video with two or more people over music, two languages: "Speakers: N", each
+   person in their own voice, **the music still there**, each language's timeline filled.
+2. ElevenLabs, same video, English (British) and Spanish (Mexico), voice mode "Sound
+   native": two dialects heard; the timeline shows ElevenLabs' lines.
+3. ElevenLabs with Bengali and Spanish: two ElevenLabs projects (worker log), both dubbed.
+4. Hebrew on ElevenLabs with a 60-minute clip on a paid plan: accepted (v2 cap, not 45 min).
+5. A spoken language that equals a target: the form greys it out; the API refuses it.
+6. Names and terms: add "Creator AI"; the dub keeps it untranslated on both engines.
+7. On Starter, a second language cannot be added; on Creator, a third cannot.
+8. The language menu shows each engine's count and greys out the other engine's languages.
+9. Mid video upload, close the tab; pick the same file on the dub's page and it continues.
+10. Stop the worker mid-dub, restart it, press **Retry**: the log resumes at "line k of N",
+    and on ElevenLabs no second project appears in the ElevenLabs dashboard.
+11. A music-only file: fails with "No speech was found", not charged.
 
 ## Known limits
 
 - **Upload speed is still the user's bandwidth.** The video uploads while the dub runs,
   which hides most of the wait but does not shrink it.
-- **Music under the speech** hides the pauses the speaker timing relies on. Lines are then
-  spread by their share of the text, which is less exact; speaker attribution still comes
-  from Gemini.
+- **Music under the speech** is handled by the vocal stem when stem separation works;
+  without it (no key, a refused request), music still hides the pauses and lines are
+  spread by their share of the text.
+- **Stem separation input size** on a long source: each 10-minute window is sent as
+  44.1 kHz FLAC (tens of MB). If ElevenLabs refuses that size, Cypher falls back to the mix.
+- **The language table** in `ELEVENLABS_V2_LANGUAGES` lists the codes this product offers
+  and had confirmed; the full v2 table has more. Add a code there and its label in
+  `supportedLanguages` to offer one.
 - **Overlapping speech** is attributed to one speaker per line.
 - **Speaker ids across windows** rely on Gemini matching voices to earlier descriptions.
   Within one 10-minute window it is consistent; a recording with many similar voices
