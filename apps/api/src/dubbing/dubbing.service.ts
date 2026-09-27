@@ -83,7 +83,7 @@ const PROJECT_COLUMNS = [
   'duration_seconds', 'job_id', 'input_gs_uri', 'input_url', 'dubbed_url', 'credits_consumed', 'error_message',
   'audio_object', 'audio_session_uri', 'audio_size', 'audio_content_type', 'audio_extracted',
   'video_object', 'video_upload_id', 'video_part_size', 'video_size', 'video_content_type', 'video_status',
-  'source_fingerprint', 'source_language', 'voice_mode', 'keyterms',
+  'source_fingerprint', 'source_language', 'voice_mode', 'keyterms', 'vendor_projects',
 ].join(', ');
 
 @Injectable()
@@ -708,9 +708,12 @@ export class DubbingService {
         status: 'queued',
         error_message: null,
         credits_consumed: kept + reservedCredits,
-        // A fresh start detects the speakers again (a new ElevenLabs project too); the old
-        // result may be why it is rerun. A resume keeps both, so nothing is paid twice.
-        ...(resetProgress ? { analysis: null, dubbed_url: null, vendor_projects: null } : {}),
+        // A fresh start detects the speakers again, on a new ElevenLabs project: the
+        // generation bump gives it a new reference, so the worker's lookup for a lost
+        // project cannot find the old one. A resume keeps both, so nothing is paid twice.
+        ...(resetProgress
+          ? { analysis: null, dubbed_url: null, vendor_projects: { generation: Number(row.vendor_projects?.generation ?? 0) + 1 } }
+          : {}),
       })
       .eq('project_id', row.project_id)
       .eq('user_id', userId);

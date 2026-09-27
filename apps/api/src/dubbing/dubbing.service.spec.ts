@@ -655,8 +655,29 @@ describe('DubbingService', () => {
           translation: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null, timeline: null, warnings: null,
         }),
       );
-      // A fresh start is a new ElevenLabs project too.
-      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ analysis: null, vendor_projects: null }));
+      // A fresh start is a new ElevenLabs project too, under a new reference.
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
+        expect.objectContaining({ analysis: null, vendor_projects: { generation: 1 } }),
+      );
+    });
+
+    it('bumps the generation again on a second regenerate', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...row, status: 'completed', vendor_projects: { dubbing_v2: 'proj_1', generation: 1 } }, error: null }),
+        dubbing_outputs: outputsTable([done]),
+      });
+      await service.regenerateDub(USER, 'p-1');
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ vendor_projects: { generation: 2 } }));
+    });
+
+    it('keeps the ElevenLabs project on a resume', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...row, status: 'failed', vendor_projects: { dubbing_v2: 'proj_1' } }, error: null }),
+        dubbing_outputs: outputsTable([undelivered]),
+      });
+      await service.resumeDub(USER, 'p-1');
+      const writes = tables.dubbing_projects.update.mock.calls.map(([fields]: [Record<string, unknown>]) => fields);
+      expect(writes.some((w: Record<string, unknown>) => 'vendor_projects' in w)).toBe(false);
     });
 
     // A dub from before per-language outputs gets one output row the first time it runs again.

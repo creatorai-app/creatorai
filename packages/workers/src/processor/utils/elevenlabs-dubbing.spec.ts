@@ -5,6 +5,8 @@ import {
   createLanguageTarget,
   createProject,
   downloadDub,
+  findLanguageTarget,
+  findProjectByReference,
   elevenLabsClock,
   elevenLabsDeadlineMs,
   ElevenLabsDubFailedError,
@@ -392,6 +394,40 @@ describe('transcripts and timeline', () => {
     const w = toWarnings([{ type: 'voices_not_permitted', speaker_ids: ['b', 'a'] }, { message: 'no type' } as any]);
     expect(w).toEqual([{ type: 'voices_not_permitted', speakerIds: ['b', 'a'] }]);
     expect(mergeWarnings(w, [{ type: 'voices_not_permitted', speakerIds: ['a', 'b'] }])).toHaveLength(1);
+  });
+});
+
+describe('finding what a lost answer left behind', () => {
+  it('finds a live project by reference and model, paging newest first', async () => {
+    const { calls } = scriptFetch([
+      json({ projects: [{ project_id: 'other', reference: 'x', status: 'ready' }], next_cursor: 'c2' }),
+      json({
+        projects: [
+          { project_id: 'failed_one', reference: 'p1', status: 'failed', model_id: 'dubbing_v2' },
+          { project_id: 'v1_one', reference: 'p1', status: 'ready', model_id: 'dubbing_v1' },
+          { project_id: 'mine', reference: 'p1', status: 'preparing', model_id: 'dubbing_v2' },
+        ],
+        next_cursor: null,
+      }),
+    ]);
+    await expect(findProjectByReference(opts(), 'p1', 'dubbing_v2')).resolves.toBe('mine');
+    expect(calls[0].url).toBe(`${API}/dubbing/project?page_size=100&sort_direction=DESCENDING`);
+    expect(calls[1].url).toBe(`${API}/dubbing/project?page_size=100&sort_direction=DESCENDING&cursor=c2`);
+  });
+
+  it('finds nothing rather than failing when the list cannot be read', async () => {
+    scriptFetch([json({ detail: 'nope' }, 403)]);
+    await expect(findProjectByReference(opts(), 'p1', 'dubbing_v2')).resolves.toBeNull();
+  });
+
+  it('finds a live target for the language', async () => {
+    const { calls } = scriptFetch([
+      json({ languages: [{ language_id: 'l_failed', target_language: 'es-MX', status: 'failed' }, { language_id: 'l_ok', target_language: 'es-MX', status: 'processing' }] }),
+    ]);
+    await expect(findLanguageTarget(opts(), 'proj_1', 'es-MX')).resolves.toBe('l_ok');
+    expect(calls[0].url).toBe(`${API}/dubbing/project/proj_1/language?page_size=100`);
+    scriptFetch([json({ languages: [] })]);
+    await expect(findLanguageTarget(opts(), 'proj_1', 'fr')).resolves.toBeNull();
   });
 });
 

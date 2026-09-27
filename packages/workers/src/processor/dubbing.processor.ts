@@ -90,6 +90,8 @@ import {
   createProject,
   downloadDub,
   elevenLabsDeadlineMs,
+  findLanguageTarget,
+  findProjectByReference,
   ElevenLabsDubFailedError,
   getElevenLabsKey,
   getSourceTranscript,
@@ -190,8 +192,12 @@ interface OutputRow {
   credits_consumed: number;
 }
 
-/** ElevenLabs project ids per model, as stored on dubbing_projects.vendor_projects. */
-type VendorProjects = Partial<Record<ElevenLabsDubbingModel, string>>;
+/**
+ * ElevenLabs project ids per model, as stored on dubbing_projects.vendor_projects.
+ * `generation` counts regenerates (the API bumps it), so each fresh start has its own
+ * project `reference` and a lookup never finds the previous run's project.
+ */
+type VendorProjects = Partial<Record<ElevenLabsDubbingModel, string>> & { generation?: number };
 
 interface ProjectRow {
   engine: DubEngine | null;
@@ -401,18 +407,24 @@ export class DubbingProcessor extends WorkerHost {
     try {
       if (needTarget.length) {
         if (!projectId) {
-          projectId = await createProject({
+          // A create whose answer was lost left a project behind: find it before paying
+          // for another. Nothing found means a new one.
+          await this.throwIfCancelled(ctx.job.id!);
+          const reference = this.vendorReference(ctx);
+          projectId = await findProjectByReference(opts, reference, model);
+          if (projectId) await ctx.job.log(`Found this dub's ElevenLabs project ${projectId} (${model}); reusing it.`);
+          projectId ??= await createProject({
             ...opts,
             sourceUrl: this.vendorSourceUrl(ctx),
             modelId: model,
             sourceLanguage: ctx.sourceLanguage,
             keyterms: ctx.keyterms,
-            reference: ctx.projectId,
+            reference,
           });
           // Stored before any target: a resumed run reuses this project instead of
           // paying ElevenLabs' up-front charge for a second one.
           await this.saveVendorProject(ctx, model, projectId);
-          await ctx.job.log(`ElevenLabs project ${projectId} created (${model}).`);
+          await ctx.job.log(`ElevenLabs project ${projectId} (${model}).`);
         }
 
         // Cloning strength depends on how far the source is from each target. With no
@@ -428,14 +440,17 @@ export class DubbingProcessor extends WorkerHost {
             model === 'dubbing_v2'
               ? cloningStrengthFor({ voiceMode: ctx.voiceMode, sourceLanguage, targetLanguage: o.language })
               : null;
-          const languageId = await createLanguageTarget({
-            ...opts,
-            projectId,
-            targetLanguage: elevenLabsTargetTag(o.language, o.accent),
-            cloningStrength,
-            onVoiceSettingsRefused: (reason) =>
-              this.logger.warn(`Dub ${ctx.projectId} (${o.language}): ElevenLabs refused cloning strength, dubbing with defaults. ${reason}`),
-          });
+          const targetLanguage = elevenLabsTargetTag(o.language, o.accent);
+          const languageId =
+            (await findLanguageTarget(opts, projectId, targetLanguage)) ??
+            (await createLanguageTarget({
+              ...opts,
+              projectId,
+              targetLanguage,
+              cloningStrength,
+              onVoiceSettingsRefused: (reason) =>
+                this.logger.warn(`Dub ${ctx.projectId} (${o.language}): ElevenLabs refused cloning strength, dubbing with defaults. ${reason}`),
+            }));
           // Stored as it lands, so a retry follows this target instead of paying for another.
           o.vendor_dub_id = serializeDub({ kind: 'project', projectId, languageId });
           await this.updateOutputs([o.id], { vendor_dub_id: o.vendor_dub_id });
@@ -521,6 +536,11 @@ export class DubbingProcessor extends WorkerHost {
       this.logger.warn(`Dub ${ctx.projectId} (${o.language}): could not read the ElevenLabs transcripts: ${error?.message}`);
       return { timeline: null, warnings: targetWarnings };
     }
+  }
+
+  /** Our `reference` on ElevenLabs projects: the dub's id, plus its generation after a regenerate. */
+  private vendorReference(ctx: RunContext): string {
+    return ctx.vendorProjects.generation ? `${ctx.projectId}#${ctx.vendorProjects.generation}` : ctx.projectId;
   }
 
   /** Record (or forget, with null) a model's ElevenLabs project, one write at a time. */

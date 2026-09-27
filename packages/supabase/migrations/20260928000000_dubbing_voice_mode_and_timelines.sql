@@ -6,9 +6,10 @@
 --   voice_mode       like_me | balanced | native: how close each cloned voice stays to the
 --                    original (ElevenLabs cloning strength, Chatterbox cfg_weight)
 --   keyterms         names and terms kept as they are (brands, people, products)
---   vendor_projects  ElevenLabs project id per model, { "dubbing_v2": "...", "dubbing_v1": "..." },
---                    stored before any language target is created so a resumed run never
---                    pays for a second project
+--   vendor_projects  ElevenLabs project id per model, { "dubbing_v2": "...", "dubbing_v1": "...",
+--                    "generation": n }, stored before any language target is created so a
+--                    resumed run never pays for a second project. `generation` counts
+--                    regenerates and is part of the project's ElevenLabs `reference`.
 --
 -- dubbing_outputs
 --   timeline  one entry per line: { id, speaker, start, end, sourceText, translation, dubStart?, dubEnd? }

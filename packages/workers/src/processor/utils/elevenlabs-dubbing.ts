@@ -95,6 +95,7 @@ interface RawWarning {
 export interface ProjectState {
   project_id: string;
   status: 'queued' | 'preparing' | 'processing' | 'ready' | 'failed' | string;
+  reference?: string | null;
   source_language?: string | null;
   model_id?: string | null;
   error?: DubbingError | null;
@@ -261,6 +262,60 @@ export async function createProject(
   const data = (await response.json()) as { project_id?: string };
   if (!data.project_id) throw new Error('ElevenLabs did not return a dubbing project');
   return data.project_id;
+}
+
+// How far back to look for a project whose create response was lost: newest first, at
+// most this many pages of 100.
+const LOOKUP_PAGES = 3;
+
+/**
+ * A project this dub already created on ElevenLabs, found by its `reference`, for when
+ * the create went through but its answer never arrived (a dropped connection, a worker
+ * killed mid-request) and so its id was never stored. A failed project does not count.
+ * Returns null when there is none, or when the list cannot be read.
+ */
+export async function findProjectByReference(opts: CallOptions, reference: string, modelId: ElevenLabsDubbingModel): Promise<string | null> {
+  let cursor: string | null = null;
+  try {
+    for (let page = 0; page < LOOKUP_PAGES; page++) {
+      const query = new URLSearchParams({ page_size: '100', sort_direction: 'DESCENDING', ...(cursor ? { cursor } : {}) });
+      const data = await getJson<{ projects?: (ProjectState & { model_id?: string | null })[]; next_cursor?: string | null }>(
+        opts, `${ELEVENLABS_API}/dubbing/project?${query}`, 'project list',
+      );
+      const found = (data.projects ?? []).find(
+        (p) => p.reference === reference && p.status !== 'failed' && (!p.model_id || p.model_id === modelId),
+      );
+      if (found) return found.project_id;
+      if (!data.next_cursor) return null;
+      cursor = data.next_cursor;
+    }
+  } catch {
+    // Looking is a courtesy: not finding one only risks a second project, as before.
+  }
+  return null;
+}
+
+/**
+ * The target a project already has for a language (not a failed one), for the same case
+ * as findProjectByReference: created on ElevenLabs, id never stored.
+ */
+export async function findLanguageTarget(opts: CallOptions, projectId: string, targetLanguage: string): Promise<string | null> {
+  let cursor: string | null = null;
+  try {
+    for (let page = 0; page < LOOKUP_PAGES; page++) {
+      const query = new URLSearchParams({ page_size: '100', ...(cursor ? { cursor } : {}) });
+      const data = await getJson<{ languages?: TargetState[]; next_cursor?: string | null }>(
+        opts, `${ELEVENLABS_API}/dubbing/project/${projectId}/language?${query}`, 'language list',
+      );
+      const found = (data.languages ?? []).find((l) => l.target_language === targetLanguage && l.status !== 'failed');
+      if (found) return found.language_id;
+      if (!data.next_cursor) return null;
+      cursor = data.next_cursor;
+    }
+  } catch {
+    // As above: not finding one only risks a second target.
+  }
+  return null;
 }
 
 /** Delete a project and its language targets (the smoke script cleans up with this). */

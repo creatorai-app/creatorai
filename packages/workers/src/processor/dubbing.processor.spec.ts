@@ -41,6 +41,8 @@ jest.mock('./utils/elevenlabs-dubbing', () => {
     downloadDub: jest.fn(async () => undefined),
     getSourceTranscript: jest.fn(),
     getTargetTranscript: jest.fn(),
+    findProjectByReference: jest.fn(),
+    findLanguageTarget: jest.fn(),
   };
 });
 
@@ -138,6 +140,8 @@ beforeEach(() => {
   el.createProject.mockImplementation(async (o: any) => `proj_${o.modelId}`);
   el.createLanguageTarget.mockImplementation(async (o: any) => `lang_${o.targetLanguage}_${++targetSeq}`);
   el.waitForProjectReady.mockResolvedValue({ project_id: 'x', status: 'ready' } as any);
+  el.findProjectByReference.mockResolvedValue(null);
+  el.findLanguageTarget.mockResolvedValue(null);
   el.waitForDub.mockResolvedValue({ status: 'completed', warnings: [] });
   el.getSourceTranscript.mockResolvedValue({ language: 'en', segments: [{ id: 's1', text: 'Hi', speaker_id: 'speaker_0', start_s: 0, end_s: 1 }] });
   el.getTargetTranscript.mockResolvedValue({
@@ -217,6 +221,44 @@ describe('DubbingProcessor on ElevenLabs', () => {
     expect(es).toMatchObject({ projectId: 'proj_dubbing_v2', cloningStrength: 7 });
     // Both projects stored, neither overwriting the other.
     expect(projectRow().vendor_projects).toEqual({ dubbing_v1: 'proj_dubbing_v1', dubbing_v2: 'proj_dubbing_v2' });
+  });
+
+  it('finds a project whose create answer was lost instead of paying for a second one', async () => {
+    seed({ outputs: [{ language: 'es' }] });
+    el.findProjectByReference.mockResolvedValue('proj_LOST');
+    await makeProcessor().process(makeJob());
+    expect(el.findProjectByReference).toHaveBeenCalledWith(expect.anything(), 'p1', 'dubbing_v2');
+    expect(el.createProject).not.toHaveBeenCalled();
+    expect(projectRow().vendor_projects).toEqual({ dubbing_v2: 'proj_LOST' });
+    expect(el.createLanguageTarget.mock.calls[0][0].projectId).toBe('proj_LOST');
+  });
+
+  it('finds a target whose create answer was lost instead of paying for a second one', async () => {
+    seed({ project: { vendor_projects: { dubbing_v2: 'proj_A' } }, outputs: [{ language: 'es', accent: 'castilian' }] });
+    el.findLanguageTarget.mockResolvedValue('lang_LOST');
+    await makeProcessor().process(makeJob());
+    expect(el.findLanguageTarget).toHaveBeenCalledWith(expect.anything(), 'proj_A', 'es-ES');
+    expect(el.createLanguageTarget).not.toHaveBeenCalled();
+    expect(output('es').vendor_dub_id).toBe('project:proj_A:lang_LOST');
+  });
+
+  it('gives a regenerated dub its own reference, so the old project is not found', async () => {
+    seed({ project: { vendor_projects: { generation: 2 } }, outputs: [{ language: 'es' }] });
+    await makeProcessor().process(makeJob());
+    expect(el.findProjectByReference).toHaveBeenCalledWith(expect.anything(), 'p1#2', 'dubbing_v2');
+    expect(el.createProject.mock.calls[0][0].reference).toBe('p1#2');
+    expect(projectRow().vendor_projects).toEqual({ generation: 2, dubbing_v2: 'proj_dubbing_v2' });
+  });
+
+  it('does not start a project for a dub cancelled before it got there', async () => {
+    seed({ outputs: [{ language: 'es' }] });
+    let calls = 0;
+    const processor = new DubbingProcessor({
+      client: Promise.resolve({ get: jest.fn(async () => (++calls > 1 ? '1' : null)) }),
+    } as any);
+    await expect(processor.process(makeJob())).rejects.toThrow('cancelled');
+    expect(el.createProject).not.toHaveBeenCalled();
+    expect(refunds()).toEqual([PER_LANGUAGE]);
   });
 
   it('waits out a concurrency limit instead of failing or refunding the language', async () => {
