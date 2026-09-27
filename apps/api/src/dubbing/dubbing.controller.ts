@@ -5,10 +5,12 @@ import { Queue } from 'bullmq';
 import type { Observable } from 'rxjs';
 import { DubbingService } from './dubbing.service';
 import {
-  SignDubUploadSchema,
-  CreateDubSchema,
-  type SignDubUploadInput,
-  type CreateDubInput,
+  InitDubUploadSchema,
+  DubVideoPartSchema,
+  DubAudioSessionSchema,
+  type InitDubUploadInput,
+  type DubVideoPartInput,
+  type DubAudioSessionInput,
 } from '@repo/validation';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { createJobSSE } from '../common/sse';
@@ -32,63 +34,126 @@ export class DubbingController {
     return this.service.getAccess(req.user!.id);
   }
 
-  @Post('sign-upload')
+  @Post('uploads')
   @UseGuards(SupabaseAuthGuard, OnboardedGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get a signed URL to upload source media to GCS',
-    description: 'Available on every plan. Starter is capped at 500MB / 45 min per clip; paid plans get the vendor ceiling of 3GB / 180 min. The browser PUTs the file to the returned uploadUrl, then calls POST /dubbing with the objectName.',
+    summary: 'Register a dub and open its uploads',
+    description: 'Plan-gates, prices and size-checks the original file, creates the project row, and returns a GCS resumable session for the audio track plus (for a split video) a multipart upload plan for the original. Starter is capped at 500MB / 45 min per clip; paid plans at 3GB / 180 min.',
   })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['filename', 'contentType', 'fileSize', 'isVideo', 'durationSeconds'],
+      required: ['filename', 'contentType', 'fileSize', 'isVideo', 'durationSeconds', 'engine', 'targets', 'mediaName', 'fingerprint', 'audio'],
       properties: {
         filename: { type: 'string', maxLength: 200 },
-        contentType: { type: 'string', example: 'audio/mpeg', description: 'audio/* or video/*' },
-        fileSize: { type: 'integer', description: 'bytes; max 500MB on Starter, 3GB on paid plans' },
+        contentType: { type: 'string', example: 'video/mp4', description: 'audio/* or video/* of the original file' },
+        fileSize: { type: 'integer', description: 'bytes of the original file' },
         isVideo: { type: 'boolean' },
         durationSeconds: { type: 'number', description: 'media duration; drives credit cost' },
-        targetLanguage: { type: 'string', example: 'es', description: 'optional; tightens the caps for dubbing_v1 languages' },
+        engine: { type: 'string', enum: ['cypher', 'elevenlabs'], description: 'cypher = Cypher (in-house dubbing), elevenlabs = ElevenLabs' },
+        targets: {
+          type: 'array',
+          description: 'One output per language: up to 1 on Starter, 2 on Creator/Pro, 3 on Business/Scale',
+          items: { type: 'object', properties: { language: { type: 'string', example: 'es' }, accent: { type: 'string', description: 'ElevenLabs only' } } },
+        },
+        mediaName: { type: 'string', maxLength: 100 },
+        fingerprint: { type: 'string', description: 'name|size|lastModified, checked on resume' },
+        audio: {
+          type: 'object',
+          properties: {
+            contentType: { type: 'string', example: 'audio/mp4' },
+            size: { type: 'integer' },
+            extracted: { type: 'boolean', description: 'false when the whole file is uploaded as the audio' },
+          },
+        },
       },
     },
   })
-  @ApiResponse({ status: 201, description: '{ success, uploadUrl, objectName, contentType }' })
-  @ApiResponse({ status: 403, description: 'Free (Starter) plan or insufficient credits' })
-  async signUpload(
+  @ApiResponse({ status: 201, description: '{ projectId, audio: { sessionUri }, video: { partSize, partCount } | null }' })
+  @ApiResponse({ status: 403, description: 'No active plan or insufficient credits' })
+  async initUpload(
     @Req() req: AuthRequest,
-    @Body(new ZodValidationPipe(SignDubUploadSchema)) body: SignDubUploadInput,
+    @Body(new ZodValidationPipe(InitDubUploadSchema)) body: InitDubUploadInput,
   ) {
-    return this.service.signUpload(body, req.user!.id);
+    return this.service.initUpload(body, req.user!.id, req.headers.origin);
   }
 
-  @Post()
+  @Get(':id/upload')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'How far the uploads got, read from GCS, for resuming' })
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  async uploadState(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.service.getUploadState(req.user!.id, id);
+  }
+
+  @Post(':id/upload/audio-session')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Open a fresh resumable session for the audio track',
+    description: 'For an expired session, or a resume that re-extracted the audio (pass its new size).',
+  })
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  @ApiBody({ required: false, schema: { type: 'object', properties: { size: { type: 'integer' } } } })
+  async restartAudioSession(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(DubAudioSessionSchema)) body: DubAudioSessionInput,
+  ) {
+    return this.service.restartAudioSession(req.user!.id, id, req.headers.origin, body.size);
+  }
+
+  @Post(':id/upload/video-part')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Signed PUT URL for one part of the video upload' })
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  @ApiBody({ schema: { type: 'object', required: ['partNumber'], properties: { partNumber: { type: 'integer' } } } })
+  async signVideoPart(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(DubVideoPartSchema)) body: DubVideoPartInput,
+  ) {
+    return this.service.signVideoPart(req.user!.id, id, body.partNumber);
+  }
+
+  @Post(':id/upload/video-complete')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Assemble the uploaded video parts',
+    description: 'Verifies every part, completes the multipart upload, and queues the mux if the dubbed audio was waiting on the video. Returns the new jobId in that case, else null.',
+  })
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  async completeVideo(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.service.completeVideo(req.user!.id, id);
+  }
+
+  @Post(':id/start')
   @UseGuards(SupabaseAuthGuard, OnboardedGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Create a dubbing job from an uploaded object',
-    description: 'Verifies the GCS object, prechecks credits, inserts the project row and enqueues the worker. Follow progress via SSE /dubbing/status/{jobId}.',
+    summary: 'Start dubbing once the audio is uploaded',
+    description: 'Verifies the stored audio, reserves the credits and enqueues the worker. Follow progress via SSE /dubbing/status/{jobId}.',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['objectName', 'targetLanguage', 'isVideo', 'mediaName', 'durationSeconds'],
-      properties: {
-        objectName: { type: 'string', description: 'objectName returned by sign-upload' },
-        targetLanguage: { type: 'string', example: 'es', description: 'ISO code from supportedLanguages' },
-        isVideo: { type: 'boolean' },
-        mediaName: { type: 'string', maxLength: 100 },
-        durationSeconds: { type: 'number' },
-      },
-    },
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  @ApiResponse({ status: 201, description: '{ jobId }' })
+  async start(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.service.startDub(req.user!.id, id);
+  }
+
+  @Post(':id/resume')
+  @UseGuards(SupabaseAuthGuard, OnboardedGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Retry a failed dub from where it stopped',
+    description: 'Keeps the translation, finished segments and any dubbed audio. Charges again only if the dubbed audio was never delivered.',
   })
-  @ApiResponse({ status: 201, description: '{ projectId, jobId }' })
-  @ApiResponse({ status: 403, description: 'Free plan, foreign object, or insufficient credits' })
-  async create(
-    @Req() req: AuthRequest,
-    @Body(new ZodValidationPipe(CreateDubSchema)) body: CreateDubInput,
-  ) {
-    return this.service.createDub(body, req.user!.id);
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  async resume(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.service.resumeDub(req.user!.id, id);
   }
 
   @Post(':id/regenerate')
@@ -135,7 +200,11 @@ export class DubbingController {
         completed: 'Dubbing complete!',
         failed: 'Dubbing failed',
       },
-      extractResult: (job) => ({ dubbedUrl: job.returnvalue?.dubbedUrl }),
+      extractResult: (job) => ({
+        dubbedUrl: job.returnvalue?.dubbedUrl,
+        dubbedAudioUrl: job.returnvalue?.dubbedAudioUrl,
+        awaitingVideo: !!job.returnvalue?.awaitingVideo,
+      }),
     });
   }
 

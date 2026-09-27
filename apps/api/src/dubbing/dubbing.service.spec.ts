@@ -12,45 +12,67 @@ import { SupabaseService } from '../supabase/supabase.service';
 import {
   DUBBING_CANCEL_PREFIX,
   DUBBING_CREDIT_MULTIPLIER,
+  CYPHER_DUBBING_CREDIT_MULTIPLIER,
   calculateDubbingCreditsByDuration,
   getMinimumCreditsForDubbing,
 } from '@repo/validation';
-import { deleteGcsObject, moveGcsObject, getSignedUploadUrl } from '../utils';
+import {
+  deleteGcsObject,
+  gcsObjectMetadata,
+  createResumableSession,
+  initiateMultipartUpload,
+  listMultipartParts,
+  completeMultipartUpload,
+  abortMultipartUpload,
+  deleteGcsPrefix,
+} from '../utils';
 
 jest.mock('../utils', () => ({
-  getSignedUploadUrl: jest.fn().mockResolvedValue('https://signed-upload-url'),
-  gcsObjectMetadata: jest.fn().mockResolvedValue({ size: 1000, contentType: 'audio/mpeg' }),
-  gcsPublicUrl: jest.fn(() => 'https://storage.googleapis.com/dub-bucket/obj'),
-  gcsUri: jest.fn(() => 'gs://dub-bucket/obj'),
+  gcsObjectMetadata: jest.fn().mockResolvedValue({ size: 1000, contentType: 'audio/mp4' }),
+  gcsPublicUrl: jest.fn((_c: unknown, obj: string) => `https://storage.googleapis.com/dub-bucket/${obj}`),
+  gcsUri: jest.fn((_c: unknown, obj: string) => `gs://dub-bucket/${obj}`),
   deleteGcsObject: jest.fn().mockResolvedValue(undefined),
-  moveGcsObject: jest.fn().mockResolvedValue(undefined),
+  deleteGcsPrefix: jest.fn().mockResolvedValue(undefined),
   getDubbingBucketName: jest.fn(() => 'dub-bucket'),
+  createResumableSession: jest.fn().mockResolvedValue('https://storage.googleapis.com/upload/session-1'),
+  resumableSessionOffset: jest.fn().mockResolvedValue({ uploadedBytes: 0, complete: false, expired: false }),
+  initiateMultipartUpload: jest.fn().mockResolvedValue('upload-1'),
+  signMultipartPartUrl: jest.fn().mockResolvedValue('https://signed-part-url'),
+  listMultipartParts: jest.fn().mockResolvedValue([]),
+  completeMultipartUpload: jest.fn().mockResolvedValue(undefined),
+  abortMultipartUpload: jest.fn().mockResolvedValue(undefined),
 }));
 
-/** Chainable supabase query mock: every builder method returns the chain; awaiting it
- *  (or .single()/.maybeSingle()) resolves to the configured result. */
-function chain(result: unknown) {
+/** Chainable supabase query mock: every builder method returns the chain. .single() and
+ *  .maybeSingle() resolve to `result`; awaiting the chain itself (an insert, a list, or an
+ *  update with .select()) resolves to `awaited`, which defaults to `result`. */
+function chain(result: unknown, awaited: unknown = result) {
   const c: any = {};
-  for (const m of ['select', 'eq', 'in', 'order', 'limit', 'insert', 'update', 'delete']) {
+  for (const m of ['select', 'eq', 'neq', 'in', 'is', 'not', 'order', 'limit', 'insert', 'update', 'delete']) {
     c[m] = jest.fn(() => c);
   }
   c.single = jest.fn(() => Promise.resolve(result));
   c.maybeSingle = jest.fn(() => Promise.resolve(result));
-  c.then = (res: any, rej: any) => Promise.resolve(result).then(res, rej);
+  c.then = (res: any, rej: any) => Promise.resolve(awaited).then(res, rej);
   return c;
 }
 
+/** The dubbing_outputs table, returning these rows to every read. */
+const outputsTable = (rows: object[]) => chain({ data: rows, error: null }, { data: rows, error: null });
+
 const USER = 'user-1';
+const MiB = 1024 * 1024;
 
 // Every fixture dub here is the same length, and its price is whatever the current
-// rate makes it — derived, not written down, so a repricing (see the
-// DUBBING_CREDIT_MULTIPLIER promo note) moves the expectations with it instead of
-// leaving them asserting last quarter's price. The suite runs on 'Creator', a paid
-// plan, so the paid multiplier applies.
+// rate makes it, derived, not written down, so a repricing moves the expectations with
+// it instead of leaving them asserting last quarter's price. The suite runs on
+// 'Creator', a paid plan, so the paid rates apply. Fixtures dub on Cypher unless they
+// say otherwise; each language is its own dub at this price.
 const DUB_SECONDS = 30 * 60;
-const DUB_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, DUBBING_CREDIT_MULTIPLIER);
+const DUB_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, CYPHER_DUBBING_CREDIT_MULTIPLIER);
+const ELEVENLABS_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, DUBBING_CREDIT_MULTIPLIER);
 // One second's worth: the most a balance can hold and still not cover the clip.
-const DUB_FLOOR = getMinimumCreditsForDubbing(DUBBING_CREDIT_MULTIPLIER);
+const DUB_FLOOR = getMinimumCreditsForDubbing(CYPHER_DUBBING_CREDIT_MULTIPLIER);
 
 describe('DubbingService', () => {
   let service: DubbingService;
@@ -67,8 +89,9 @@ describe('DubbingService', () => {
     jest.clearAllMocks();
     tables = {
       subscriptions: chain(planResult('Creator')),
-      profiles: chain({ data: { credits: 10_000 }, error: null }),
+      profiles: chain({ data: { credits: 100_000 }, error: null }),
       dubbing_projects: chain({ data: null, error: null }),
+      dubbing_outputs: outputsTable([]),
       ...overrides,
     };
     redis = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
@@ -95,24 +118,44 @@ describe('DubbingService', () => {
       await expect(service.getAccess(USER)).resolves.toMatchObject({ allowed: true, plan });
     });
 
-    it('allows Starter, and reports its 500MB / 45 min caps', async () => {
+    it('allows Starter, and reports its 500MB / 45 min / one-language caps', async () => {
       await build({ subscriptions: chain(planResult('Starter')) });
       await expect(service.getAccess(USER)).resolves.toMatchObject({
         allowed: true,
         maxDurationSeconds: 45 * 60,
         maxUploadBytes: 500 * 1024 * 1024,
-        creditsPerSecond: 3,
+        maxLanguages: 1,
+        // Starter's trial rate is the same on both engines.
+        creditsPerSecond: { cypher: 3, elevenlabs: 3 },
       });
     });
 
-    it('reports the wider vendor ceiling on paid plans', async () => {
+    it('prices each engine at its own rate on a paid plan', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
       await expect(service.getAccess(USER)).resolves.toMatchObject({
-        allowed: true,
-        maxDurationSeconds: 180 * 60,
-        maxUploadBytes: 3 * 1024 * 1024 * 1024,
+        creditsPerSecond: { cypher: CYPHER_DUBBING_CREDIT_MULTIPLIER, elevenlabs: DUBBING_CREDIT_MULTIPLIER },
       });
     });
+
+    it('lets an env override move only the engine it names', async () => {
+      process.env.CYPHER_DUBBING_CREDIT_MULTIPLIER = '2';
+      try {
+        await build({ subscriptions: chain(planResult('Pro')) });
+        await expect(service.getAccess(USER)).resolves.toMatchObject({
+          creditsPerSecond: { cypher: 2, elevenlabs: DUBBING_CREDIT_MULTIPLIER },
+        });
+      } finally {
+        delete process.env.CYPHER_DUBBING_CREDIT_MULTIPLIER;
+      }
+    });
+
+    it.each([['Creator', 2], ['Pro', 2], ['Business', 3], ['Scale', 3]])(
+      'lets %s dub into %i languages at once',
+      async (plan, max) => {
+        await build({ subscriptions: chain(planResult(plan as string)) });
+        await expect(service.getAccess(USER)).resolves.toMatchObject({ maxLanguages: max });
+      },
+    );
 
     it('still denies users with no subscription at all', async () => {
       await build({ subscriptions: chain(planResult(null)) });
@@ -120,205 +163,491 @@ describe('DubbingService', () => {
     });
   });
 
-  describe('signUpload', () => {
-    const input = { filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: DUB_SECONDS };
+  describe('initUpload', () => {
+    const input = {
+      filename: 'my clip.mp4',
+      contentType: 'video/mp4',
+      fileSize: 1000,
+      isVideo: true,
+      durationSeconds: DUB_SECONDS,
+      engine: 'cypher' as const,
+      targets: [{ language: 'es' }],
+      mediaName: 'My clip',
+      fingerprint: 'my clip.mp4|1000|1',
+      audio: { contentType: 'audio/mp4', size: 100, extracted: true },
+    };
+    const audioOnly = {
+      ...input,
+      filename: 'a.mp3',
+      contentType: 'audio/mpeg',
+      isVideo: false,
+      audio: { contentType: 'audio/mpeg', size: 1000, extracted: false },
+    };
+    const two = [{ language: 'es' }, { language: 'fr' }];
+    const three = [...two, { language: 'de' }];
 
     it('accepts a Starter clip within the 45 min cap', async () => {
       await build({ subscriptions: chain(planResult('Starter')) });
-      await expect(service.signUpload({ ...input, durationSeconds: 40 * 60 }, USER)).resolves.toMatchObject({
-        success: true,
+      await expect(service.initUpload({ ...input, durationSeconds: 40 * 60 }, USER)).resolves.toMatchObject({
+        audio: { sessionUri: expect.any(String) },
       });
     });
 
     it('rejects a Starter clip over the 45 min cap', async () => {
       await build({ subscriptions: chain(planResult('Starter')) });
-      await expect(service.signUpload({ ...input, durationSeconds: 50 * 60 }, USER)).rejects.toThrow(
+      await expect(service.initUpload({ ...input, durationSeconds: 50 * 60 }, USER)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('lets a paid plan exceed the Starter cap', async () => {
+    it('lets a paid plan exceed the Starter cap but stops it at the vendor ceiling', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
-      await expect(service.signUpload({ ...input, durationSeconds: 60 * 60 }, USER)).resolves.toMatchObject({
-        success: true,
-      });
-    });
-
-    it('still stops a paid plan at the vendor ceiling', async () => {
-      await build({ subscriptions: chain(planResult('Pro')) });
-      await expect(service.signUpload({ ...input, durationSeconds: 181 * 60 }, USER)).rejects.toThrow(
+      await expect(service.initUpload({ ...input, durationSeconds: 60 * 60 }, USER)).resolves.toBeTruthy();
+      await expect(service.initUpload({ ...input, durationSeconds: 181 * 60 }, USER)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('rejects a Starter file over 500MB but accepts it on a paid plan', async () => {
-      const big = { ...input, fileSize: 501 * 1024 * 1024 };
-      await build({ subscriptions: chain(planResult('Starter')) });
-      await expect(service.signUpload(big, USER)).rejects.toThrow(PayloadTooLargeException);
-
-      await build({ subscriptions: chain(planResult('Pro')) });
-      await expect(service.signUpload(big, USER)).resolves.toMatchObject({ success: true });
+    it.each([
+      ['Starter', two, false],
+      ['Creator', two, true],
+      ['Pro', three, false],
+      ['Business', three, true],
+      ['Scale', three, true],
+    ])('on %s, %j languages allowed: %s', async (plan, targets, allowed) => {
+      await build({ subscriptions: chain(planResult(plan as string)) });
+      const attempt = service.initUpload({ ...input, targets: targets as typeof two }, USER);
+      if (allowed) await expect(attempt).resolves.toBeTruthy();
+      else await expect(attempt).rejects.toThrow(/languages? at once/);
     });
 
-    it('rejects files over the paid 3GB ceiling', async () => {
-      await build({ subscriptions: chain(planResult('Pro')) });
-      await expect(
-        service.signUpload({ ...input, fileSize: 4 * 1024 * 1024 * 1024 }, USER),
-      ).rejects.toThrow(PayloadTooLargeException);
+    // Each language is its own dub, so the balance must cover all of them up front.
+    it('prices the balance check per language', async () => {
+      await build({ profiles: chain({ data: { credits: DUB_COST }, error: null }) });
+      await expect(service.initUpload(input, USER)).resolves.toBeTruthy();
+      await expect(service.initUpload({ ...input, targets: two }, USER)).rejects.toThrow(
+        new RegExp(`2-language dub costs ${DUB_COST * 2} credits`),
+      );
     });
 
-    // Bengali routes through dubbing_v1, whose endpoint tops out at 1GB / 45 min no
-    // matter what the plan allows. Caught here so the bytes are never uploaded.
-    it('holds a dubbing_v1 language to the smaller route limits', async () => {
+    // Norwegian is on dubbing_v1 only on ElevenLabs; Cypher speaks it on its own pipeline.
+    it('does not hold a Cypher dub to an ElevenLabs route limit', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
       await expect(
-        service.signUpload({ ...input, durationSeconds: 60 * 60, targetLanguage: 'bn' }, USER),
+        service.initUpload({ ...input, targets: [{ language: 'no' }], durationSeconds: 60 * 60 }, USER),
+      ).resolves.toBeTruthy();
+      await expect(
+        service.initUpload({ ...input, engine: 'elevenlabs', targets: [{ language: 'no' }], durationSeconds: 60 * 60 }, USER),
       ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.signUpload({ ...input, fileSize: 2 * 1024 * 1024 * 1024, targetLanguage: 'bn' }, USER),
-      ).rejects.toThrow(PayloadTooLargeException);
     });
 
-    it('returns a signed URL scoped to the user prefix under staging', async () => {
+    // Bengali routes through ElevenLabs' dubbing_v1, which tops out at 1GB / 45 min no
+    // matter what the plan allows. One such language tightens the whole dub.
+    it('holds a dub with a dubbing_v1 language to the smaller route limits', async () => {
+      await build({ subscriptions: chain(planResult('Pro')) });
+      const withBengali = { ...input, engine: 'elevenlabs' as const, targets: [{ language: 'es' }, { language: 'bn' }] };
+      await expect(service.initUpload({ ...withBengali, durationSeconds: 60 * 60 }, USER)).rejects.toThrow(BadRequestException);
+      await expect(service.initUpload({ ...withBengali, fileSize: 2 * 1024 * MiB }, USER)).rejects.toThrow(
+        PayloadTooLargeException,
+      );
+    });
+
+    // The size cap is on the ORIGINAL file, even though only the small audio track
+    // uploads first: the video follows, and it is what the plan limits.
+    it('caps the original file size, not the extracted audio', async () => {
+      const big = { ...input, fileSize: 501 * MiB };
+      await build({ subscriptions: chain(planResult('Starter')) });
+      await expect(service.initUpload(big, USER)).rejects.toThrow(PayloadTooLargeException);
+
+      await build({ subscriptions: chain(planResult('Pro')) });
+      await expect(service.initUpload(big, USER)).resolves.toBeTruthy();
+      await expect(service.initUpload({ ...input, fileSize: 4 * 1024 * MiB }, USER)).rejects.toThrow(
+        PayloadTooLargeException,
+      );
+    });
+
+    it('rejects an audio track larger than its source', async () => {
       await build();
-      const res = await service.signUpload(input, USER);
-      expect(res.uploadUrl).toBe('https://signed-upload-url');
-      // staging/, not the permanent path: an upload nobody claims must expire on its own.
-      expect(res.objectName.startsWith(`staging/${USER}/dubbing/`)).toBe(true);
+      await expect(
+        service.initUpload({ ...input, audio: { ...input.audio, size: 2000 } }, USER),
+      ).rejects.toThrow(BadRequestException);
     });
 
-    // Regression: the balance was only checked at createDub, so a user short on credits
-    // pushed up to 500MB to GCS and was only then told they could not afford it.
-    it('rejects an unaffordable dub before the upload starts', async () => {
+    // Regression: a user short on credits must learn it before uploading anything.
+    it('rejects an unaffordable dub before any upload opens', async () => {
       await build({ profiles: chain({ data: { credits: DUB_FLOOR }, error: null }) });
-      await expect(service.signUpload(input, USER)).rejects.toThrow(ForbiddenException);
+      await expect(service.initUpload(input, USER)).rejects.toThrow(ForbiddenException);
+      expect(createResumableSession).not.toHaveBeenCalled();
+      expect(initiateMultipartUpload).not.toHaveBeenCalled();
+    });
+
+    it('opens an audio session, a multipart plan, and one output per language', async () => {
+      await build();
+      const res = await service.initUpload(
+        { ...input, engine: 'elevenlabs', targets: [{ language: 'en', accent: 'british' }, { language: 'fr' }] },
+        USER,
+        'https://trycreatorai.com',
+      );
+      const prefix = `${USER}/dubbing/${res.projectId}/`;
+      // The browser's origin goes on the session, or every browser PUT to it fails CORS.
+      expect(createResumableSession).toHaveBeenCalledWith(
+        expect.anything(), `${prefix}audio.m4a`, 'audio/mp4', 'dub-bucket', 'https://trycreatorai.com',
+      );
+      expect(initiateMultipartUpload).toHaveBeenCalledWith(
+        expect.anything(), `${prefix}my_clip.mp4`, 'video/mp4', 'dub-bucket',
+      );
+      expect(res.video).toEqual({ partSize: 16 * MiB, partCount: 1 });
+      expect(tables.dubbing_projects.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'uploading',
+          engine: 'elevenlabs',
+          video_status: 'uploading',
+          credits_consumed: 0,
+          video_upload_id: 'upload-1',
+        }),
+      );
+      expect(tables.dubbing_outputs.insert).toHaveBeenCalledWith([
+        { project_id: res.projectId, user_id: USER, language: 'en', accent: 'british' },
+        { project_id: res.projectId, user_id: USER, language: 'fr', accent: null },
+      ]);
+      // Nothing is charged until the audio is in and the dub starts.
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it('drops a malformed origin rather than passing it to GCS', async () => {
+      await build();
+      await service.initUpload(input, USER, 'https://evil.example/path');
+      expect(createResumableSession).toHaveBeenCalledWith(
+        expect.anything(), expect.any(String), 'audio/mp4', 'dub-bucket', undefined,
+      );
+    });
+
+    it('uploads an audio file (or an unsplit video) as a single resumable object', async () => {
+      await build();
+      const res = await service.initUpload(audioOnly, USER);
+      expect(res.video).toBeNull();
+      expect(initiateMultipartUpload).not.toHaveBeenCalled();
+      expect(tables.dubbing_projects.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ audio_object: `${USER}/dubbing/${res.projectId}/a.mp3`, video_status: null }),
+      );
+    });
+
+    it('keeps every upload under 1000 parts', async () => {
+      await build({ subscriptions: chain(planResult('Pro')) });
+      const res = await service.initUpload({ ...input, fileSize: 3 * 1024 * MiB }, USER);
+      expect(res.video!.partCount).toBeLessThanOrEqual(1000);
+      expect(res.video!.partSize).toBeGreaterThanOrEqual(5 * MiB); // GCS minimum for non-final parts
+    });
+
+    it('aborts the multipart upload when the row cannot be created', async () => {
+      await build({ dubbing_projects: chain({ data: null, error: { message: 'boom' } }) });
+      await expect(service.initUpload(input, USER)).rejects.toThrow();
+      expect(abortMultipartUpload).toHaveBeenCalledWith(expect.anything(), expect.any(String), 'upload-1', 'dub-bucket');
+    });
+
+    it('removes the project again when its outputs cannot be created', async () => {
+      await build({ dubbing_outputs: chain({ data: null, error: { message: 'boom' } }) });
+      await expect(service.initUpload(input, USER)).rejects.toThrow();
+      expect(tables.dubbing_projects.delete).toHaveBeenCalled();
+      expect(abortMultipartUpload).toHaveBeenCalled();
     });
   });
 
-  describe('createDub', () => {
-    const input = {
-      objectName: `staging/${USER}/dubbing/123_a.mp3`,
-      targetLanguage: 'es',
-      isVideo: false,
-      mediaName: 'My clip',
-      durationSeconds: DUB_SECONDS,
+  describe('startDub', () => {
+    const row = {
+      project_id: 'p-1',
+      user_id: USER,
+      status: 'uploading',
+      engine: 'cypher',
+      target_language: 'es',
+      target_accent: null,
+      is_video: true,
+      duration_seconds: DUB_SECONDS,
+      audio_object: `${USER}/dubbing/p-1/audio.m4a`,
+      audio_size: 1000,
+      audio_content_type: 'audio/mp4',
+      audio_extracted: true,
+      input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
+      input_url: `https://storage.googleapis.com/dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
     };
+    const claimed = { data: [{ project_id: 'p-1' }], error: null };
+    const outputs = [{ id: 'o-es', language: 'es', status: 'pending', credits_consumed: 0 }];
 
-    it("rejects an object outside the user's prefix", async () => {
-      await build();
-      await expect(
-        service.createDub({ ...input, objectName: 'staging/other-user/dubbing/x.mp3' }, USER),
-      ).rejects.toThrow(ForbiddenException);
+    const project = (over: object = {}, awaited: unknown = claimed) =>
+      chain({ data: { ...row, ...over }, error: null }, awaited);
+
+    it('refuses to start before the audio has landed', async () => {
+      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(outputs) });
+      (gcsObjectMetadata as jest.Mock).mockRejectedValueOnce(new Error('404'));
+      await expect(service.startDub(USER, 'p-1')).rejects.toThrow(/has not finished/);
+      expect(rpc).not.toHaveBeenCalled();
     });
 
-    it('rejects when credits are below the floor', async () => {
-      await build({ profiles: chain({ data: { credits: 0 }, error: null }) });
-      await expect(service.createDub(input, USER)).rejects.toThrow(ForbiddenException);
+    it('refuses audio whose stored size differs from what was declared', async () => {
+      await build({ dubbing_projects: project({ audio_size: 999 }), dubbing_outputs: outputsTable(outputs) });
+      await expect(service.startDub(USER, 'p-1')).rejects.toThrow(/does not match/);
+      expect(rpc).not.toHaveBeenCalled();
     });
 
     // Regression: the old precheck only asked for one second's worth, so a user who
-    // could not cover the whole dub still got enqueued and only failed after
-    // ElevenLabs had run — at which point we'd already paid for it.
+    // could not cover the whole dub still got enqueued and only failed after the GPU ran.
     it('rejects when credits cover the floor but not the full duration', async () => {
-      await build({ profiles: chain({ data: { credits: DUB_FLOOR }, error: null }) });
-      await expect(service.createDub(input, USER)).rejects.toThrow(
+      await build({
+        profiles: chain({ data: { credits: DUB_FLOOR }, error: null }),
+        dubbing_projects: project(),
+        dubbing_outputs: outputsTable(outputs),
+      });
+      await expect(service.startDub(USER, 'p-1')).rejects.toThrow(
         new RegExp(`costs ${DUB_COST} credits and you have ${DUB_FLOOR}`),
       );
       expect(queue.add).not.toHaveBeenCalled();
     });
 
-    // Regression: a rejected dub used to leave the uploaded media sitting in the bucket.
-    it('deletes the staged upload when the dub is rejected', async () => {
-      await build({ profiles: chain({ data: { credits: DUB_FLOOR }, error: null }) });
-      await expect(service.createDub(input, USER)).rejects.toThrow(ForbiddenException);
-      expect(deleteGcsObject).toHaveBeenCalledWith(expect.anything(), input.objectName, 'dub-bucket');
-    });
-
-    it('promotes the staged object out of staging once accepted', async () => {
-      await build();
-      await service.createDub(input, USER);
-      expect(moveGcsObject).toHaveBeenCalledWith(
-        expect.anything(),
-        input.objectName,
-        `${USER}/dubbing/123_a.mp3`,
-        'dub-bucket',
-      );
-    });
-
     // Reserving up front is what stops two concurrent dubs from both passing the
-    // precheck and only failing to bill after ElevenLabs has already run.
-    it('reserves the full cost before enqueueing', async () => {
-      await build();
-      await service.createDub(input, USER);
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
+    // precheck and only failing to bill after the GPU has already run.
+    it('reserves one dub per language and enqueues the worker with a random job id', async () => {
+      const two = [...outputs, { id: 'o-fr', language: 'fr', status: 'pending', credits_consumed: 0 }];
+      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(two) });
+      const { jobId } = await service.startDub(USER, 'p-1');
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST * 2 });
+      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith({ credits_consumed: DUB_COST });
+      // A random id, not `dubbing-{userId}-{ms}`: the SSE status route is unauthenticated,
+      // so a guessable job id would let a stranger watch someone else's dub.
+      expect(jobId).toMatch(/^dubbing-[0-9a-f-]{36}$/);
+      expect(jobId).not.toContain(USER);
       expect(queue.add).toHaveBeenCalledWith(
         'dubbing',
-        expect.objectContaining({ reservedCredits: DUB_COST }),
-        expect.anything(),
+        expect.objectContaining({ userId: USER, reservedCredits: DUB_COST * 2, mimeType: 'audio/mp4', isVideo: true }),
+        expect.objectContaining({ jobId }),
       );
     });
 
-    it('refunds and cleans up when the reservation succeeds but the insert fails', async () => {
-      await build({ dubbing_projects: chain({ data: null, error: { message: 'boom' } }) });
-      await expect(service.createDub(input, USER)).rejects.toThrow();
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
-      expect(deleteGcsObject).toHaveBeenCalledWith(expect.anything(), `${USER}/dubbing/123_a.mp3`, 'dub-bucket');
-      expect(queue.add).not.toHaveBeenCalled();
+    it('reserves an ElevenLabs dub at the ElevenLabs rate', async () => {
+      await build({ dubbing_projects: project({ engine: 'elevenlabs' }), dubbing_outputs: outputsTable(outputs) });
+      await service.startDub(USER, 'p-1');
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -ELEVENLABS_COST });
     });
 
     it('rejects the second of two concurrent dubs at the reservation', async () => {
-      await build();
+      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(outputs) });
       rpc.mockResolvedValueOnce({ error: { message: 'Insufficient credits' } });
-      await expect(service.createDub(input, USER)).rejects.toThrow(ForbiddenException);
+      await expect(service.startDub(USER, 'p-1')).rejects.toThrow(ForbiddenException);
       expect(queue.add).not.toHaveBeenCalled();
     });
 
-    // The dubbed file's name and Content-Type are bound into the signed PUT URL, and GCS
-    // does not inspect the bytes: sign for the wrong type and the upload still succeeds,
-    // it just stores a file that will not play. Modal writes WAV for an audio source, so
-    // this must stay .wav / audio/wav for as long as Modal is the backend.
-    it('signs the audio output for exactly what Modal uploads', async () => {
-      await build();
-      const res = await service.createDub(input, USER);
-      expect(getSignedUploadUrl).toHaveBeenCalledWith(
-        expect.anything(),
-        `dubbed/${res.projectId}.wav`,
-        'audio/wav',
-        'dub-bucket',
-        expect.any(Number),
-      );
-      expect(queue.add).toHaveBeenCalledWith(
-        'dubbing',
-        expect.objectContaining({ outputContentType: 'audio/wav' }),
-        expect.anything(),
-      );
+    // Two tabs pressing start at once: the loser's reservation goes straight back.
+    it('refunds when another request already claimed the start', async () => {
+      await build({ dubbing_projects: project({}, { data: [], error: null }), dubbing_outputs: outputsTable(outputs) });
+      await expect(service.startDub(USER, 'p-1')).rejects.toThrow(/already started/);
+      expect(rpc).toHaveBeenLastCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
+      expect(queue.add).not.toHaveBeenCalled();
     });
 
-    it('signs a video output as MP4', async () => {
-      await build();
-      const res = await service.createDub({ ...input, isVideo: true }, USER);
-      expect(getSignedUploadUrl).toHaveBeenCalledWith(
-        expect.anything(),
-        `dubbed/${res.projectId}.mp4`,
-        'video/mp4',
-        'dub-bucket',
-        expect.any(Number),
-      );
+    it('returns the running job when start is retried', async () => {
+      await build({ dubbing_projects: project({ status: 'processing', job_id: 'dubbing-x' }) });
+      await expect(service.startDub(USER, 'p-1')).resolves.toEqual({ jobId: 'dubbing-x' });
+      expect(rpc).not.toHaveBeenCalled();
     });
 
-    it('inserts the project and enqueues the worker job', async () => {
-      await build();
-      const res = await service.createDub(input, USER);
-      expect(res.projectId).toBeTruthy();
-      // A random id, not `dubbing-{userId}-{ms}`: the SSE status route is unauthenticated,
-      // so a guessable job id would let a stranger watch someone else's dub.
-      expect(res.jobId).toMatch(/^dubbing-[0-9a-f-]{36}$/);
-      expect(res.jobId).not.toContain(USER);
-      expect(queue.add).toHaveBeenCalledWith(
-        'dubbing',
-        expect.objectContaining({ userId: USER, targetLanguage: 'es', durationSeconds: DUB_SECONDS }),
-        expect.objectContaining({ jobId: res.jobId }),
+    it('refunds and fails the languages when the job cannot be queued', async () => {
+      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(outputs) });
+      queue.add.mockRejectedValueOnce(new Error('redis down'));
+      await expect(service.startDub(USER, 'p-1')).rejects.toThrow(/Failed to queue/);
+      expect(rpc).toHaveBeenLastCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
+      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'failed', credits_consumed: 0 }),
       );
+    });
+  });
+
+  describe('completeVideo', () => {
+    const row = {
+      project_id: 'p-1',
+      user_id: USER,
+      status: 'cloning',
+      is_video: true,
+      duration_seconds: DUB_SECONDS,
+      video_object: `${USER}/dubbing/p-1/clip.mp4`,
+      video_upload_id: 'upload-1',
+      video_size: 40 * MiB,
+      video_part_size: 16 * MiB,
+      video_status: 'uploading',
+    };
+    const allParts = [
+      { partNumber: 1, etag: '"a"', size: 16 * MiB },
+      { partNumber: 2, etag: '"b"', size: 16 * MiB },
+      { partNumber: 3, etag: '"c"', size: 8 * MiB },
+    ];
+    const nothingWaiting = { data: [], error: null };
+
+    it('refuses to complete while a part is missing', async () => {
+      await build({ dubbing_projects: chain({ data: row, error: null }, nothingWaiting) });
+      (listMultipartParts as jest.Mock).mockResolvedValueOnce(allParts.slice(0, 2));
+      await expect(service.completeVideo(USER, 'p-1')).rejects.toThrow(/still missing/);
+      expect(completeMultipartUpload).not.toHaveBeenCalled();
+    });
+
+    it('refuses a part of the wrong size', async () => {
+      await build({ dubbing_projects: chain({ data: row, error: null }, nothingWaiting) });
+      (listMultipartParts as jest.Mock).mockResolvedValueOnce([allParts[0], { ...allParts[1], size: 1 }, allParts[2]]);
+      await expect(service.completeVideo(USER, 'p-1')).rejects.toThrow(/still missing/);
+    });
+
+    it('completes in part order and leaves a running dub to mux on its own', async () => {
+      await build({ dubbing_projects: chain({ data: row, error: null }, nothingWaiting) });
+      (listMultipartParts as jest.Mock).mockResolvedValueOnce([allParts[2], allParts[0], allParts[1]]);
+      (gcsObjectMetadata as jest.Mock).mockResolvedValueOnce({ size: 40 * MiB, contentType: 'video/mp4' });
+      await expect(service.completeVideo(USER, 'p-1')).resolves.toEqual({ jobId: null });
+      expect(completeMultipartUpload).toHaveBeenCalledWith(
+        expect.anything(), row.video_object, 'upload-1', allParts, 'dub-bucket',
+      );
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    // The dubbed audio finished first and parked on 'awaiting_video': the mux is queued
+    // now, and it is free, since the audio dub was already paid for.
+    it('queues a free mux for a dub waiting on the video', async () => {
+      await build({
+        dubbing_projects: chain(
+          { data: { ...row, status: 'awaiting_video' }, error: null },
+          { data: [{ project_id: 'p-1' }], error: null },
+        ),
+      });
+      (listMultipartParts as jest.Mock).mockResolvedValueOnce(allParts);
+      (gcsObjectMetadata as jest.Mock).mockResolvedValueOnce({ size: 40 * MiB, contentType: 'video/mp4' });
+      const { jobId } = await service.completeVideo(USER, 'p-1');
+      expect(jobId).toMatch(/^dubbing-/);
+      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ reservedCredits: 0 }), expect.anything());
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it('deletes an assembled video whose size does not match the picked file', async () => {
+      await build({ dubbing_projects: chain({ data: row, error: null }, nothingWaiting) });
+      (listMultipartParts as jest.Mock).mockResolvedValueOnce(allParts);
+      (gcsObjectMetadata as jest.Mock).mockResolvedValueOnce({ size: 1, contentType: 'video/mp4' });
+      await expect(service.completeVideo(USER, 'p-1')).rejects.toThrow(/does not match/);
+      expect(deleteGcsObject).toHaveBeenCalledWith(expect.anything(), row.video_object, 'dub-bucket');
+    });
+  });
+
+  describe('resumeDub and regenerateDub', () => {
+    const row = {
+      project_id: 'p-1',
+      user_id: USER,
+      status: 'failed',
+      engine: 'cypher',
+      is_video: true,
+      target_language: 'es',
+      duration_seconds: DUB_SECONDS,
+      input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
+      input_url: `https://storage.googleapis.com/dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
+    };
+    const done = { id: 'o-es', language: 'es', status: 'completed', dubbed_audio_url: 'x.mp3', dubbed_url: 'x.mp4', credits_consumed: DUB_COST };
+    const undelivered = { id: 'o-fr', language: 'fr', status: 'failed', dubbed_audio_url: null, credits_consumed: 0 };
+    const unmuxed = { id: 'o-de', language: 'de', status: 'failed', dubbed_audio_url: 'd.mp3', credits_consumed: DUB_COST };
+
+    it('only resumes a failed dub', async () => {
+      await build({ dubbing_projects: chain({ data: { ...row, status: 'completed' }, error: null }) });
+      await expect(service.resumeDub(USER, 'p-1')).rejects.toThrow(/Only a failed dub/);
+    });
+
+    it('re-charges only the languages whose audio never landed, and keeps their progress', async () => {
+      await build({
+        dubbing_projects: chain({ data: row, error: null }),
+        dubbing_outputs: outputsTable([done, undelivered, unmuxed]),
+      });
+      await service.resumeDub(USER, 'p-1');
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
+      const updates = (tables.dubbing_outputs.update as jest.Mock).mock.calls.map((c) => c[0]);
+      expect(updates).toContainEqual({ status: 'pending', error_message: null, credits_consumed: DUB_COST });
+      expect(updates).toContainEqual({ status: 'pending', error_message: null });
+      for (const u of updates) expect(u).not.toHaveProperty('translation');
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'queued', credits_consumed: DUB_COST * 3 }),
+      );
+      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ reservedCredits: DUB_COST }), expect.anything());
+    });
+
+    it('re-runs only the free mux when every unfinished language has its audio', async () => {
+      await build({ dubbing_projects: chain({ data: row, error: null }), dubbing_outputs: outputsTable([done, unmuxed]) });
+      await service.resumeDub(USER, 'p-1');
+      expect(rpc).not.toHaveBeenCalled();
+      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ reservedCredits: 0 }), expect.anything());
+    });
+
+    it('refuses to resume a dub whose every language finished', async () => {
+      await build({ dubbing_projects: chain({ data: row, error: null }), dubbing_outputs: outputsTable([done]) });
+      await expect(service.resumeDub(USER, 'p-1')).rejects.toThrow(/already finished/);
+    });
+
+    it.each(['queued', 'processing', 'cloning'])('refuses to regenerate a %s dub', async (status) => {
+      await build({ dubbing_projects: chain({ data: { ...row, status }, error: null }) });
+      await expect(service.regenerateDub(USER, 'p-1')).rejects.toThrow(/still running/);
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    it('refuses to regenerate a dub that is still uploading', async () => {
+      await build({ dubbing_projects: chain({ data: { ...row, status: 'uploading' }, error: null }) });
+      await expect(service.regenerateDub(USER, 'p-1')).rejects.toThrow(/Finish uploading/);
+    });
+
+    it('regenerates every language from scratch and detects the speakers again', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...row, status: 'completed' }, error: null }),
+        dubbing_outputs: outputsTable([done, { ...undelivered, status: 'completed' }]),
+      });
+      await service.regenerateDub(USER, 'p-1');
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST * 2 });
+      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith(
+        expect.objectContaining({ translation: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null }),
+      );
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ analysis: null }));
+    });
+
+    // A dub from before per-language outputs gets one output row the first time it runs again.
+    it('gives an older single-language dub an output row when it is regenerated', async () => {
+      const legacyOutputs = chain(
+        { data: null, error: null },
+        { data: [], error: null },
+      );
+      legacyOutputs.insert = jest.fn(() => ({
+        select: () => Promise.resolve({ data: [{ id: 'o-1', language: 'bn', status: 'pending', credits_consumed: 0 }], error: null }),
+      }));
+      await build({
+        dubbing_projects: chain({ data: { ...row, status: 'completed', engine: null, target_language: 'bn' }, error: null }),
+        dubbing_outputs: legacyOutputs,
+      });
+      await service.regenerateDub(USER, 'p-1');
+      expect(legacyOutputs.insert).toHaveBeenCalledWith(expect.objectContaining({ language: 'bn' }));
+      // Bengali has no Chatterbox voice, so the older dub is picked up by ElevenLabs.
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith({ engine: 'elevenlabs' });
+    });
+  });
+
+  describe('getDub', () => {
+    const project = {
+      project_id: 'p-1', engine: 'cypher', status: 'completed', is_video: true, created_at: 'now', media_name: 'Clip',
+      target_language: 'es', target_accent: null, dubbed_url: 'old.mp4', credits_consumed: 10, error_message: null,
+      speakers: [{ id: 'S1' }, { id: 'S2' }, { id: 'S3', voiceOf: 'S1' }],
+    };
+
+    it('lists every language and counts the distinct voices', async () => {
+      await build({
+        dubbing_projects: chain({ data: project, error: null }),
+        dubbing_outputs: outputsTable([
+          { language: 'es', status: 'completed', dubbed_url: 'es.mp4', segments_done: 4, credits_consumed: 5 },
+          { language: 'fr', status: 'failed', error_message: 'boom', segments_done: 1, credits_consumed: 0 },
+        ]),
+      });
+      const dub = await service.getDub(USER, 'p-1');
+      expect(dub.speakerCount).toBe(2);
+      expect(dub.outputs.map((o) => [o.language, o.status])).toEqual([['es', 'completed'], ['fr', 'failed']]);
+    });
+
+    it('shows an older dub as its one language', async () => {
+      await build({ dubbing_projects: chain({ data: { ...project, speakers: null }, error: null }) });
+      const dub = await service.getDub(USER, 'p-1');
+      expect(dub.outputs).toEqual([expect.objectContaining({ language: 'es', status: 'completed', dubbedUrl: 'old.mp4' })]);
     });
   });
 
@@ -332,22 +661,39 @@ describe('DubbingService', () => {
       await expect(service.stopDub(USER, 'job-1')).rejects.toThrow(NotFoundException);
     });
 
-    it('removes a waiting job and marks the row failed', async () => {
+    it('removes a waiting job, refunds it and fails its undelivered languages', async () => {
       await build();
       const remove = jest.fn();
       queue.getJob.mockResolvedValue({
-        data: { userId: USER, projectId: 'p-1', reservedCredits: DUB_COST },
+        data: { userId: USER, projectId: 'p-1', reservedCredits: DUB_COST * 2 },
         getState: () => Promise.resolve('waiting'),
         remove,
       });
       const res = await service.stopDub(USER, 'job-1');
       expect(remove).toHaveBeenCalled();
       // The worker never ran it, so the API owns the refund here.
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST * 2 });
+      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith(
+        { status: 'failed', error_message: 'Cancelled by user', credits_consumed: 0 },
+      );
       expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'failed', error_message: 'Cancelled by user' }),
       );
       expect(res.message).toBe('Dubbing cancelled');
+    });
+
+    // A queued mux-only job holds no reservation: a language whose audio was delivered
+    // keeps the charge it earned.
+    it('keeps the earned charge of delivered languages when a free mux job is cancelled', async () => {
+      await build();
+      queue.getJob.mockResolvedValue({
+        data: { userId: USER, projectId: 'p-1', reservedCredits: 0 },
+        getState: () => Promise.resolve('waiting'),
+        remove: jest.fn(),
+      });
+      await service.stopDub(USER, 'job-1');
+      expect(rpc).not.toHaveBeenCalled();
+      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith({ status: 'failed', error_message: 'Cancelled by user' });
     });
 
     it('sets the Redis cancel flag for an active job', async () => {
@@ -364,55 +710,30 @@ describe('DubbingService', () => {
     });
   });
 
-  describe('in-flight guards', () => {
-    const row = {
-      input_gs_uri: 'gs://dub-bucket/user-1/dubbing/a.mp3',
-      input_url: 'https://storage.googleapis.com/dub-bucket/user-1/dubbing/a.mp3',
-      target_language: 'es',
-      target_accent: null,
-      is_video: false,
-      duration_seconds: DUB_SECONDS,
-    };
-
-    it.each(['queued', 'processing', 'cloning'])('refuses to regenerate a %s dub', async (status) => {
-      await build({ dubbing_projects: chain({ data: { ...row, status }, error: null }) });
-      await expect(service.regenerateDub(USER, 'p-1')).rejects.toThrow(/still running/);
-      expect(queue.add).not.toHaveBeenCalled();
-    });
-
-    it('regenerates a completed dub, reserving credits again', async () => {
-      await build({ dubbing_projects: chain({ data: { ...row, status: 'completed' }, error: null }) });
-      await service.regenerateDub(USER, 'p-1');
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
-      expect(queue.add).toHaveBeenCalled();
-    });
-
+  describe('deleteDub', () => {
     it('refuses to delete a running dub', async () => {
       await build({ dubbing_projects: chain({ data: { status: 'processing' }, error: null }) });
       await expect(service.deleteDub(USER, 'p-1')).rejects.toThrow(/Cancel it before deleting/);
     });
 
-    // Audio dubs are .wav today and were .mp3 on ElevenLabs. Deleting only today's name
-    // leaves every older dub's file behind in the bucket, paid for and unreachable.
-    it('deletes the source and both audio output names', async () => {
+    it('removes the outputs, every language file and the older single-file names', async () => {
       await build({
         dubbing_projects: chain({
-          data: {
-            status: 'completed',
-            input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp3`,
-            is_video: false,
-          },
+          data: { status: 'completed', input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp3`, is_video: false },
           error: null,
         }),
       });
       await service.deleteDub(USER, 'p-1');
+      expect(tables.dubbing_outputs.delete).toHaveBeenCalled();
+      expect(deleteGcsPrefix).toHaveBeenCalledWith(expect.anything(), 'dubbed/p-1/', 'dub-bucket');
       const deleted = (deleteGcsObject as jest.Mock).mock.calls.map((c) => c[1]);
+      // Audio dubs were .wav (Modal) or .mp3 (ElevenLabs) before per-language files.
       expect(deleted).toEqual(
         expect.arrayContaining([`${USER}/dubbing/a.mp3`, 'dubbed/p-1.wav', 'dubbed/p-1.mp3']),
       );
     });
 
-    it('does not chase an mp3 for a video dub', async () => {
+    it('does not chase an mp3 for an older video dub', async () => {
       await build({
         dubbing_projects: chain({
           data: { status: 'completed', input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp4`, is_video: true },
@@ -423,6 +744,27 @@ describe('DubbingService', () => {
       const deleted = (deleteGcsObject as jest.Mock).mock.calls.map((c) => c[1]);
       expect(deleted).toContain('dubbed/p-1.mp4');
       expect(deleted).not.toContain('dubbed/p-1.mp3');
+    });
+
+    it('aborts an unfinished video upload and clears the project prefix', async () => {
+      await build({
+        dubbing_projects: chain({
+          data: {
+            status: 'awaiting_video',
+            input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
+            is_video: true,
+            video_object: `${USER}/dubbing/p-1/clip.mp4`,
+            video_upload_id: 'upload-1',
+            video_status: 'uploading',
+          },
+          error: null,
+        }),
+      });
+      await service.deleteDub(USER, 'p-1');
+      expect(abortMultipartUpload).toHaveBeenCalledWith(
+        expect.anything(), `${USER}/dubbing/p-1/clip.mp4`, 'upload-1', 'dub-bucket',
+      );
+      expect(deleteGcsPrefix).toHaveBeenCalledWith(expect.anything(), `${USER}/dubbing/p-1/`, 'dub-bucket');
     });
   });
 });

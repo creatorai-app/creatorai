@@ -16,7 +16,7 @@ CORE FEATURES (each consumes credits; all are personalized once AI Studio is tra
 - Thumbnails — Eye-catching thumbnails from a text description, an uploaded video frame, or reference images. Open: /dashboard/thumbnails · Learn more: /features#thumbnails
 - Subtitles — Auto-transcription with an inline editor and video player; style them; export SRT or VTT. Open: /dashboard/subtitles · Learn more: /features#subtitles
 - Video Generation — Text-to-video clips with native audio (powered by Veo). Available on the Business and Scale plans only. Open: /dashboard/video-generation
-- Audio Dubbing — Dub videos into other languages while preserving your natural voice. Open: /dashboard/dubbing
+- Audio Dubbing — Dub audio or video into other languages, each speaker in their own cloned voice. Pick Cypher (in-house dubbing) or ElevenLabs; Creator and Pro dub into 2 languages at once, Business and Scale into 3. Open: /dashboard/dubbing
 - Course Builder — Turn a topic into a structured video course. Coming soon.
 
 EXTRAS:
