@@ -14,7 +14,7 @@ import { Progress } from "@repo/ui/progress";
 import { Skeleton } from "@repo/ui/skeleton";
 import { Badge } from "@repo/ui/badge";
 import { useBilling } from "@/hooks/useBilling";
-import { formatDubbingAllowance } from "@repo/validation";
+import { DUB_ENGINES, dubEngineLabel, formatDubbingAllowanceFor } from "@repo/validation";
 import { api } from "@/lib/api-client";
 import {
   BarChart3,
@@ -410,15 +410,18 @@ export function UsageInfo() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Dubbing included</span>
-              <span className="text-sm font-medium">
-                {formatDubbingAllowance(
-                  billingInfo?.currentPlan?.credits_monthly ?? 500,
-                  billingInfo?.currentPlan?.name ?? "Starter",
-                )}
-              </span>
-            </div>
+            {DUB_ENGINES.map((engine) => (
+              <div key={engine} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-slate-600 dark:text-slate-400">Dubbing with {dubEngineLabel(engine)}</span>
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {formatDubbingAllowanceFor(
+                    billingInfo?.currentPlan?.credits_monthly ?? 500,
+                    billingInfo?.currentPlan?.name ?? "Starter",
+                    engine,
+                  )}
+                </span>
+              </div>
+            ))}
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
