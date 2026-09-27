@@ -75,10 +75,15 @@ async function main() {
     await execFileAsync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'sine=duration=2.9', '-ac', '2', '-ar', '44100', '-f', 's16le', rawStem]);
     assert.equal(await rawChannels(rawStem, 3), 2);
     const stemFlac = path.join(dir, 'stem.flac');
-    await stemToFlac({ input: rawStem, output: stemFlac, durationSeconds: 3, raw: { sampleRate: 44100, channels: 2 } });
+    await stemToFlac({ input: rawStem, output: stemFlac, durationSeconds: 3, channels: 2, raw: { sampleRate: 44100, channels: 2 } });
     assert.ok(Math.abs((await probeDurationSeconds(stemFlac))! - 3) < 0.05, 'stem not padded to its window');
+    // A second window that came back as mono MP3 still joins: every piece is made stereo.
+    const monoMp3 = path.join(dir, 'stem2.mp3');
+    await execFileAsync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'sine=duration=3.2', '-ac', '1', monoMp3]);
+    const stemFlac2 = path.join(dir, 'stem2.flac');
+    await stemToFlac({ input: monoMp3, output: stemFlac2, durationSeconds: 3, channels: 2 });
     const joined = path.join(dir, 'joined.flac');
-    await concatFlac([stemFlac, stemFlac], path.join(dir, 'list.txt'), joined);
+    await concatFlac([stemFlac, stemFlac2], path.join(dir, 'list.txt'), joined);
     assert.ok(Math.abs((await probeDurationSeconds(joined))! - 6) < 0.05, 'stems did not join end to end');
 
     // A synthesized turn: 0.5 s silence, 2 s speech, 0.5 s silence -> trimmed, then sped up.

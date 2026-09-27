@@ -98,19 +98,22 @@ export async function cutStemInput(input: string, start: number, duration: numbe
 }
 
 /**
- * One separated stem as 44.1 kHz FLAC of EXACTLY the window's length (padded or cut), so
- * the windows' stems join end to end in step with the source. `raw` is for a stem that
- * came back as headerless PCM (the `pcm_*` output formats).
+ * One separated stem as 44.1 kHz 16-bit FLAC of EXACTLY the window's length (padded or
+ * cut) and a fixed channel count (the voices mono, the background stereo), so every window's piece
+ * joins end to end in step with the source whatever format it came back in. `raw` is for
+ * a stem that came back as headerless PCM (the `pcm_*` output formats).
  */
 export function stemToFlacArgs({
   input,
   output,
   durationSeconds,
+  channels,
   raw,
 }: {
   input: string;
   output: string;
   durationSeconds: number;
+  channels: 1 | 2;
   raw?: { sampleRate: number; channels: number };
 }): string[] {
   return [
@@ -118,7 +121,9 @@ export function stemToFlacArgs({
     ...(raw ? ['-f', 's16le', '-ar', String(raw.sampleRate), '-ac', String(raw.channels)] : []),
     '-i', input,
     '-af', `apad,atrim=0:${durationSeconds.toFixed(3)}`,
-    '-ar', '44100', '-c:a', 'flac', output,
+    // 16-bit always: FLAC cannot change bit depth mid-stream, and a decoded MP3 would
+    // otherwise come out 24-bit next to a 16-bit PCM piece, and the join would stop there.
+    '-ac', String(channels), '-ar', '44100', '-sample_fmt', 's16', '-c:a', 'flac', output,
   ];
 }
 

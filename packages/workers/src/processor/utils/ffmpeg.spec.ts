@@ -31,11 +31,11 @@ describe('stem arguments', () => {
   });
 
   it('pads or cuts each stem to exactly the window length, reading headerless PCM when told to', () => {
-    expect(stemToFlacArgs({ input: 'v.pcm', output: 'v.flac', durationSeconds: 12.5, raw: { sampleRate: 44100, channels: 2 } })).toEqual([
-      '-y', '-f', 's16le', '-ar', '44100', '-ac', '2', '-i', 'v.pcm', '-af', 'apad,atrim=0:12.500', '-ar', '44100', '-c:a', 'flac', 'v.flac',
+    expect(stemToFlacArgs({ input: 'v.pcm', output: 'v.flac', durationSeconds: 12.5, channels: 1, raw: { sampleRate: 44100, channels: 2 } })).toEqual([
+      '-y', '-f', 's16le', '-ar', '44100', '-ac', '2', '-i', 'v.pcm', '-af', 'apad,atrim=0:12.500', '-ac', '1', '-ar', '44100', '-sample_fmt', 's16', '-c:a', 'flac', 'v.flac',
     ]);
-    expect(stemToFlacArgs({ input: 'v.mp3', output: 'v.flac', durationSeconds: 3 })).toEqual([
-      '-y', '-i', 'v.mp3', '-af', 'apad,atrim=0:3.000', '-ar', '44100', '-c:a', 'flac', 'v.flac',
+    expect(stemToFlacArgs({ input: 'b.mp3', output: 'b.flac', durationSeconds: 3, channels: 2 })).toEqual([
+      '-y', '-i', 'b.mp3', '-af', 'apad,atrim=0:3.000', '-ac', '2', '-ar', '44100', '-sample_fmt', 's16', '-c:a', 'flac', 'b.flac',
     ]);
   });
 

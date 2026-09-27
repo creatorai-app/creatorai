@@ -738,7 +738,7 @@ export class DubbingProcessor extends WorkerHost {
           const raw = /\.(pcm|raw)$/i.test(file) || !(await hasAudioHeader(file))
             ? { sampleRate: 44100, channels: await rawChannels(file, duration) }
             : undefined;
-          await stemToFlac({ input: file, output: out, durationSeconds: duration, raw });
+          await stemToFlac({ input: file, output: out, durationSeconds: duration, channels: kind === 'vocals' ? 1 : 2, raw });
           await uploadGcsFile(ctx.bucket, pieceObject(w, kind), out, 'audio/flac');
         }
         stems = { ...stems, windowsDone: w + 1, format: separated.format };
