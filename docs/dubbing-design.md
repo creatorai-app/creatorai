@@ -251,6 +251,10 @@ self-check (assert the Modal response decodes to non-empty audio; assert credits
 
 ### 9.1 One-time setup — GCS dubbing bucket
 
+> Uploads are now split, parallel and resumable, which needs a different CORS config and
+> an extra lifecycle rule than steps 4 and 5 below. Use the commands in
+> [dubbing-resumable-uploads.md](dubbing-resumable-uploads.md#changes-you-need-to-make-in-google-cloud-storage).
+
 Dubbing has its own bucket. Create it once (replace `creator-ai-dubbing` and the
 service-account email with yours):
 
