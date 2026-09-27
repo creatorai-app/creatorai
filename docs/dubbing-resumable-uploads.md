@@ -11,7 +11,7 @@ of the whole file and the single-language, single-voice pipeline described in
 |---|---|---|
 | Engine | Gemini + Modal only | **Cypher (in-house dubbing)** or **ElevenLabs**, picked per dub, on every plan |
 | Price | One rate | Per engine, per second, per language: Cypher 1 credit/s, ElevenLabs 1/6 credit/s (Starter 3/s on both) |
-| Languages offered | 20 (Cypher only) | **34** in total: ElevenLabs all 34, Cypher all **23** Chatterbox speaks |
+| Languages offered | 20 (Cypher only) | **94** in total: ElevenLabs all 94, Cypher all **23** Chatterbox speaks |
 | ElevenLabs route | One legacy `POST /v1/dubbing` per language | One **project** per dub on `dubbing_v2` (plus `dubbing_v1` for Bengali), one language target per language |
 | Voice | Fixed | **Voice mode** (keep my voice and accent / balanced / sound native), **dialects** on ElevenLabs, **names and terms** kept as they are |
 | Music and effects (Cypher) | Lost: the dub was speech only | Kept: the voices are separated from the background and the dub is mixed back over it |
@@ -34,7 +34,7 @@ Constants live in `packages/validations/src/consts/dubbing.ts` (`DUB_ENGINES`,
 | | Cypher (in-house dubbing) | ElevenLabs |
 |---|---|---|
 | Runs on | Gemini (Vertex) + Chatterbox on Modal | ElevenLabs Dubbing API |
-| Languages | 23: every language Chatterbox Multilingual speaks | 34: 33 on Dubbing v2, plus Bengali on `dubbing_v1` |
+| Languages | 23: every language Chatterbox Multilingual speaks | 94: the whole Dubbing v2 table (93), plus Bengali on `dubbing_v1` |
 | Dialects | None (Chatterbox copies the accent of the voice sample) | v2 dialects for en, es, pt, fr, zh, ar (none for Bengali) |
 | Voice mode | Only once the Cypher TTS v2 service is live (Chatterbox `cfg_weight`) | Always (Dubbing v2 cloning strength) |
 | Speakers | Our own algorithm, below | ElevenLabs' own detection |
@@ -125,10 +125,12 @@ What each rule is for:
   already made (`findProjectByReference`, `findLanguageTarget`), in case a create went
   through but its answer never arrived. Regenerate bumps `vendor_projects.generation`,
   which is part of the reference, so a fresh start never finds the old project.
-- **Failures.** A failed project or target carries `error: { message_type, error }`; the
-  reason is read from `error.error` (the old code read `error.message` and always said
-  "no reason given"). A target that failed with `project_failed` reads the project for
-  the real cause. A failed project is forgotten (a retry makes a new one); a failed
+- **Failures.** A failed project or target carries an `error`, and ElevenLabs publishes it
+  two ways: the API reference pages say `{ message_type, error }`, the OpenAPI spec
+  `{ code, message, retryable }`. The reason is read from whichever is there (`message`,
+  then `error`, then `code`); the old code read only `error.message` of the first shape
+  and always said "no reason given". A target that failed with `project_failed` (as its
+  `code` or its `error`) reads the project for the real cause. A failed project is forgotten (a retry makes a new one); a failed
   target only clears that language's target (a retry adds one to the same project).
 - **`stale`** means a target has an output that no longer matches an edited transcript.
   Nothing here edits transcripts (editing and regenerating are Enterprise only), so it is
@@ -165,12 +167,16 @@ All in `packages/validations/src/consts/dubbing.ts`; public pages read the count
 
 | | Cypher | ElevenLabs |
 |---|---|---|
-| Languages | 23 (`CHATTERBOX_LANGUAGES`) | 34: `ELEVENLABS_V2_LANGUAGES` (33) plus `DUBBING_V1_LANGUAGES` (`bn`) |
-| Only here | none | bg, bn, cs, fil, hr, id, ro, sk, ta, uk, yue |
+| Languages | 23 (`CHATTERBOX_LANGUAGES`) | 94: `ELEVENLABS_V2_LANGUAGES` (93) plus `DUBBING_V1_LANGUAGES` (`bn`) |
+| Only here | none | the other 71, from Afrikaans to Zulu |
+
+`ELEVENLABS_V2_LANGUAGES` is the whole Dubbing v2 table from
+[the dubbing overview](https://elevenlabs.io/docs/overview/capabilities/dubbing) as of
+27 Sep 2026: 94 rows, less `cmn` (Mandarin Chinese), which would duplicate `zh`. The v1
+table has 86 rows; Bengali is the only one of them not on v2.
 
 The new-dub menu shows the chosen engine's count and lists, greyed out, the languages
-only the other engine speaks. Cantonese is its own language on v2 (`yue`); `cmn` is not
-added next to `zh`.
+only the other engine speaks. Cantonese is its own language on v2 (`yue`).
 
 **Dialects** (ElevenLabs v2 only). The stored `accent` values are kept and mapped to v2
 target tags in one place, `elevenLabsTargetTag`:
@@ -578,10 +584,10 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
    `20260927000000_blog_dubbing_language_count.sql` (blog copy, 29 to 33 languages),
    `20260928000000_dubbing_voice_mode_and_timelines.sql` (schema: the worker reads the new
    columns, so this must be in before the worker is deployed) and
-   `20260928000100_blog_dubbing_language_count_34.sql` (blog copy, 33 to 34).
+   `20260928000100_blog_dubbing_language_count_94.sql` (blog copy, 33 to 94).
 2. Regenerate `llms.txt` once the blog migrations are in, so the two comparison-table rows
    it quotes pick up the new count: `pnpm --filter web llms:generate`. (The header line was
-   already moved to 34 by hand in this change; the generator writes the same line.)
+   already moved to 94 by hand in this change; the generator writes the same line.)
 3. Apply the CORS and lifecycle config above.
 4. Deploy API, worker and web together (new routes, new job shape, new response shape).
 5. Modal: nothing to deploy. `modal/dubbing_app.py` is untouched. The Cypher TTS v2
@@ -602,7 +608,7 @@ or language change updates the pages with it:
   credits per minute for the user's plan).
 - **`llms.txt` / `llms-full.txt`**: the generator's header now quotes the counts and the
   every-plan pricing, and no longer claims a 60-second Starter cap.
-- **Blog**: migrations move "29 languages" to 33, then to 34, in the two comparison tables
+- **Blog**: migrations move "29 languages" to 33, then to 94, in the two comparison tables
   and the dubbing CTA. Sentences about other tools' language counts are unchanged.
 
 Still to decide: the dubbing CTA on six posts is titled "Dub a 60-second video now" and
@@ -684,9 +690,9 @@ Manual, after the migrations and bucket changes:
   spread by their share of the text.
 - **Stem separation input size** on a long source: each 10-minute window is sent as
   44.1 kHz FLAC (tens of MB). If ElevenLabs refuses that size, Cypher falls back to the mix.
-- **The language table** in `ELEVENLABS_V2_LANGUAGES` lists the codes this product offers
-  and had confirmed; the full v2 table has more. Add a code there and its label in
-  `supportedLanguages` to offer one.
+- **The language table** in `ELEVENLABS_V2_LANGUAGES` is a copy of ElevenLabs' v2 table.
+  When ElevenLabs adds a language, add its code there and its label in
+  `supportedLanguages`, and copy the blog count migration with the new number.
 - **Overlapping speech** is attributed to one speaker per line.
 - **Speaker ids across windows** rely on Gemini matching voices to earlier descriptions.
   Within one 10-minute window it is consistent; a recording with many similar voices

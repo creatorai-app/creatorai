@@ -159,40 +159,100 @@ export const DUBBING_CANCEL_PREFIX = 'dubbing:cancel:';
  * exception ElevenLabs makes: `yue` is its own language on Dubbing v2.
  */
 export const supportedLanguages = [
+  { value: 'af', label: 'Afrikaans' },
+  { value: 'ak', label: 'Akan' },
+  { value: 'sq', label: 'Albanian' },
+  { value: 'am', label: 'Amharic' },
   { value: 'ar', label: 'Arabic' },
+  { value: 'hy', label: 'Armenian' },
+  { value: 'as', label: 'Assamese' },
+  { value: 'az', label: 'Azerbaijani' },
+  { value: 'eu', label: 'Basque' },
+  { value: 'be', label: 'Belarusian' },
   { value: 'bn', label: 'Bengali' },
+  { value: 'bs', label: 'Bosnian' },
   { value: 'bg', label: 'Bulgarian' },
+  { value: 'my', label: 'Burmese' },
+  { value: 'yue', label: 'Cantonese' },
+  { value: 'ca', label: 'Catalan' },
+  { value: 'ceb', label: 'Cebuano' },
+  { value: 'zh', label: 'Chinese (Mandarin)' },
+  { value: 'hr', label: 'Croatian' },
   { value: 'cs', label: 'Czech' },
   { value: 'da', label: 'Danish' },
+  { value: 'dgo', label: 'Dogri' },
+  { value: 'nl', label: 'Dutch' },
+  { value: 'en', label: 'English' },
+  { value: 'et', label: 'Estonian' },
+  { value: 'fil', label: 'Filipino' },
+  { value: 'fi', label: 'Finnish' },
+  { value: 'fr', label: 'French' },
+  { value: 'gl', label: 'Galician' },
+  { value: 'ka', label: 'Georgian' },
   { value: 'de', label: 'German' },
   { value: 'el', label: 'Greek' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fi', label: 'Finnish' },
-  { value: 'fil', label: 'Filipino' },
-  { value: 'fr', label: 'French' },
+  { value: 'gu', label: 'Gujarati' },
+  { value: 'ha', label: 'Hausa' },
   { value: 'he', label: 'Hebrew' },
   { value: 'hi', label: 'Hindi' },
-  { value: 'hr', label: 'Croatian' },
+  { value: 'hu', label: 'Hungarian' },
+  { value: 'is', label: 'Icelandic' },
   { value: 'id', label: 'Indonesian' },
   { value: 'it', label: 'Italian' },
   { value: 'ja', label: 'Japanese' },
+  { value: 'jv', label: 'Javanese' },
+  { value: 'kn', label: 'Kannada' },
+  { value: 'kk', label: 'Kazakh' },
+  { value: 'ki', label: 'Kikuyu' },
+  { value: 'rw', label: 'Kinyarwanda' },
+  { value: 'rn', label: 'Kirundi' },
   { value: 'ko', label: 'Korean' },
+  { value: 'ky', label: 'Kyrgyz' },
+  { value: 'lv', label: 'Latvian' },
+  { value: 'lt', label: 'Lithuanian' },
+  { value: 'lg', label: 'Luganda' },
+  { value: 'mk', label: 'Macedonian' },
   { value: 'ms', label: 'Malay' },
-  { value: 'nl', label: 'Dutch' },
+  { value: 'ml', label: 'Malayalam' },
+  { value: 'mr', label: 'Marathi' },
+  { value: 'mn', label: 'Mongolian' },
+  { value: 'ne', label: 'Nepali' },
   { value: 'no', label: 'Norwegian' },
+  { value: 'fa', label: 'Persian' },
   { value: 'pl', label: 'Polish' },
   { value: 'pt', label: 'Portuguese' },
+  { value: 'pa', label: 'Punjabi' },
   { value: 'ro', label: 'Romanian' },
   { value: 'ru', label: 'Russian' },
+  { value: 'nso', label: 'Sepedi' },
+  { value: 'st', label: 'Sesotho' },
+  { value: 'sd', label: 'Sindhi' },
   { value: 'sk', label: 'Slovak' },
-  { value: 'sv', label: 'Swedish' },
+  { value: 'sl', label: 'Slovenian' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'su', label: 'Sundanese' },
   { value: 'sw', label: 'Swahili' },
+  { value: 'ss', label: 'Swati' },
+  { value: 'sv', label: 'Swedish' },
+  { value: 'tg', label: 'Tajik' },
   { value: 'ta', label: 'Tamil' },
+  { value: 'te', label: 'Telugu' },
+  { value: 'th', label: 'Thai' },
+  { value: 'bo', label: 'Tibetan' },
+  { value: 'ts', label: 'Tsonga' },
+  { value: 'tn', label: 'Tswana' },
   { value: 'tr', label: 'Turkish' },
   { value: 'uk', label: 'Ukrainian' },
-  { value: 'yue', label: 'Cantonese' },
-  { value: 'zh', label: 'Chinese (Mandarin)' },
+  { value: 'ur', label: 'Urdu' },
+  { value: 'ug', label: 'Uyghur' },
+  { value: 'uz', label: 'Uzbek' },
+  { value: 've', label: 'Venda' },
+  { value: 'vi', label: 'Vietnamese' },
+  { value: 'war', label: 'Waray' },
+  { value: 'cy', label: 'Welsh' },
+  { value: 'wo', label: 'Wolof' },
+  { value: 'yo', label: 'Yoruba' },
+  { value: 'zu', label: 'Zulu' },
 ] as const;
 
 export type SupportedLanguage = typeof supportedLanguages[number]['value'];
@@ -221,20 +281,24 @@ export const CHATTERBOX_LANGUAGES: readonly string[] = [
 ];
 
 /**
- * The target languages of ElevenLabs Dubbing v2 (`model_id=dubbing_v2`) this product
- * offers, as base codes. Every ElevenLabs dub runs on v2 except Bengali, which only v1
- * speaks (DUBBING_V1_LANGUAGES).
+ * The target languages of ElevenLabs Dubbing v2 (`model_id=dubbing_v2`), as base codes:
+ * the whole v2 table on https://elevenlabs.io/docs/overview/capabilities/dubbing as of
+ * 27 Sep 2026 (94 rows), less `cmn` ("Mandarin Chinese"), which would be a second entry
+ * for `zh`. Every ElevenLabs dub runs on v2 except Bengali, which only v1 speaks
+ * (DUBBING_V1_LANGUAGES).
  *
- * Source: the Dubbing v2 table on
- * https://elevenlabs.io/docs/overview/capabilities/dubbing. Adding a language is two
- * lines: its code here and its label in `supportedLanguages`. A code v2 does not speak
- * is refused when the language target is created, after the project has already been
- * paid for, so only add what the table lists.
+ * Adding a language is two lines: its code here and its label in `supportedLanguages`. A
+ * code v2 does not speak is refused when the language target is created, after the
+ * project has already been paid for, so only add what the table lists.
  */
 export const ELEVENLABS_V2_LANGUAGES: readonly string[] = [
-  'ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'fi', 'fil', 'fr', 'he', 'hi', 'hr',
-  'id', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sk', 'sv', 'sw',
-  'ta', 'tr', 'uk', 'yue', 'zh',
+  'af', 'ak', 'sq', 'am', 'ar', 'hy', 'as', 'az', 'eu', 'be', 'bs', 'bg', 'my', 'yue',
+  'ca', 'ceb', 'zh', 'hr', 'cs', 'da', 'dgo', 'nl', 'en', 'et', 'fil', 'fi', 'fr', 'gl',
+  'ka', 'de', 'el', 'gu', 'ha', 'he', 'hi', 'hu', 'is', 'id', 'it', 'ja', 'jv', 'kn', 'kk',
+  'ki', 'rw', 'rn', 'ko', 'ky', 'lv', 'lt', 'lg', 'mk', 'ms', 'ml', 'mr', 'mn', 'ne', 'no',
+  'fa', 'pl', 'pt', 'pa', 'ro', 'ru', 'nso', 'st', 'sd', 'sk', 'sl', 'es', 'su', 'sw',
+  'ss', 'sv', 'tg', 'ta', 'te', 'th', 'bo', 'ts', 'tn', 'tr', 'uk', 'ur', 'ug', 'uz', 've',
+  'vi', 'war', 'cy', 'wo', 'yo', 'zu',
 ];
 
 /**
@@ -411,20 +475,24 @@ export const DUB_VOICE_MODE_INFO: Record<DubVoiceMode, { label: string; help: Re
  *
  * Groups, by script and region: Latin-script European (Germanic, Romance, West Slavic,
  * Baltic, Finno-Ugric, Turkish), Cyrillic, Arabic-script, Indic, CJK, Southeast Asian,
- * African. A language in no group (Greek, Hebrew, Armenian, Georgian) is treated like
- * an unknown source: no adjustment.
+ * African. A language in no group (Greek, Hebrew, Armenian, Georgian, Tibetan) is
+ * treated like an unknown source: no adjustment.
  */
 export const DUB_LANGUAGE_GROUPS: Record<string, readonly string[]> = {
   latin_european: [
     'en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'sv', 'da', 'no', 'fi', 'pl', 'cs', 'sk', 'ro', 'hr',
     'hu', 'et', 'lv', 'lt', 'sl', 'ca', 'gl', 'eu', 'is', 'ga', 'cy', 'mt', 'lb', 'sq', 'bs', 'tr', 'af',
+    'az', 'uz',
   ],
   cyrillic: ['ru', 'uk', 'bg', 'sr', 'mk', 'be', 'kk', 'ky', 'tg', 'mn'],
-  arabic_script: ['ar', 'fa', 'ur', 'ps', 'sd'],
-  indic: ['hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'pa', 'ne', 'or', 'as', 'si'],
+  arabic_script: ['ar', 'fa', 'ur', 'ps', 'sd', 'ug'],
+  indic: ['hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'pa', 'ne', 'or', 'as', 'si', 'dgo'],
   cjk: ['zh', 'yue', 'ja', 'ko'],
-  southeast_asian: ['id', 'ms', 'fil', 'tl', 'vi', 'th', 'km', 'lo', 'my', 'jv', 'su', 'ceb'],
-  african: ['sw', 'ha', 'yo', 'ig', 'zu', 'xh', 'am', 'so', 'sn', 'wo', 'ln', 'ny'],
+  southeast_asian: ['id', 'ms', 'fil', 'tl', 'vi', 'th', 'km', 'lo', 'my', 'jv', 'su', 'ceb', 'war'],
+  african: [
+    'sw', 'ha', 'yo', 'ig', 'zu', 'xh', 'am', 'so', 'sn', 'wo', 'ln', 'ny', 'ak', 'ki', 'rw', 'rn',
+    'lg', 'nso', 'st', 'ss', 'ts', 'tn', 've',
+  ],
 };
 
 /** A language's group, from a base code or a dialect tag ("es-MX" is Spanish). */

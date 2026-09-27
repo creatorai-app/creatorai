@@ -247,10 +247,12 @@ assert.equal(DUBBING_CANCEL_PREFIX, 'dubbing:cancel:');
 
 // The label table keeps every language ever dubbed, so history pages can still name a
 // dub made under an older backend.
-assert.equal(supportedLanguages.length, 34);
+// ElevenLabs' whole Dubbing v2 table (94 rows less the duplicate cmn) plus Bengali on v1.
+assert.equal(supportedLanguages.length, 94);
+assert.equal(ELEVENLABS_V2_LANGUAGES.length, 93);
 const languageCodes = supportedLanguages.map((l) => l.value);
 assert.equal(new Set(languageCodes).size, languageCodes.length, 'duplicate language code');
-for (const code of ['en', 'es', 'ar', 'uk', 'ta', 'fil', 'ms', 'sv', 'zh', 'bn', 'yue']) {
+for (const code of ['en', 'es', 'ar', 'uk', 'ta', 'fil', 'ms', 'sv', 'zh', 'bn', 'yue', 'dgo', 'nso', 'war', 'bo', 'ug']) {
   assert.equal(languageCodes.includes(code as never), true, `missing ${code}`);
 }
 
@@ -262,7 +264,7 @@ for (const code of cypherCodes) {
   assert.equal(CHATTERBOX_LANGUAGES.includes(code), true, `${code} is offered but Chatterbox cannot speak it`);
   assert.equal(isSupportedDubLanguage(code, 'cypher'), true, `${code} is offered but the API would reject it`);
 }
-for (const code of ['bn', 'bg', 'cs', 'fil', 'hr', 'id', 'ro', 'sk', 'ta', 'uk', 'yue']) {
+for (const code of ['bn', 'bg', 'cs', 'fil', 'hr', 'id', 'ro', 'sk', 'ta', 'uk', 'yue', 'af', 'vi', 'zu']) {
   assert.equal(isSupportedDubLanguage(code, 'cypher'), false, `${code} has no Chatterbox voice and must not be accepted`);
   assert.equal(cypherCodes.includes(code as never), false, `${code} must not be offered on Cypher`);
   // ...but ElevenLabs speaks all of them.

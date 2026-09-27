@@ -23,7 +23,7 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 - Voice-matched script generation trained on your channel
 - AI thumbnail generator (1280×720, CTR-optimized)
 - Subtitle generation with SRT/VTT export
-- Video dubbing into 34 languages, every speaker in their own cloned voice: Cypher (in-house, 23 languages) or ElevenLabs (34)
+- Video dubbing into 94 languages, every speaker in their own cloned voice: Cypher (in-house, 23 languages) or ElevenLabs (94)
 - AI video generation: short clips with audio from a text prompt or a start image
 - Topic and trend research for your niche
 - Story blueprint planning for video structure
