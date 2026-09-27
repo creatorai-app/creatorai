@@ -13,7 +13,15 @@ import {
   supportedLanguages,
   dubOutputObjects,
   dubProjectPrefix,
+  cloningStrengthFor,
+  elevenLabsModelFor,
+  elevenLabsTargetTag,
+  DEFAULT_DUB_VOICE_MODE,
   type DubEngine,
+  type DubTimelineSegment,
+  type DubVoiceMode,
+  type DubWarning,
+  type ElevenLabsDubbingModel,
 } from '@repo/validation';
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs/promises';
@@ -51,13 +59,23 @@ import {
   type SourceAnalysis,
 } from './utils/cypher-analysis';
 import {
-  createDub,
+  createLanguageTarget,
+  createProject,
   downloadDub,
+  elevenLabsDeadlineMs,
   ElevenLabsDubFailedError,
   getElevenLabsKey,
+  getSourceTranscript,
+  getTargetTranscript,
+  mergeWarnings,
   parseDub,
   serializeDub,
+  toWarnings,
+  transcriptTimeline,
   waitForDub,
+  waitForProjectReady,
+  type CallOptions,
+  type ElevenLabsDub,
 } from './utils/elevenlabs-dubbing';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +86,9 @@ import {
 //   from their own lines, the lines are translated, and Chatterbox on Modal speaks each
 //   turn in its speaker's cloned voice. Turns go back at their original times.
 //
-//   ElevenLabs: one vendor dub per language. ElevenLabs detects and clones the speakers.
+//   ElevenLabs: one vendor project per model (dubbing_v2, and dubbing_v1 for Bengali),
+//   one language target per language under it. ElevenLabs detects and clones the
+//   speakers, and its transcripts become the dub's timeline.
 //
 // Either way each language ends as an MP3 track (dubbed_audio_url), and a video dub has
 // that track muxed over the original once the browser has finished uploading it. Every
@@ -124,6 +144,19 @@ interface OutputRow {
   credits_consumed: number;
 }
 
+/** ElevenLabs project ids per model, as stored on dubbing_projects.vendor_projects. */
+type VendorProjects = Partial<Record<ElevenLabsDubbingModel, string>>;
+
+interface ProjectRow {
+  engine: DubEngine | null;
+  video_object: string | null;
+  analysis: SourceAnalysis | null;
+  source_language: string | null;
+  voice_mode: DubVoiceMode | null;
+  keyterms: string[] | null;
+  vendor_projects: VendorProjects | null;
+}
+
 /** Everything one run needs, resolved once. */
 interface RunContext {
   job: Job<DubJobData>;
@@ -132,10 +165,19 @@ interface RunContext {
   bucket: string;
   prefix: string;
   inputUrl: string;
+  /** Object name of the audio source in `bucket`. */
+  inputObject: string;
   dir: string;
   isVideo: boolean;
   durationSeconds: number;
   engine: DubEngine;
+  /** What the user said the source is in; null means detect it. */
+  sourceLanguage: string | null;
+  voiceMode: DubVoiceMode;
+  keyterms: string[];
+  vendorProjects: VendorProjects;
+  /** Serialises writes of vendorProjects, so two models' projects cannot overwrite each other. */
+  vendorWrite: Promise<void>;
 }
 
 type DubResult = { dubbedUrl: string | null; awaitingVideo?: boolean };
@@ -172,7 +214,12 @@ export class DubbingProcessor extends WorkerHost {
     const needAudio = outputs.filter((o) => !o.dubbed_audio_url);
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dub-'));
     const ctx: RunContext = {
-      job, userId, projectId, bucket, prefix: dubProjectPrefix(userId, projectId), inputUrl, dir, isVideo, durationSeconds, engine,
+      job, userId, projectId, bucket, prefix: dubProjectPrefix(userId, projectId), inputUrl, inputObject, dir, isVideo, durationSeconds, engine,
+      sourceLanguage: project.source_language ?? null,
+      voiceMode: project.voice_mode ?? DEFAULT_DUB_VOICE_MODE,
+      keyterms: project.keyterms ?? [],
+      vendorProjects: { ...(project.vendor_projects ?? {}) },
+      vendorWrite: Promise.resolve(),
     };
     // Set once the outcome is written, so the catch below never settles credits twice.
     let settled = false;
@@ -247,43 +294,205 @@ export class DubbingProcessor extends WorkerHost {
 
   // ───────────────────────────── ElevenLabs ─────────────────────────────
 
-  /** One vendor dub per language, all at once: they run on ElevenLabs, not here. */
+  /**
+   * Every pending language, on ElevenLabs' side. Languages still following a dub from
+   * the legacy route finish there. The rest are grouped by model (dubbing_v2, and
+   * dubbing_v1 for Bengali): one project per model, one target per language, all
+   * running at once since they run on ElevenLabs, not here.
+   */
   private async dubWithElevenLabs(ctx: RunContext, outputs: OutputRow[]): Promise<void> {
     const apiKey = getElevenLabsKey();
     await this.updateProject(ctx.projectId, { status: 'cloning' });
+    const opts: CallOptions = {
+      apiKey,
+      deadline: Date.now() + elevenLabsDeadlineMs(ctx.durationSeconds),
+      checkCancelled: () => this.throwIfCancelled(ctx.job.id!),
+      onBusy: (ms) => void ctx.job.log(`ElevenLabs is busy with other dubs. Trying again in ${Math.round(ms / 1000)}s...`),
+    };
     let finished = 0;
+    const progress = async () => {
+      finished++;
+      await ctx.job.updateProgress(10 + Math.round((80 * finished) / outputs.length));
+    };
+
+    const legacy = outputs.filter((o) => parseDub(o.vendor_dub_id)?.kind === 'dub');
+    const byModel = new Map<ElevenLabsDubbingModel, OutputRow[]>();
+    for (const o of outputs.filter((o) => !legacy.includes(o))) {
+      const model = elevenLabsModelFor(o.language);
+      byModel.set(model, [...(byModel.get(model) ?? []), o]);
+    }
 
     // allSettled, not all: on a cancel every language must have stopped before the run's
     // failure is written, or one still downloading could land after it was refunded.
-    const results = await Promise.allSettled(
-      outputs.map(async (o) => {
-        try {
-          await this.updateOutputs([o.id], { status: 'dubbing' });
-          let dub = parseDub(o.vendor_dub_id);
-          if (!dub) {
-            dub = await createDub(apiKey, ctx.inputUrl, o.language, o.accent);
-            // Stored before waiting, so a resumed run follows this dub instead of paying for another.
-            o.vendor_dub_id = serializeDub(dub);
-            await this.updateOutputs([o.id], { vendor_dub_id: o.vendor_dub_id });
-          }
-          await waitForDub(apiKey, dub, () => this.throwIfCancelled(ctx.job.id!));
+    const results = await Promise.allSettled([
+      ...legacy.map((o) => this.finishElevenLabsLanguage(ctx, opts, o).finally(progress)),
+      ...[...byModel].map(([model, group]) => this.dubElevenLabsModel(ctx, opts, model, group, progress)),
+    ]);
+    const cancelled = results.find((r) => r.status === 'rejected');
+    if (cancelled) throw (cancelled as PromiseRejectedResult).reason;
+  }
 
-          const downloaded = path.join(ctx.dir, `elevenlabs-${o.language}`);
-          await downloadDub(apiKey, dub, o.language, downloaded);
-          const mp3 = path.join(ctx.dir, `${o.language}.mp3`);
-          await toMp3(downloaded, mp3);
-          await this.storeDubbedAudio(ctx, o, mp3);
-        } catch (error) {
-          if (error instanceof DubbingCancelledError) throw error;
-          await this.failOutput(ctx, o, error as Error);
-        } finally {
-          finished++;
-          await ctx.job.updateProgress(10 + Math.round((80 * finished) / outputs.length));
+  /**
+   * One model's languages: its project (reused if one is stored, created and stored
+   * before anything else otherwise), a target for each language without one (stored the
+   * moment it exists), then each language followed to its dubbed track.
+   */
+  private async dubElevenLabsModel(
+    ctx: RunContext,
+    opts: CallOptions,
+    model: ElevenLabsDubbingModel,
+    outputs: OutputRow[],
+    progress: () => Promise<void>,
+  ): Promise<void> {
+    await this.updateOutputs(outputs.map((o) => o.id), { status: 'dubbing' });
+    const needTarget = outputs.filter((o) => !parseDub(o.vendor_dub_id));
+    let projectId = ctx.vendorProjects[model] ?? null;
+    let sourceLanguage = ctx.sourceLanguage;
+
+    try {
+      if (needTarget.length) {
+        if (!projectId) {
+          projectId = await createProject({
+            ...opts,
+            sourceUrl: this.vendorSourceUrl(ctx),
+            modelId: model,
+            sourceLanguage: ctx.sourceLanguage,
+            keyterms: ctx.keyterms,
+            reference: ctx.projectId,
+          });
+          // Stored before any target: a resumed run reuses this project instead of
+          // paying ElevenLabs' up-front charge for a second one.
+          await this.saveVendorProject(ctx, model, projectId);
+          await ctx.job.log(`ElevenLabs project ${projectId} created (${model}).`);
         }
-      }),
+
+        // Cloning strength depends on how far the source is from each target. With no
+        // source language given, wait for ElevenLabs to detect it first.
+        if (model === 'dubbing_v2' && !sourceLanguage) {
+          await waitForProjectReady(opts, projectId);
+          sourceLanguage = (await getSourceTranscript(opts, projectId).catch(() => null))?.language ?? null;
+        }
+
+        for (const o of needTarget) {
+          await this.throwIfCancelled(ctx.job.id!);
+          const cloningStrength =
+            model === 'dubbing_v2'
+              ? cloningStrengthFor({ voiceMode: ctx.voiceMode, sourceLanguage, targetLanguage: o.language })
+              : null;
+          const languageId = await createLanguageTarget({
+            ...opts,
+            projectId,
+            targetLanguage: elevenLabsTargetTag(o.language, o.accent),
+            cloningStrength,
+            onVoiceSettingsRefused: (reason) =>
+              this.logger.warn(`Dub ${ctx.projectId} (${o.language}): ElevenLabs refused cloning strength, dubbing with defaults. ${reason}`),
+          });
+          // Stored as it lands, so a retry follows this target instead of paying for another.
+          o.vendor_dub_id = serializeDub({ kind: 'project', projectId, languageId });
+          await this.updateOutputs([o.id], { vendor_dub_id: o.vendor_dub_id });
+        }
+      }
+    } catch (error) {
+      if (error instanceof DubbingCancelledError) throw error;
+      // The project itself failed: a retry needs a new one.
+      if (error instanceof ElevenLabsDubFailedError && error.scope === 'project') {
+        await this.saveVendorProject(ctx, model, null);
+      }
+      // Languages that already have a target keep following it; the rest fail here.
+      for (const o of outputs.filter((o) => !parseDub(o.vendor_dub_id))) {
+        await this.failOutput(ctx, o, error as Error);
+        await progress();
+      }
+      if (error instanceof ElevenLabsDubFailedError && error.scope === 'project') {
+        for (const o of outputs.filter((o) => parseDub(o.vendor_dub_id))) {
+          await this.failOutput(ctx, o, error);
+          await progress();
+        }
+        return;
+      }
+    }
+
+    const started = outputs.filter((o) => o.status !== 'failed' && parseDub(o.vendor_dub_id));
+    const results = await Promise.allSettled(
+      started.map((o) => this.finishElevenLabsLanguage(ctx, opts, o).finally(progress)),
     );
     const cancelled = results.find((r) => r.status === 'rejected');
     if (cancelled) throw (cancelled as PromiseRejectedResult).reason;
+  }
+
+  /** Wait for one language, download it, and store the track with its timeline. */
+  private async finishElevenLabsLanguage(ctx: RunContext, opts: CallOptions, o: OutputRow): Promise<void> {
+    try {
+      await this.updateOutputs([o.id], { status: 'dubbing' });
+      const dub = parseDub(o.vendor_dub_id)!;
+      const outcome = await waitForDub(opts, dub);
+      if (outcome.status === 'stale') {
+        await ctx.job.log(`${o.language}: ElevenLabs reports this dub as stale (its transcript changed after it was made). Using its current output.`);
+      }
+
+      const downloaded = path.join(ctx.dir, `elevenlabs-${o.language}`);
+      await downloadDub(opts, dub, o.language, downloaded);
+      const mp3 = path.join(ctx.dir, `${o.language}.mp3`);
+      await toMp3(downloaded, mp3);
+
+      const { timeline, warnings } = await this.elevenLabsTimeline(ctx, opts, o, dub, outcome.warnings);
+      await this.storeDubbedAudio(ctx, o, mp3, { timeline, warnings: warnings.length ? warnings : null });
+      for (const w of warnings.filter((w) => w.type === 'voices_not_permitted')) {
+        await ctx.job.log(`${o.language}: ${w.speakerIds?.length ?? 'some'} speaker(s) got a replacement voice, since their own voice could not be cloned.`);
+      }
+    } catch (error) {
+      if (error instanceof DubbingCancelledError) throw error;
+      if (error instanceof ElevenLabsDubFailedError && error.scope === 'project') await this.saveVendorProject(ctx, elevenLabsModelFor(o.language), null);
+      await this.failOutput(ctx, o, error as Error);
+    }
+  }
+
+  /**
+   * The language's timeline from ElevenLabs' two transcripts, and its warnings. A dub is
+   * already delivered when this runs, so nothing here may fail it: a transcript that
+   * cannot be read leaves the timeline empty and is logged.
+   */
+  private async elevenLabsTimeline(
+    ctx: RunContext,
+    opts: CallOptions,
+    o: OutputRow,
+    dub: ElevenLabsDub,
+    targetWarnings: DubWarning[],
+  ): Promise<{ timeline: DubTimelineSegment[] | null; warnings: DubWarning[] }> {
+    if (dub.kind !== 'project') return { timeline: null, warnings: targetWarnings };
+    try {
+      const [source, target] = await Promise.all([
+        getSourceTranscript(opts, dub.projectId),
+        getTargetTranscript(opts, dub.projectId, dub.languageId),
+      ]);
+      const timeline = transcriptTimeline(source, target);
+      return { timeline: timeline.length ? timeline : null, warnings: targetWarnings };
+    } catch (error: any) {
+      if (error instanceof DubbingCancelledError) throw error;
+      this.logger.warn(`Dub ${ctx.projectId} (${o.language}): could not read the ElevenLabs transcripts: ${error?.message}`);
+      return { timeline: null, warnings: targetWarnings };
+    }
+  }
+
+  /** Record (or forget, with null) a model's ElevenLabs project, one write at a time. */
+  private async saveVendorProject(ctx: RunContext, model: ElevenLabsDubbingModel, projectId: string | null): Promise<void> {
+    if (projectId) ctx.vendorProjects[model] = projectId;
+    else delete ctx.vendorProjects[model];
+    const snapshot = { ...ctx.vendorProjects };
+    ctx.vendorWrite = ctx.vendorWrite
+      .catch(() => undefined)
+      .then(() => this.updateProject(ctx.projectId, { vendor_projects: Object.keys(snapshot).length ? snapshot : null }));
+    await ctx.vendorWrite;
+  }
+
+  /**
+   * The URL ElevenLabs fetches the source from. A project returns as soon as its record
+   * exists and fetches the source later, so this has to stay readable for hours. The
+   * dubbing bucket is public-read, so the public URL does; this is the one place to
+   * switch to a long-lived signed URL if that ever changes.
+   */
+  private vendorSourceUrl(ctx: RunContext): string {
+    return gcsPublicUrl(ctx.bucket, ctx.inputObject);
   }
 
   // ─────────────────────────────── Cypher ───────────────────────────────
@@ -541,13 +750,19 @@ export class DubbingProcessor extends WorkerHost {
    * Store a language's dubbed track. From here its charge is earned: a later failure
    * (the mux) keeps it, and the retry that finishes the mux is free. An audio dub is done.
    */
-  private async storeDubbedAudio(ctx: RunContext, o: OutputRow, mp3Path: string): Promise<void> {
+  private async storeDubbedAudio(
+    ctx: RunContext,
+    o: OutputRow,
+    mp3Path: string,
+    extra: { timeline?: DubTimelineSegment[] | null; warnings?: DubWarning[] | null } = {},
+  ): Promise<void> {
     const { audio } = dubOutputObjects(ctx.projectId, o.language);
     await uploadGcsFile(ctx.bucket, audio.objectName, mp3Path, audio.contentType);
     o.dubbed_audio_url = gcsPublicUrl(ctx.bucket, audio.objectName);
     await this.updateOutputs([o.id], {
       dubbed_audio_url: o.dubbed_audio_url,
       error_message: null,
+      ...extra,
       ...(ctx.isVideo ? {} : { status: 'completed', dubbed_url: o.dubbed_audio_url }),
     });
   }
@@ -764,14 +979,10 @@ export class DubbingProcessor extends WorkerHost {
 
   // ─────────────────────────────── Rows ─────────────────────────────────
 
-  private async loadProject(projectId: string): Promise<{
-    engine: DubEngine | null;
-    video_object: string | null;
-    analysis: SourceAnalysis | null;
-  }> {
+  private async loadProject(projectId: string): Promise<ProjectRow> {
     const { data, error } = await this.supabase
       .from('dubbing_projects')
-      .select('engine, video_object, analysis')
+      .select('engine, video_object, analysis, source_language, voice_mode, keyterms, vendor_projects')
       .eq('project_id', projectId)
       .single();
     if (error || !data) throw new Error(`dubbing_projects read failed: ${error?.message ?? 'row not found'}`);
