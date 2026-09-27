@@ -105,6 +105,19 @@ describe('createProject', () => {
     expect(form.has('keyterms')).toBe(false);
   });
 
+  it('uploads a local file instead of a URL, never both', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'el-proj-'));
+    const clip = path.join(dir, 'clip.mp4');
+    await fs.writeFile(clip, 'MP4');
+    const { calls } = scriptFetch([json({ project_id: 'proj_f' }, 201)]);
+    await createProject({ ...opts(), filePath: clip, modelId: 'dubbing_v2', reference: 'smoke' });
+    const form = calls[0].body as FormData;
+    expect(form.get('file')).toBeInstanceOf(Blob);
+    expect(form.has('source_url')).toBe(false);
+    await fs.rm(dir, { recursive: true, force: true });
+    await expect(createProject({ ...opts(), modelId: 'dubbing_v2', reference: 'r' })).rejects.toThrow('needs a source URL or a file');
+  });
+
   it('never sends a create twice after a dropped connection, since it may have gone through', async () => {
     const { calls } = scriptFetch([new TypeError('fetch failed')]);
     await expect(createProject({ ...opts(), sourceUrl: 'u', modelId: 'dubbing_v2', reference: 'r' })).rejects.toThrow('fetch failed');

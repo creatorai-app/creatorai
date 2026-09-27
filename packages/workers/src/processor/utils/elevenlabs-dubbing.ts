@@ -1,4 +1,5 @@
-import { createWriteStream } from 'fs';
+import { createWriteStream, openAsBlob } from 'fs';
+import path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import type { DubTimelineSegment, DubWarning, ElevenLabsDubbingModel } from '@repo/validation';
@@ -229,13 +230,16 @@ async function getJson<T>(opts: CallOptions, url: string, what: string): Promise
 }
 
 /**
- * Create a dubbing project from a URL of the source. The model is sent explicitly, and
- * no `target_language` shortcut is used: targets are added one by one afterwards, so
- * each can carry its own voice settings and have its id stored as it is created.
+ * Create a dubbing project from a URL of the source (the worker) or a local file (the
+ * smoke script); ElevenLabs takes one or the other, never both. The model is sent
+ * explicitly, and no `target_language` shortcut is used: targets are added one by one
+ * afterwards, so each can carry its own voice settings and have its id stored as it is
+ * created.
  */
 export async function createProject(
   opts: CallOptions & {
-    sourceUrl: string;
+    sourceUrl?: string;
+    filePath?: string;
     modelId: ElevenLabsDubbingModel;
     sourceLanguage?: string | null;
     keyterms?: readonly string[] | null;
@@ -243,7 +247,9 @@ export async function createProject(
   },
 ): Promise<string> {
   const form = new FormData();
-  form.append('source_url', opts.sourceUrl);
+  if (opts.filePath) form.append('file', await openAsBlob(opts.filePath), path.basename(opts.filePath));
+  else if (opts.sourceUrl) form.append('source_url', opts.sourceUrl);
+  else throw new Error('A dubbing project needs a source URL or a file');
   form.append('model_id', opts.modelId);
   form.append('reference', opts.reference.slice(0, 500));
   if (opts.sourceLanguage) form.append('source_language', opts.sourceLanguage);
@@ -255,6 +261,11 @@ export async function createProject(
   const data = (await response.json()) as { project_id?: string };
   if (!data.project_id) throw new Error('ElevenLabs did not return a dubbing project');
   return data.project_id;
+}
+
+/** Delete a project and its language targets (the smoke script cleans up with this). */
+export async function deleteProject(opts: CallOptions, projectId: string): Promise<void> {
+  await callElevenLabs(opts, `${ELEVENLABS_API}/dubbing/project/${projectId}`, { method: 'DELETE' }, 'project delete', { idempotent: true });
 }
 
 export function getProject(opts: CallOptions, projectId: string): Promise<ProjectState> {
