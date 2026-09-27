@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/
 import { toast } from "sonner";
 import {
   ArrowLeft, Loader2, Trash2, CheckCircle2, Languages, Video, Music,
-  XCircle, RotateCw, Coins, CalendarDays, Play, Cpu, Users, type LucideIcon,
+  XCircle, RotateCw, Coins, CalendarDays, Play, Cpu, Users, Mic, type LucideIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -222,6 +222,7 @@ export default function DubbingDetailPage() {
             {dubbing.engine && <StatCard icon={Cpu} label="Engine" value={dubEngineLabel(dubbing.engine)} />}
             <StatCard icon={Languages} label={dubbing.outputs.length > 1 ? "Languages" : "Target Language"} value={languageLabel} />
             {dubbing.speakerCount ? <StatCard icon={Users} label="Speakers" value={`${dubbing.speakerCount}`} /> : null}
+            {dubbing.sourceLanguage ? <StatCard icon={Mic} label="Spoken language" value={getLanguageLabel(dubbing.sourceLanguage)} /> : null}
             <StatCard icon={StatusIcon} label="Status" value={STATUS_LABELS[dubbing.status] ?? dubbing.status} iconClassName={`${statusColor} ${isProcessing ? "[&>svg]:animate-spin" : ""}`} />
             <StatCard icon={Coins} label="Credits Used" value={dubbing.creditsConsumed ? `${dubbing.creditsConsumed}` : "—"} />
             <StatCard icon={CalendarDays} label="Created" value={createdLabel} />

@@ -7,10 +7,12 @@ import {
   DubbingProgress,
   DubUploadTargets,
   DEFAULT_DUB_ENGINE,
+  DEFAULT_DUB_VOICE_MODE,
   accentsFor,
   isSupportedDubLanguage,
   type DubEngine,
   type DubTarget,
+  type DubVoiceMode,
   supportedLanguages,
   calculateDubbingCreditsByDuration,
   formatDubDuration,
@@ -83,7 +85,11 @@ export function useDubbing() {
   const [isVideo, setIsVideo] = useState(false);
   const [engine, setEngineState] = useState<DubEngine>(DEFAULT_DUB_ENGINE);
   // One output per language; rows with no language yet are dropped when sending.
-  const [targets, setTargets] = useState<DubTarget[]>([]);
+  const [targets, setTargetsState] = useState<DubTarget[]>([]);
+  // null: let the engine detect the source language.
+  const [sourceLanguage, setSourceLanguageState] = useState<string | null>(null);
+  const [voiceMode, setVoiceMode] = useState<DubVoiceMode>(DEFAULT_DUB_VOICE_MODE);
+  const [keyterms, setKeyterms] = useState<string[]>([]);
   const [mediaName, setMediaName] = useState("");
   const [dubbedResult, setDubbedResult] = useState<DubbedResult | null>(null);
 
@@ -98,6 +104,8 @@ export function useDubbing() {
   // Each engine has its own per-second rate; null until /access answers.
   const [creditsPerSecond, setCreditsPerSecond] = useState<Record<DubEngine, number> | null>(null);
   const [maxLanguages, setMaxLanguages] = useState(1);
+  // Where the voice mode does something; ElevenLabs always, Cypher once its v2 voices are live.
+  const [voiceModeEngines, setVoiceModeEngines] = useState<DubEngine[]>(["elevenlabs"]);
   const [plan, setPlan] = useState<string | null>(null);
 
   // Mid-run cancellation: the BullMQ job id of the in-flight dub, and whether the
@@ -127,6 +135,7 @@ export function useDubbing() {
         maxUploadBytes: number;
         maxLanguages: number;
         creditsPerSecond: Record<DubEngine, number>;
+        voiceModeEngines?: DubEngine[];
       }>("/api/v1/dubbing/access", { requireAuth: true })
       .then((res) => {
         setAllowed(!!res.allowed);
@@ -135,6 +144,7 @@ export function useDubbing() {
         if (res.maxUploadBytes) setMaxUploadBytes(res.maxUploadBytes);
         if (res.creditsPerSecond) setCreditsPerSecond(res.creditsPerSecond);
         if (res.maxLanguages) setMaxLanguages(res.maxLanguages);
+        if (res.voiceModeEngines) setVoiceModeEngines(res.voiceModeEngines);
       })
       .catch(() => setAllowed(false))
       .finally(() => setAccessLoading(false));
@@ -154,10 +164,18 @@ export function useDubbing() {
     eventSourceRef.current?.close();
   }, []);
 
-  // Switching engine keeps the languages the new one speaks, and only accents it honours.
+  // A target is never the source: picking a source drops it from the targets, and the
+  // targets menu greys out the source (DubLanguageTargets).
+  const setTargets = useCallback((next: DubTarget[]) => setTargetsState(next), []);
+  const setSourceLanguage = useCallback((next: string | null) => {
+    setSourceLanguageState(next);
+    if (next) setTargetsState((current) => current.filter((t) => t.language !== next));
+  }, []);
+
+  // Switching engine keeps the languages the new one speaks, and only dialects it honours.
   const setEngine = useCallback((next: DubEngine) => {
     setEngineState(next);
-    setTargets((current) =>
+    setTargetsState((current) =>
       current
         .filter((t) => !t.language || isSupportedDubLanguage(t.language, next))
         .map((t) => (t.accent && !accentsFor(t.language, next).some((a) => a.value === t.accent) ? { language: t.language } : t)),
@@ -220,7 +238,10 @@ export function useDubbing() {
     eventSourceRef.current?.close();
     setMediaFile(null);
     setMediaDuration(null);
-    setTargets([]);
+    setTargetsState([]);
+    setSourceLanguageState(null);
+    setVoiceMode(DEFAULT_DUB_VOICE_MODE);
+    setKeyterms([]);
     setMediaName("");
     setDubbedResult(null);
     setProjectId(null);
@@ -379,6 +400,9 @@ export function useDubbing() {
           durationSeconds,
           engine,
           targets: picked.map((t) => (t.accent ? { language: t.language, accent: t.accent } : { language: t.language })),
+          ...(sourceLanguage ? { sourceLanguage } : {}),
+          voiceMode,
+          ...(keyterms.length ? { keyterms } : {}),
           mediaName: mediaName.trim(),
           fingerprint: fileFingerprint(mediaFile),
           audio: { contentType: audio.contentType, size: audio.blob.size, extracted: !!extracted },
@@ -411,7 +435,7 @@ export function useDubbing() {
       updateProgress("failed", 0, message);
       toast.error("Error dubbing media", { description: message });
     }
-  }, [mediaFile, mediaDuration, targets, engine, maxLanguages, isVideo, mediaName, session, updateProgress, plan, followJob, runVideoUpload]);
+  }, [mediaFile, mediaDuration, targets, engine, sourceLanguage, voiceMode, keyterms, maxLanguages, isVideo, mediaName, session, updateProgress, plan, followJob, runVideoUpload]);
 
   /** Pick the video upload back up after it paused, sending only the missing parts. */
   const resumeVideoUpload = useCallback(async () => {
@@ -469,6 +493,13 @@ export function useDubbing() {
     setEngine,
     targets,
     setTargets,
+    sourceLanguage,
+    setSourceLanguage,
+    voiceMode,
+    setVoiceMode,
+    voiceModeEngines,
+    keyterms,
+    setKeyterms,
     maxLanguages,
     mediaName,
     setMediaName,

@@ -14,6 +14,7 @@ import {
   Loader2, Play, UploadCloud, ArrowLeft, CheckCircle2,
   Mic, Languages, FileAudio, FileVideo, ArrowUpRight, Type,
   Clapperboard, Music, RotateCw, Plus, List, Lock, HelpCircle, Coins, Cpu,
+  AudioWaveform, Tags,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@repo/ui/sheet";
@@ -26,6 +27,9 @@ import { DubbingVoiceAnimation } from "@/components/dashboard/dubbing/DubbingVoi
 import { DubEngineCards } from "@/components/dashboard/dubbing/DubEngineCards";
 import { DubLanguageTargets } from "@/components/dashboard/dubbing/DubLanguageTargets";
 import { DubOutputsList } from "@/components/dashboard/dubbing/DubOutputsList";
+import { DubSourceLanguage } from "@/components/dashboard/dubbing/DubSourceLanguage";
+import { DubVoiceModePicker } from "@/components/dashboard/dubbing/DubVoiceMode";
+import { DubKeyterms } from "@/components/dashboard/dubbing/DubKeyterms";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -116,6 +120,13 @@ export default function NewDubbing() {
     setEngine,
     targets,
     setTargets,
+    sourceLanguage,
+    setSourceLanguage,
+    voiceMode,
+    setVoiceMode,
+    voiceModeEngines,
+    keyterms,
+    setKeyterms,
     maxLanguages,
     mediaName,
     setMediaName,
@@ -435,7 +446,52 @@ export default function NewDubbing() {
                           <Languages className="h-4 w-4" />
                           Target Language{maxLanguages > 1 ? "s" : ""}
                         </Label>
-                        <DubLanguageTargets engine={engine} targets={targets} onChange={setTargets} max={maxLanguages} />
+                        <DubLanguageTargets
+                          engine={engine}
+                          targets={targets}
+                          onChange={setTargets}
+                          max={maxLanguages}
+                          sourceLanguage={sourceLanguage}
+                        />
+                      </div>
+
+                      {/* What the source is spoken in (optional) */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5">
+                          <Mic className="h-4 w-4" />
+                          Spoken language
+                        </Label>
+                        <DubSourceLanguage
+                          value={sourceLanguage}
+                          onChange={setSourceLanguage}
+                          targets={pickedLanguages}
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Leave it to detect, or pick it for short clips, strong accents or mixed languages.
+                        </p>
+                      </div>
+
+                      {/* How close the dubbed voices stay to the originals, where the engine can do it */}
+                      {voiceModeEngines.includes(engine) && (
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-1.5">
+                            <AudioWaveform className="h-4 w-4" />
+                            Voice
+                          </Label>
+                          <DubVoiceModePicker engine={engine} value={voiceMode} onChange={setVoiceMode} />
+                        </div>
+                      )}
+
+                      {/* Names and terms that must not be translated */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5">
+                          <Tags className="h-4 w-4" />
+                          Names and terms <span className="font-normal text-slate-500 dark:text-slate-400">(optional)</span>
+                        </Label>
+                        <DubKeyterms value={keyterms} onChange={setKeyterms} />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Brands, products and people to keep exactly as they are.
+                        </p>
                       </div>
                     </CardContent>
 

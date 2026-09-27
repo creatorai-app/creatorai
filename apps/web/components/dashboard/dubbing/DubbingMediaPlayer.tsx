@@ -17,6 +17,8 @@ type Props = {
   url: string;
   isVideo: boolean;
   title?: string;
+  /** Jump here and play. A new `key` seeks again, even to the same time. */
+  seek?: { time: number; key: number } | null;
 };
 
 /**
@@ -24,7 +26,7 @@ type Props = {
  * VideoPlayer (center play, custom control bar, speed menu), purple-themed and
  * extended to render an animated surface for audio-only dubs.
  */
-export function DubbingMediaPlayer({ url, isVideo, title }: Props) {
+export function DubbingMediaPlayer({ url, isVideo, title, seek }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -39,6 +41,14 @@ export function DubbingMediaPlayer({ url, isVideo, title }: Props) {
   const mediaRef = useRef<HTMLMediaElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // A timeline row was clicked: play the dub from that line.
+  useEffect(() => {
+    const el = mediaRef.current;
+    if (!seek || !el) return;
+    el.currentTime = Math.max(0, seek.time);
+    void el.play().then(() => setIsPlaying(true)).catch(() => null);
+  }, [seek]);
 
   const togglePlay = () => {
     const el = mediaRef.current;
