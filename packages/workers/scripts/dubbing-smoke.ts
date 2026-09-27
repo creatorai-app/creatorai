@@ -10,7 +10,8 @@
  *
  * <clip> is a local audio or video file of 20 to 60 seconds. Steps, each printing what
  * was sent and what came back:
- *   1. project create (dubbing_v2, the file uploaded, source language and keyterms)
+ *   1. project create (the model the worker would use for --target: dubbing_v1 for
+ *      Bengali, dubbing_v2 otherwise; the file uploaded, source language and keyterms)
  *   2. wait for the project, read the source transcript (detected language)
  *   3. target create with the voice mode's cloning strength, read the target back
  *   4. wait for the target, download its fresh lossless audio, measure it
@@ -22,7 +23,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { cloningStrengthFor, DUB_VOICE_MODES, type DubVoiceMode } from '@repo/validation';
+import { cloningStrengthFor, DUB_VOICE_MODES, elevenLabsModelFor, type DubVoiceMode } from '@repo/validation';
 import {
   createLanguageTarget,
   createProject,
@@ -76,9 +77,10 @@ async function main() {
   };
 
   // 1-2. Project
-  const sent = { file: path.basename(clip), model_id: 'dubbing_v2', source_language: source, keyterms, reference: `smoke-${Date.now()}` };
+  const model = elevenLabsModelFor(target);
+  const sent = { file: path.basename(clip), model_id: model, source_language: source, keyterms, reference: `smoke-${Date.now()}` };
   show('1. POST /v1/dubbing/project (multipart), sent', sent);
-  const projectId = await createProject({ ...opts, filePath: clip, modelId: 'dubbing_v2', sourceLanguage: source, keyterms, reference: sent.reference });
+  const projectId = await createProject({ ...opts, filePath: clip, modelId: model, sourceLanguage: source, keyterms, reference: sent.reference });
   show('   project_id', projectId);
 
   try {
@@ -88,8 +90,11 @@ async function main() {
     show('   source transcript', { language: sourceTranscript.language, segments: sourceTranscript.segments.length, first: sourceTranscript.segments.slice(0, 3) });
 
     // 3. Target
-    const strength = cloningStrengthFor({ voiceMode: mode, sourceLanguage: source ?? sourceTranscript.language, targetLanguage: target });
-    show('3. POST /v1/dubbing/project/{id}/language, sent', { target_language: target, voice_settings: { cloning_strength: strength } });
+    // Cloning strength is a Dubbing v2 setting; a v1 (Bengali) target gets none.
+    const strength = model === 'dubbing_v2'
+      ? cloningStrengthFor({ voiceMode: mode, sourceLanguage: source ?? sourceTranscript.language, targetLanguage: target })
+      : null;
+    show('3. POST /v1/dubbing/project/{id}/language, sent', { target_language: target, ...(strength !== null ? { voice_settings: { cloning_strength: strength } } : {}) });
     const languageId = await createLanguageTarget({
       ...opts,
       projectId,
