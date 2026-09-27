@@ -288,6 +288,26 @@ describe('Cypher', () => {
     expect(refunds()).toEqual([PER_LANGUAGE]);
   });
 
+  it('dubs a 2-second clip whose one speaker has too little speech to clone, from the start of the audio', async () => {
+    seed();
+    ffmpeg.probeDurationSeconds.mockResolvedValueOnce(2);
+    speechByPreset.mix = [{ start: 0.2, end: 1.8 }];
+    speechByPreset.vocals = [{ start: 0.25, end: 1.75 }];
+    analysis.analyzeWindow.mockResolvedValueOnce({ speakers: [{ id: 'S1', description: 'host' }], lines: [{ speaker: 'S1', text: 'Hi all.' }] });
+    await processor().process(job());
+    // Under 3 s of clean speech: the voice comes from the start of the (vocal) audio.
+    expect(ffmpeg.extractVoiceReference).toHaveBeenCalledWith(expect.stringContaining('work/stems/vocals.flac'), expect.any(String), 120);
+    expect(ffmpeg.mixDub.mock.calls[0][0].totalSeconds).toBe(2);
+    expect(out().status).toBe('completed');
+  });
+
+  it('fails a video with no audio track cleanly, with a refund', async () => {
+    seed();
+    ffmpeg.detectSpeech.mockRejectedValueOnce(new Error('ffmpeg failed while processing the dub: Output file #0 does not contain any stream'));
+    await expect(processor().process(job())).rejects.toThrow('This file has no audio track to dub.');
+    expect(refunds()).toEqual([PER_LANGUAGE]);
+  });
+
   it('synthesizes a runaway clip once more, then keeps the good take', async () => {
     seed();
     synthesize.mockResolvedValueOnce(Buffer.alloc(60 * BPS)); // a minute for one sentence

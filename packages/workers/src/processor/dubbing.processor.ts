@@ -627,7 +627,13 @@ export class DubbingProcessor extends WorkerHost {
     let analysis = stored;
     if (!analysis?.windows?.length) {
       await ctx.job.log('Listening for speech...');
-      const speech = await detectSpeech(ctx.inputUrl, sourceSeconds, 'mix');
+      const speech = await detectSpeech(ctx.inputUrl, sourceSeconds, 'mix').catch((error: Error) => {
+        // A video with no audio track: ffmpeg finds nothing to listen to.
+        if (/does not contain any stream|matches no streams|no audio/i.test(error.message)) {
+          throw new Error('This file has no audio track to dub.');
+        }
+        throw error;
+      });
       if (!speech.length) throw new Error('No speech was found in this file to dub.');
       analysis = await this.saveAnalysis(ctx, {
         version: ANALYSIS_VERSION,

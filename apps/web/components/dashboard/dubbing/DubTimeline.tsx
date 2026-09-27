@@ -49,8 +49,9 @@ export function DubTimeline({
                 <span className="w-16 shrink-0 font-mono text-xs text-slate-500 dark:text-slate-400">{formatAt(at)}</span>
                 <span className="w-20 shrink-0 truncate text-xs font-medium text-purple-700 dark:text-purple-300">{label(segment.speaker)}</span>
                 <span className="min-w-0 flex-1 space-y-0.5">
-                  <span className="block text-sm text-slate-500 dark:text-slate-400">{segment.sourceText}</span>
-                  <span className="block text-sm text-slate-900 dark:text-slate-100">
+                  {/* dir="auto": Arabic, Hebrew and Urdu lines read right to left. */}
+                  <span dir="auto" className="block text-sm text-slate-500 dark:text-slate-400">{segment.sourceText}</span>
+                  <span dir="auto" className="block text-sm text-slate-900 dark:text-slate-100">
                     {segment.translation ?? <em className="text-slate-400">Not dubbed</em>}
                   </span>
                 </span>
