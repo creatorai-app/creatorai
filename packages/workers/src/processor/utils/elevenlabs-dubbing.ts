@@ -80,10 +80,17 @@ export function parseDub(value: string | null | undefined): ElevenLabsDub | null
   return null;
 }
 
-/** ElevenLabs' `DubbingError`: `{ message_type: "error", error: "<reason>" }`. */
+/**
+ * ElevenLabs' `DubbingError` on a failed project or target. Its two published shapes
+ * disagree: the API reference pages give `{ message_type: "error", error }`, the OpenAPI
+ * spec `{ code, message, retryable }` (with `project_failed` as a code). Both are read.
+ */
 interface DubbingError {
   message_type?: string;
   error?: string | null;
+  code?: string | null;
+  message?: string | null;
+  retryable?: boolean | null;
 }
 
 interface RawWarning {
@@ -129,9 +136,17 @@ export function errorReason(body: string): string | null {
   return body.trim() ? body.trim().slice(0, 400) : null;
 }
 
-/** The reason on a failed project or target, from its `error.error` field. */
-function failureReason(error: DubbingError | null | undefined): string {
-  return typeof error?.error === 'string' && error.error.trim() ? error.error.trim() : 'no reason given';
+/** The reason on a failed project or target: its message, else its error text, else its code. */
+export function failureReason(error: DubbingError | null | undefined): string {
+  for (const value of [error?.message, error?.error, error?.code]) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return 'no reason given';
+}
+
+/** A target that failed only because its project did (`project_failed`, in either shape). */
+function failedWithProject(error: DubbingError | null | undefined): boolean {
+  return error?.code === 'project_failed' || error?.error === 'project_failed';
 }
 
 /**
@@ -419,7 +434,7 @@ export async function waitForDub(opts: CallOptions, dub: ElevenLabsDub): Promise
         return { status: target.status, warnings: toWarnings(target.warnings) };
       }
       if (target.status === 'failed') {
-        if (target.error?.error === 'project_failed') {
+        if (failedWithProject(target.error)) {
           const project = await getProject(opts, dub.projectId);
           throw new ElevenLabsDubFailedError(`ElevenLabs could not prepare the source: ${failureReason(project.error)}`, 'project');
         }

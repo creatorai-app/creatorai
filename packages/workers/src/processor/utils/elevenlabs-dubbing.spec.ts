@@ -277,6 +277,26 @@ describe('waiting', () => {
     expect(calls[1].url).toBe(`${API}/dubbing/project/proj_1`);
   });
 
+  it('reads the reason from the OpenAPI shape too: { code, message, retryable }', async () => {
+    scriptFetch([target('failed', { error: { code: 'synthesis_failed', message: 'Speech could not be synthesized', retryable: true } })]);
+    await expect(waitForDub(opts(), dub)).rejects.toThrow('ElevenLabs dubbing failed: Speech could not be synthesized');
+  });
+
+  it('spots project_failed as a code, and reads the project for the cause', async () => {
+    scriptFetch([
+      target('failed', { error: { code: 'project_failed', message: 'The project failed', retryable: false } }),
+      json({ status: 'failed', error: { code: 'source_unreadable', message: 'Source could not be decoded', retryable: false } }),
+    ]);
+    const error = await waitForDub(opts(), dub).catch((e) => e);
+    expect(error.scope).toBe('project');
+    expect(error.message).toBe('ElevenLabs could not prepare the source: Source could not be decoded');
+  });
+
+  it('falls back to the code when there is no message', async () => {
+    scriptFetch([target('failed', { error: { code: 'internal_error', retryable: true } })]);
+    await expect(waitForDub(opts(), dub)).rejects.toThrow('ElevenLabs dubbing failed: internal_error');
+  });
+
   it('says so when no reason was given', async () => {
     scriptFetch([target('failed', { error: null })]);
     await expect(waitForDub(opts(), dub)).rejects.toThrow('no reason given');
