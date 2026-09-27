@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client"
 import { toast } from "sonner"
-import { DubResponse } from "@repo/validation"
+import { DubEngine, DubResponse, DubStatus } from "@repo/validation"
 
 export interface DubbingProject {
   id: string
@@ -8,7 +8,11 @@ export interface DubbingProject {
   user_id: string
   original_media_url: string
   target_language: string
-  status: "queued" | "processing" | "cloning" | "completed" | "failed"
+  status: DubStatus
+  video_status?: "uploading" | "uploaded" | null
+  engine?: DubEngine | null
+  /** Every language of the dub (older dubs: just their one). */
+  languages: string[]
   is_video: boolean
   dubbedUrl?: string
   credits_consumed?: number
@@ -70,3 +74,15 @@ export async function regenerateDubbing(
   )
 }
 
+
+/** Retry a failed dub from where it stopped (keeps the translation and finished segments). */
+export async function resumeDubbing(
+  projectId: string,
+  accessToken?: string
+): Promise<{ projectId: string; jobId: string }> {
+  return api.post<{ projectId: string; jobId: string }>(
+    `/api/v1/dubbing/${projectId}/resume`,
+    {},
+    { requireAuth: true, accessToken },
+  )
+}

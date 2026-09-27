@@ -9,23 +9,23 @@ import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
 import {
-  Loader2, Play, Download, UploadCloud, ArrowLeft, CheckCircle2,
+  Loader2, Play, UploadCloud, ArrowLeft, CheckCircle2,
   Mic, Languages, FileAudio, FileVideo, ArrowUpRight, Type,
-  Clapperboard, Music, RotateCw, Plus, List, Lock, HelpCircle, Coins,
+  Clapperboard, Music, RotateCw, Plus, List, Lock, HelpCircle, Coins, Cpu,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@repo/ui/sheet";
 import { useDubbing } from "@/hooks/useDubbing";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
-import { supportedLanguages, dubbableLanguages, accentsFor, formatDubDuration, formatUploadLimit } from "@repo/validation";
-import { downloadFile } from "@/lib/download";
+import { supportedLanguages, dubbableLanguagesFor, formatDubDuration, formatUploadLimit } from "@repo/validation";
 import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress";
 import { DubbingHowItWorks } from "@/components/dashboard/dubbing/DubbingHowItWorks";
 import { DubbingVoiceAnimation } from "@/components/dashboard/dubbing/DubbingVoiceAnimation";
-import { DubbingMediaPlayer } from "@/components/dashboard/dubbing/DubbingMediaPlayer";
+import { DubEngineCards } from "@/components/dashboard/dubbing/DubEngineCards";
+import { DubLanguageTargets } from "@/components/dashboard/dubbing/DubLanguageTargets";
+import { DubOutputsList } from "@/components/dashboard/dubbing/DubOutputsList";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -58,9 +58,11 @@ function DubbingUpgradeCard() {
           </div>
           <h3 className="text-2xl font-bold mb-3">Dub longer clips on a paid plan</h3>
           <p className="text-slate-400 text-sm leading-relaxed mb-8">
-            Clone a voice and dub audio or video into 29 languages while keeping the original
-            voice. Dubbing is available on every plan. Starter covers 500MB and 45 minutes per
-            clip; a paid plan takes that to 3GB and 3 hours.
+            Dub audio or video into {supportedLanguages.length} languages in the original speakers&apos; voices,
+            with Cypher (in-house dubbing, {dubbableLanguagesFor("cypher").length} languages) or ElevenLabs
+            ({dubbableLanguagesFor("elevenlabs").length}). Dubbing is on every plan. Starter covers 500MB and
+            45 minutes per clip in one language; a paid plan takes that to 3GB and 3 hours, in up to three
+            languages at once.
           </p>
           <button
             onClick={() => router.push("/pricing")}
@@ -110,10 +112,11 @@ export default function NewDubbing() {
     mediaFile,
     mediaDuration,
     isVideo,
-    targetLanguage,
-    setTargetLanguage,
-    targetAccent,
-    setTargetAccent,
+    engine,
+    setEngine,
+    targets,
+    setTargets,
+    maxLanguages,
     mediaName,
     setMediaName,
     dubbedResult,
@@ -124,8 +127,11 @@ export default function NewDubbing() {
     maxDurationSeconds,
     maxUploadBytes,
     estimatedCredits,
+    creditsPerSecond,
     canCancel,
     cancelDub,
+    videoUpload,
+    resumeVideoUpload,
     handleFileChange,
     handleFileSelect,
     resetForm,
@@ -133,7 +139,6 @@ export default function NewDubbing() {
   } = useDubbing();
 
   const [isDragging, setIsDragging] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const gate = useAISetupGate();
@@ -155,8 +160,10 @@ export default function NewDubbing() {
     handleDubMedia();
   };
 
-  const selectedLanguageLabel = supportedLanguages.find((l) => l.value === targetLanguage)?.label;
-  const accentOptions = accentsFor(targetLanguage);
+  const pickedLanguages = targets.filter((t) => t.language).map((t) => t.language);
+  const selectedLanguageLabel = pickedLanguages
+    .map((code) => supportedLanguages.find((l) => l.value === code)?.label ?? code)
+    .join(", ");
   const isComplete = !!dubbedResult && progress.state === "completed";
 
   const handleDrop = useCallback(
@@ -169,25 +176,11 @@ export default function NewDubbing() {
     [handleFileSelect, isLoading],
   );
 
-  const handleDownload = useCallback(async () => {
-    if (!dubbedResult?.dubbedUrl) return;
-    setIsDownloading(true);
-    try {
-      const ext = isVideo ? "mp4" : "mp3";
-      const filename = `dubbed_${isVideo ? "video" : "audio"}_${dubbedResult.targetLanguage}.${ext}`;
-      await downloadFile(dubbedResult.dubbedUrl, filename);
-    } catch {
-      toast.error("Download failed", { description: "Please try again" });
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [dubbedResult, isVideo]);
-
   // Stepped states for the animated progress bar (AI Studio pattern).
   const DUB_STEPS: GenerationProgressStep[] = [
     { label: "Queued", icon: Loader2, threshold: 0 },
-    { label: "Translating", icon: Languages, threshold: 16 },
-    { label: "Cloning", icon: Mic, threshold: 40 },
+    { label: engine === "cypher" ? "Finding speakers" : "Translating", icon: Languages, threshold: 5 },
+    { label: "Cloning", icon: Mic, threshold: 25 },
     { label: isVideo ? "Rendering" : "Finalizing", icon: isVideo ? Clapperboard : Music, threshold: 82 },
     { label: "Done", icon: CheckCircle2, threshold: 100 },
   ];
@@ -241,17 +234,32 @@ export default function NewDubbing() {
           <motion.div variants={itemVariants}>
             <AnimatePresence mode="wait">
               {isLoading ? (
-                <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <GenerationProgress
                     progress={Math.round(progress.progress)}
                     statusMessage={progress.message || "Starting…"}
                     title="Dubbing in Progress"
                     icon={Mic}
                     steps={DUB_STEPS}
-                    hint={isVideo ? "Rendering video can take a few minutes" : "This usually takes under a minute"}
+                    hint={
+                      videoUpload.state === "uploading"
+                        ? `Uploading your video alongside the dub: ${videoUpload.percent}%. Keep this tab open.`
+                        : isVideo ? "Rendering video can take a few minutes" : "Longer clips are dubbed in segments and take a few minutes"
+                    }
                     onStop={canCancel ? cancelDub : undefined}
                     stopLabel="Cancel Dubbing"
                   />
+                  {videoUpload.state === "failed" && (
+                    <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+                      <p>
+                        The video upload paused at {videoUpload.percent}%. The dub keeps going, and the parts
+                        already sent are kept.
+                      </p>
+                      <Button size="sm" variant="outline" onClick={resumeVideoUpload} className="shrink-0">
+                        <RotateCw className="mr-2 h-4 w-4" /> Resume upload
+                      </Button>
+                    </div>
+                  )}
                 </motion.div>
               ) : isComplete ? (
                 <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -279,18 +287,11 @@ export default function NewDubbing() {
                           <IconAction label="Regenerate" onClick={handleDubMedia}>
                             <RotateCw className="h-4 w-4" />
                           </IconAction>
-                          <IconAction label={`Download ${isVideo ? "video" : "audio"}`} onClick={handleDownload} disabled={isDownloading} primary>
-                            {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                          </IconAction>
                         </div>
                       </TooltipProvider>
                     </CardHeader>
                     <CardContent>
-                      <DubbingMediaPlayer
-                        url={dubbedResult!.dubbedUrl!}
-                        isVideo={isVideo}
-                        title={mediaName || `Dubbed ${isVideo ? "video" : "audio"}`}
-                      />
+                      <DubOutputsList outputs={dubbedResult!.outputs} isVideo={isVideo} mediaName={mediaName} />
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -419,48 +420,23 @@ export default function NewDubbing() {
                         />
                       </div>
 
-                      {/* Target Language */}
+                      {/* Dubbing engine */}
                       <div className="space-y-2">
-                        <Label htmlFor="target-language" className="flex items-center gap-1.5">
-                          <Languages className="h-4 w-4" />
-                          Target Language
+                        <Label className="flex items-center gap-1.5">
+                          <Cpu className="h-4 w-4" />
+                          Dubbing Engine
                         </Label>
-                        {/* Clear the accent too: it belongs to the old language, and
-                            most languages (Bengali included) offer none at all. */}
-                        <Select
-                          value={targetLanguage}
-                          onValueChange={(value) => { setTargetLanguage(value); setTargetAccent(""); }}
-                        >
-                          <SelectTrigger id="target-language">
-                            <SelectValue placeholder="Select a language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {dubbableLanguages.map((lang) => (
-                              <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <DubEngineCards engine={engine} onSelect={setEngine} creditsPerSecond={creditsPerSecond} />
                       </div>
 
-                      {/* Only rendered for languages that have accents worth choosing. */}
-                      {accentOptions.length > 0 && (
-                        <div className="space-y-2">
-                          <Label htmlFor="target-accent" className="flex items-center gap-1.5">
-                            <Languages className="h-4 w-4" />
-                            Accent <span className="text-xs font-normal text-slate-500">(optional)</span>
-                          </Label>
-                          <Select value={targetAccent} onValueChange={setTargetAccent}>
-                            <SelectTrigger id="target-accent">
-                              <SelectValue placeholder="Default accent" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {accentOptions.map((accent) => (
-                                <SelectItem key={accent.value} value={accent.value}>{accent.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+                      {/* Target languages: one output each, up to the plan's limit */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5">
+                          <Languages className="h-4 w-4" />
+                          Target Language{maxLanguages > 1 ? "s" : ""}
+                        </Label>
+                        <DubLanguageTargets engine={engine} targets={targets} onChange={setTargets} max={maxLanguages} />
+                      </div>
                     </CardContent>
 
                     <CardFooter>
@@ -468,7 +444,7 @@ export default function NewDubbing() {
                         onClick={handleGenerate}
                         size="lg"
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all active:scale-[0.98]"
-                        disabled={!locked && (!mediaFile || !targetLanguage || !mediaName.trim())}
+                        disabled={!locked && (!mediaFile || !pickedLanguages.length || !mediaName.trim())}
                       >
                         {gate.locked ? (
                           <><Lock className="mr-2 h-4 w-4" /> {gate.step === "connect" ? "Connect your channel to dub" : "Train your AI to dub"}</>
