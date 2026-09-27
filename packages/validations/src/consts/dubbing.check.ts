@@ -19,7 +19,9 @@ import {
   isDubSizeAllowed,
   formatDubDuration,
   supportedLanguages,
-  dubbableLanguages,
+  dubbableLanguagesFor,
+  maxDubLanguagesForPlan,
+  dubEngineLabel,
   CHATTERBOX_LANGUAGES,
   isSupportedDubLanguage,
   DUBBING_V1_LANGUAGES,
@@ -33,8 +35,12 @@ import {
   STARTER_DUBBING_CREDIT_MULTIPLIER,
   dubbingMultiplierForPlan,
   formatDubbingAllowance,
+  formatDubbingAllowanceFor,
+  paidDubbingMultiplier,
+  CYPHER_DUBBING_CREDIT_MULTIPLIER,
+  creditsForCost,
 } from './credits';
-import { SignDubUploadSchema, CreateDubSchema } from '../schema/dubbing.schema';
+import { InitDubUploadSchema, DubVideoPartSchema } from '../schema/dubbing.schema';
 
 // Plan gating: EVERY plan can dub now (Starter included) — the limit is duration,
 // not access. Case-insensitive, null-safe.
@@ -145,113 +151,103 @@ assert.equal(formatDubbingAllowance(50000, 'Business'), '83.3 hrs');
 assert.equal(formatDubbingAllowance(100000, 'Scale'), '166.7 hrs');
 assert.equal(formatDubbingAllowance(500, 'Starter'), '2.8 min');
 
-// Sign-upload schema: audio/video only, positive size and duration required.
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 12.5,
-  }).success,
-  true, // targetLanguage is optional
-);
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 12.5,
-    targetLanguage: 'hi',
-  }).success,
-  true,
-);
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 12.5,
-    targetLanguage: 'bn',
-  }).success,
-  false, // labelled for history, but the live backend has no Bengali voice
-);
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 12.5,
-    targetLanguage: 'xx',
-  }).success,
-  false, // an unknown code would pick the wrong backend's cap
-);
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.pdf', contentType: 'application/pdf', fileSize: 1000, isVideo: false, durationSeconds: 10,
-  }).success,
-  false, // not audio/* or video/*
-);
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: 0,
-  }).success,
-  false, // duration must be positive
-);
+// Init schema: audio/video only, positive size and duration, supported languages per engine.
+const init = (over: Record<string, unknown> = {}) => InitDubUploadSchema.safeParse({
+  filename: 'a.mp4', contentType: 'video/mp4', fileSize: 1000, isVideo: true, durationSeconds: 12.5,
+  engine: 'cypher', targets: [{ language: 'es' }], mediaName: 'My clip', fingerprint: 'a.mp4|1000|1',
+  audio: { contentType: 'audio/mp4', size: 100, extracted: true },
+  ...over,
+});
+assert.equal(init().success, true);
+assert.equal(init({ targets: [{ language: 'hi' }, { language: 'fr' }] }).success, true);
+assert.equal(init({ targets: [{ language: 'bn' }] }).success, false); // no Chatterbox voice
+assert.equal(init({ engine: 'elevenlabs', targets: [{ language: 'bn' }] }).success, true);
+assert.equal(init({ targets: [{ language: 'xx' }] }).success, false);
+assert.equal(init({ targets: [] }).success, false);
+assert.equal(init({ targets: [{ language: 'es' }, { language: 'es' }] }).success, false); // duplicates
+assert.equal(init({ targets: ['es', 'fr', 'de', 'it'].map((language) => ({ language })) }).success, false); // over any plan
+assert.equal(init({ engine: 'murf' }).success, false);
+assert.equal(init({ engine: 'elevenlabs', targets: [{ language: 'en', accent: 'british' }] }).success, true);
+assert.equal(init({ targets: [{ language: 'en', accent: 'british' }] }).success, false); // Cypher has no accents
+assert.equal(init({ engine: 'elevenlabs', targets: [{ language: 'en', accent: 'martian' }] }).success, false);
+assert.equal(init({ contentType: 'application/pdf' }).success, false);
+assert.equal(init({ durationSeconds: 0 }).success, false);
 // A header-less VBR/WebM file makes the browser report Infinity. It is "positive", so
 // only .finite() stops it from being priced and JSON-serialised into a null.
-assert.equal(
-  SignDubUploadSchema.safeParse({
-    filename: 'a.mp3', contentType: 'audio/mpeg', fileSize: 1000, isVideo: false, durationSeconds: Infinity,
-  }).success,
-  false,
-);
-assert.equal(
-  CreateDubSchema.safeParse({
-    objectName: 'staging/user-1/dubbing/123_a.mp3', targetLanguage: 'es', isVideo: false, mediaName: 'x',
-    durationSeconds: Infinity,
-  }).success,
-  false,
-);
-
-// Create schema: objectName-based (no raw client URL); numbers coerce, booleans don't.
-const created = CreateDubSchema.parse({
-  objectName: 'staging/user-1/dubbing/123_a.mp3',
-  targetLanguage: 'es',
-  isVideo: false,
-  mediaName: 'My clip',
-  durationSeconds: '42',
-});
-assert.equal(created.isVideo, false);
-assert.equal(created.durationSeconds, 42);
+assert.equal(init({ durationSeconds: Infinity }).success, false);
 // The string "false" must be rejected, not silently coerced to true.
-assert.equal(
-  CreateDubSchema.safeParse({
-    objectName: 'user-1/dubbing/123_a.mp3', targetLanguage: 'es', isVideo: 'false', mediaName: 'x', durationSeconds: 5,
-  }).success,
-  false,
-);
-assert.equal(CreateDubSchema.safeParse({ targetLanguage: 'es', isVideo: false, mediaName: 'x', durationSeconds: 5 }).success, false); // objectName required
+assert.equal(init({ isVideo: 'false' }).success, false);
+assert.equal(init({ audio: { contentType: 'text/plain', size: 100, extracted: true } }).success, false);
+assert.equal(init({ audio: { contentType: 'audio/mp4', size: 0, extracted: true } }).success, false);
+assert.equal(init({ fingerprint: '' }).success, false);
+assert.equal(init({ durationSeconds: '42' }).success, true); // numbers coerce
+
+// Part numbers: GCS multipart allows 1..10000; we plan uploads to at most 1000 parts.
+assert.equal(DubVideoPartSchema.safeParse({ partNumber: 1 }).success, true);
+assert.equal(DubVideoPartSchema.safeParse({ partNumber: 0 }).success, false);
+assert.equal(DubVideoPartSchema.safeParse({ partNumber: 1001 }).success, false);
 
 // Cancel prefix is stable — the API sets it, the worker polls it.
 assert.equal(DUBBING_CANCEL_PREFIX, 'dubbing:cancel:');
 
 // The label table keeps every language ever dubbed, so history pages can still name a
 // dub made under an older backend.
-assert.equal(supportedLanguages.length, 30);
+assert.equal(supportedLanguages.length, 33);
 const languageCodes = supportedLanguages.map((l) => l.value);
 assert.equal(new Set(languageCodes).size, languageCodes.length, 'duplicate language code');
 for (const code of ['en', 'es', 'ar', 'uk', 'ta', 'fil', 'ms', 'sv', 'zh', 'bn']) {
   assert.equal(languageCodes.includes(code as never), true, `missing ${code}`);
 }
 
-// The picker is that table narrowed to what the live backend (Chatterbox, via Modal)
-// speaks. A code outside it must not be selectable OR acceptable: Chatterbox does not
-// refuse an unknown language_id, it synthesizes something wrong.
-const dubbableCodes = dubbableLanguages.map((l) => l.value);
-for (const code of dubbableCodes) {
+// Cypher's picker is that table narrowed to what Chatterbox speaks. A code outside it must
+// not be selectable OR acceptable: Chatterbox does not refuse an unknown language_id, it
+// synthesizes something wrong.
+const cypherCodes = dubbableLanguagesFor('cypher').map((l) => l.value);
+for (const code of cypherCodes) {
   assert.equal(CHATTERBOX_LANGUAGES.includes(code), true, `${code} is offered but Chatterbox cannot speak it`);
-  assert.equal(isSupportedDubLanguage(code), true, `${code} is offered but the API would reject it`);
+  assert.equal(isSupportedDubLanguage(code, 'cypher'), true, `${code} is offered but the API would reject it`);
 }
 for (const code of ['bn', 'bg', 'cs', 'fil', 'hr', 'id', 'ro', 'sk', 'ta', 'uk']) {
-  assert.equal(isSupportedDubLanguage(code), false, `${code} has no Chatterbox voice and must not be accepted`);
-  assert.equal(dubbableCodes.includes(code as never), false, `${code} must not be offered`);
+  assert.equal(isSupportedDubLanguage(code, 'cypher'), false, `${code} has no Chatterbox voice and must not be accepted`);
+  assert.equal(cypherCodes.includes(code as never), false, `${code} must not be offered on Cypher`);
+  // ...but ElevenLabs speaks all of them.
+  assert.equal(isSupportedDubLanguage(code, 'elevenlabs'), true, `${code} should be offered on ElevenLabs`);
 }
-assert.equal(dubbableCodes.length, 20);
-assert.equal(isSupportedDubLanguage('en'), true);
-assert.equal(isSupportedDubLanguage('xx'), false);
+// Chatterbox Multilingual speaks 23 languages (model card), and Cypher offers every one.
+assert.equal(cypherCodes.length, 23);
+assert.deepEqual([...cypherCodes].sort(), [...CHATTERBOX_LANGUAGES].sort());
+assert.equal(dubbableLanguagesFor('elevenlabs').length, supportedLanguages.length);
+assert.equal(isSupportedDubLanguage('en'), true); // defaults to Cypher
+assert.equal(isSupportedDubLanguage('bn'), false);
+assert.equal(isSupportedDubLanguage('xx', 'elevenlabs'), false);
 
-// Chatterbox takes no target accent, so no language may offer an accent menu.
+// Accents are ElevenLabs-only, and not on the dubbing_v1 route, which ignores them.
 for (const code of languageCodes) {
-  assert.deepEqual(accentsFor(code), [], `${code} offers accents the backend cannot honour`);
+  assert.deepEqual(accentsFor(code, 'cypher'), [], `${code} offers accents Chatterbox cannot honour`);
 }
+assert.equal(accentsFor('en', 'elevenlabs').length > 0, true);
+assert.deepEqual(accentsFor('bn', 'elevenlabs'), []);
+assert.deepEqual(accentsFor('de', 'elevenlabs'), []);
+
+assert.equal(dubEngineLabel('cypher'), 'Cypher (in-house dubbing)');
+assert.equal(dubEngineLabel('elevenlabs'), 'ElevenLabs');
+
+// Languages per dub: Starter 1, Creator/Pro 2, Business/Scale 3. Unknown fails closed.
+assert.equal(maxDubLanguagesForPlan('Starter'), 1);
+assert.equal(maxDubLanguagesForPlan(null), 1);
+assert.equal(maxDubLanguagesForPlan('Creator'), 2);
+assert.equal(maxDubLanguagesForPlan('pro'), 2);
+assert.equal(maxDubLanguagesForPlan('Business'), 3);
+assert.equal(maxDubLanguagesForPlan('SCALE'), 3);
+
+// Several targets: one on the dubbing_v1 route tightens the whole dub.
+assert.equal(maxDubSecondsForPlan('Pro', ['es', 'bn']), DUBBING_V1_MAX_SECONDS);
+// The dubbing_v1 ceiling is an ElevenLabs route limit: Norwegian on Cypher is not held to it.
+assert.equal(maxDubSecondsForPlan('Pro', ['no'], 'elevenlabs'), DUBBING_V1_MAX_SECONDS);
+assert.equal(maxDubSecondsForPlan('Pro', ['no'], 'cypher'), PAID_MAX_DUB_SECONDS);
+assert.equal(maxDubBytesForPlan('Pro', ['he', 'sw'], 'cypher'), PAID_MAX_DUB_BYTES);
+assert.equal(maxDubSecondsForPlan('Pro', ['es', 'fr']), PAID_MAX_DUB_SECONDS);
+assert.equal(maxDubBytesForPlan('Pro', ['bn']), DUBBING_V1_MAX_BYTES);
 
 // The dubbing_v1 routing table is dormant with ElevenLabs, but it still feeds the
 // duration/size caps, so it must stay coherent.
@@ -264,5 +260,26 @@ for (const { value, label } of supportedLanguages) {
   assert.equal(/^[a-z]{2,3}$/.test(value), true, `not an ISO code: ${value}`);
   assert.equal(label.trim().length > 0, true, `missing label for ${value}`);
 }
+
+// ElevenLabs reaches Hebrew, Norwegian and Swahili only through dubbing_v1.
+for (const code of ['he', 'no', 'sw']) {
+  assert.equal(usesDubbingV1(code), true, `${code} must route through dubbing_v1 on ElevenLabs`);
+  assert.equal(isSupportedDubLanguage(code, 'cypher'), true);
+  assert.equal(isSupportedDubLanguage(code, 'elevenlabs'), true);
+}
+
+// Per-engine rates: Cypher is priced from its own COGS, ElevenLabs keeps the promo rate,
+// and an env override only moves the engine it names.
+assert.equal(CYPHER_DUBBING_CREDIT_MULTIPLIER, creditsForCost(0.0009));
+assert.equal(paidDubbingMultiplier('cypher'), CYPHER_DUBBING_CREDIT_MULTIPLIER);
+assert.equal(paidDubbingMultiplier('elevenlabs'), DUBBING_CREDIT_MULTIPLIER);
+assert.equal(paidDubbingMultiplier('cypher', { CYPHER_DUBBING_CREDIT_MULTIPLIER: '2' }), 2);
+assert.equal(paidDubbingMultiplier('elevenlabs', { CYPHER_DUBBING_CREDIT_MULTIPLIER: '2' }), DUBBING_CREDIT_MULTIPLIER);
+assert.equal(paidDubbingMultiplier('cypher', { CYPHER_DUBBING_CREDIT_MULTIPLIER: 'nope' }), CYPHER_DUBBING_CREDIT_MULTIPLIER);
+assert.equal(formatDubbingAllowanceFor(3000, 'Creator', 'elevenlabs'), '5.0 hrs');
+assert.equal(formatDubbingAllowanceFor(3000, 'Creator', 'cypher'), '50.0 min');
+assert.equal(formatDubbingAllowanceFor(100000, 'Scale', 'cypher'), '27.8 hrs');
+// Starter's trial rate is the same on both engines.
+assert.equal(formatDubbingAllowanceFor(500, 'Starter', 'cypher'), formatDubbingAllowanceFor(500, 'Starter', 'elevenlabs'));
 
 console.log('dubbing self-check OK');
