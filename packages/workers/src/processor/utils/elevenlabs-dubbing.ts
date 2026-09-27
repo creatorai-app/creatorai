@@ -15,7 +15,7 @@ import type { DubTimelineSegment, DubWarning, ElevenLabsDubbingModel } from '@re
 // a target is never created twice for one language (its id is stored the moment it
 // exists). The legacy POST /v1/dubbing route is only followed, for dubs started on it.
 
-const ELEVENLABS_API = 'https://api.elevenlabs.io/v1';
+export const ELEVENLABS_API = 'https://api.elevenlabs.io/v1';
 const POLL_INTERVAL_MS = 5_000;
 const REQUEST_TIMEOUT_MS = 20 * 60 * 1000;
 // A 3-hour source can take a long time to dub; a stall anywhere still frees the slot.
@@ -183,7 +183,7 @@ function turnIntoError(status: number, body: string, what: string): ElevenLabsHt
  * safe to send again. A read also survives a 5xx or a dropped connection; a create does
  * not, because it may have gone through and a second one would be charged again.
  */
-async function call(
+export async function callElevenLabs(
   opts: CallOptions,
   url: string,
   init: RequestInit,
@@ -224,7 +224,7 @@ async function waitBeforeRetry(opts: CallOptions, attempt: number): Promise<void
 }
 
 async function getJson<T>(opts: CallOptions, url: string, what: string): Promise<T> {
-  const response = await call(opts, url, { method: 'GET' }, what, { idempotent: true });
+  const response = await callElevenLabs(opts, url, { method: 'GET' }, what, { idempotent: true });
   return (await response.json()) as T;
 }
 
@@ -249,7 +249,7 @@ export async function createProject(
   if (opts.sourceLanguage) form.append('source_language', opts.sourceLanguage);
   for (const term of opts.keyterms ?? []) form.append('keyterms', term);
 
-  const response = await call(opts, `${ELEVENLABS_API}/dubbing/project`, { method: 'POST', body: form }, 'project create', {
+  const response = await callElevenLabs(opts, `${ELEVENLABS_API}/dubbing/project`, { method: 'POST', body: form }, 'project create', {
     idempotent: false,
   });
   const data = (await response.json()) as { project_id?: string };
@@ -293,7 +293,7 @@ export async function createLanguageTarget(
   },
 ): Promise<string> {
   const send = (withSettings: boolean) =>
-    call(
+    callElevenLabs(
       opts,
       `${ELEVENLABS_API}/dubbing/project/${opts.projectId}/language`,
       {
@@ -375,7 +375,7 @@ export async function waitForDub(opts: CallOptions, dub: ElevenLabsDub): Promise
 export async function downloadDub(opts: CallOptions, dub: ElevenLabsDub, targetLanguage: string, destination: string): Promise<void> {
   let response: Response;
   if (dub.kind === 'dub') {
-    response = await call(opts, `${ELEVENLABS_API}/dubbing/${dub.dubbingId}/audio/${targetLanguage}`, { method: 'GET' }, 'download', {
+    response = await callElevenLabs(opts, `${ELEVENLABS_API}/dubbing/${dub.dubbingId}/audio/${targetLanguage}`, { method: 'GET' }, 'download', {
       idempotent: true,
     });
   } else {

@@ -83,3 +83,15 @@ export async function downloadGcsFile(bucket: string, objectName: string, destin
   const storage = await getStorage();
   await storage.bucket(bucket).file(objectName).download({ destination });
 }
+
+/** An object's bytes, or null when it does not exist (a turn not stored yet). */
+export async function readGcsBuffer(bucket: string, objectName: string): Promise<Buffer | null> {
+  const storage = await getStorage();
+  try {
+    const [data] = await storage.bucket(bucket).file(objectName).download();
+    return data;
+  } catch (error: any) {
+    if (error?.code === 404) return null;
+    throw error;
+  }
+}

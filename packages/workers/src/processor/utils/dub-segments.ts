@@ -1,17 +1,22 @@
-// A segment is the unit a dub resumes from: each one is one Modal call, stored as it
-// finishes. ~1500 chars is a couple of minutes of speech, small enough that a retry
-// loses little and well inside Modal's per-request timeout.
-export const DUB_SEGMENT_MAX_CHARS = 1500;
+// A turn is the unit a dub resumes from: each one is one TTS call, stored as it
+// finishes. 300 characters is the chunk the Modal app splits text into itself, so a turn
+// is never glued together from several sentences with no pause between them, and it is
+// short enough to be fitted into the time its line had in the source. The Cypher TTS v2
+// service refuses anything longer (services/cypher-tts), so the two must move together.
+export const TURN_MAX_CHARS = 300;
 
 // Latin/Devanagari/Arabic sentence ends are followed by a space; CJK ones are not.
 const SENTENCE_BREAK = /(?<=[.!?।؟۔])\s+|(?<=[。！？])/;
+// Where to break a sentence that is too long on its own, best first: a space, then a
+// clause mark (CJK has no spaces, Thai separates clauses with them).
+const SOFT_BREAKS = [' ', '，', '、', '；', '：', ',', ';', ':'];
 
 /**
  * Split a translation into segments of whole sentences, each at most `maxChars`.
  * Deterministic: the same text always yields the same segments, which is what lets a
  * resumed dub trust the segment numbers it saved last time.
  */
-export function splitIntoSegments(text: string, maxChars: number = DUB_SEGMENT_MAX_CHARS): string[] {
+export function splitIntoSegments(text: string, maxChars: number = TURN_MAX_CHARS): string[] {
   const sentences = text
     .trim()
     .split(SENTENCE_BREAK)
@@ -34,13 +39,23 @@ export function splitIntoSegments(text: string, maxChars: number = DUB_SEGMENT_M
   return segments;
 }
 
-/** A sentence longer than a segment: break on spaces, or anywhere for unspaced scripts. */
+/**
+ * A sentence longer than a segment: break at a space, else after a clause mark (for
+ * unspaced scripts), else anywhere.
+ */
 function hardSplit(sentence: string, maxChars: number): string[] {
   const pieces: string[] = [];
   let rest = sentence;
   while (rest.length > maxChars) {
-    const space = rest.lastIndexOf(' ', maxChars);
-    const cut = space > 0 ? space : maxChars;
+    let cut = -1;
+    for (const mark of SOFT_BREAKS) {
+      const at = rest.lastIndexOf(mark, maxChars - (mark === ' ' ? 0 : 1));
+      if (at > 0) {
+        cut = mark === ' ' ? at : at + 1;
+        break;
+      }
+    }
+    if (cut <= 0) cut = maxChars;
     pieces.push(rest.slice(0, cut).trim());
     rest = rest.slice(cut).trim();
   }
@@ -218,29 +233,42 @@ function spreadOverSpeech(lines: Line[], spans: Span[]): Utterance[] {
   });
 }
 
-/** What one Modal call speaks: one speaker, placed at `start` on the source timeline. */
+/**
+ * What one TTS call speaks: one speaker, placed at `start` on the source timeline.
+ * `end` is where its source lines end, and `available` the time it has before the next
+ * turn starts (or the source ends): what a fitted turn must fit in. `lines` are the
+ * utterance indices it speaks.
+ */
 export interface Turn {
   speaker: string;
   start: number;
+  end: number;
+  available: number;
   text: string;
+  lines: number[];
 }
 
 // Lines by the same speaker this close together are spoken in one call; a longer pause
 // keeps its own placement so the silence survives into the dub.
-const TURN_MAX_GAP_SECONDS = 1.5;
+export const TURN_MAX_GAP_SECONDS = 1.5;
+// No turn is given less than this, even when the next speaker cuts in.
+const MIN_AVAILABLE_SECONDS = 0.3;
 
 /**
- * Group translated lines into turns. Consecutive lines from one speaker become one Modal
+ * Group translated lines into turns. Consecutive lines from one speaker become one TTS
  * call (fewer calls, more natural delivery), capped at `maxChars`; a change of speaker or
- * a real pause starts a new turn. Lines with no translation are skipped. Deterministic,
- * so a resumed dub can trust the turn numbers it stored.
+ * a pause over TURN_MAX_GAP_SECONDS starts a new turn. A line longer than a turn is split
+ * at sentence and clause breaks, each piece given its share of the line's time. Lines
+ * with no translation are skipped. Deterministic, so a resumed dub can trust the turn
+ * numbers it stored.
  */
 export function buildTurns(
   utterances: Utterance[],
   translation: string[],
-  maxChars: number = DUB_SEGMENT_MAX_CHARS,
+  totalSeconds: number,
+  maxChars: number = TURN_MAX_CHARS,
 ): Turn[] {
-  const merged: (Turn & { end: number })[] = [];
+  const merged: Omit<Turn, 'available'>[] = [];
   utterances.forEach((u, i) => {
     const text = (translation[i] ?? '').trim();
     if (!text) return;
@@ -253,17 +281,29 @@ export function buildTurns(
     ) {
       last.text = `${last.text} ${text}`;
       last.end = Math.max(last.end, u.end);
+      last.lines.push(i);
       return;
     }
-    merged.push({ speaker: u.speaker, start: u.start, end: u.end, text });
+    merged.push({ speaker: u.speaker, start: u.start, end: u.end, text, lines: [i] });
   });
 
-  // A single line longer than a turn: its pieces share the start and are laid back to back.
-  return merged.flatMap(({ speaker, start, text }) =>
-    text.length > maxChars
-      ? splitIntoSegments(text, maxChars).map((piece) => ({ speaker, start, text: piece }))
-      : [{ speaker, start, text }],
-  );
+  const pieces = merged.flatMap((turn) => {
+    if (turn.text.length <= maxChars) return [turn];
+    const parts = splitIntoSegments(turn.text, maxChars);
+    const total = parts.reduce((sum, p) => sum + p.length, 0);
+    const span = Math.max(0, turn.end - turn.start);
+    let done = 0;
+    return parts.map((text) => {
+      const start = turn.start + (span * done) / total;
+      done += text.length;
+      return { ...turn, text, start, end: turn.start + (span * done) / total };
+    });
+  });
+
+  return pieces.map((turn, i) => ({
+    ...turn,
+    available: Math.max(MIN_AVAILABLE_SECONDS, (pieces[i + 1]?.start ?? Math.max(totalSeconds, turn.end)) - turn.start),
+  }));
 }
 
 /**
@@ -283,41 +323,60 @@ export function placeOnTimeline(clips: { start: number; duration: number }[]): n
 // Trimmed off both ends of a line so the cut does not catch the next speaker.
 const REFERENCE_EDGE_SECONDS = 0.15;
 const REFERENCE_MIN_LINE_SECONDS = 1;
+// A line that starts or ends this close to someone else's is likely to overlap it.
+const REFERENCE_OVERLAP_GUARD_SECONDS = 0.3;
+
+/** One speaker's lines that are safe to clone from: long enough, and clear of everyone else. */
+function cleanSpeech(utterances: Utterance[]): { speaker: string; start: number; duration: number }[] {
+  return utterances
+    .filter((u) =>
+      !utterances.some(
+        (v) =>
+          v.speaker !== u.speaker &&
+          v.start < u.end + REFERENCE_OVERLAP_GUARD_SECONDS &&
+          v.end > u.start - REFERENCE_OVERLAP_GUARD_SECONDS,
+      ),
+    )
+    .map((u) => ({ speaker: u.speaker, start: u.start + REFERENCE_EDGE_SECONDS, duration: u.end - u.start - 2 * REFERENCE_EDGE_SECONDS }))
+    .filter((l) => l.duration >= REFERENCE_MIN_LINE_SECONDS);
+}
 
 /**
  * The stretches of one speaker's own speech to clone their voice from: their longest
- * lines, trimmed at the edges, until about `targetSeconds` of audio. Returned in time order.
+ * clean lines, trimmed at the edges, until about `targetSeconds` of audio. Returned BEST
+ * FIRST, not in time order: Chatterbox builds its prompt from the first 6 to 10 seconds
+ * of the sample and only averages the rest into the speaker embedding, so the longest
+ * clean line has to lead. Lines near another speaker's are left out (likely overlap).
  */
 export function pickReferenceLines(
   utterances: Utterance[],
   speaker: string,
   targetSeconds = 45,
 ): { start: number; duration: number }[] {
-  const lines = utterances
-    .filter((u) => u.speaker === speaker)
-    .map((u) => ({ start: u.start + REFERENCE_EDGE_SECONDS, duration: u.end - u.start - 2 * REFERENCE_EDGE_SECONDS }))
-    .filter((l) => l.duration >= REFERENCE_MIN_LINE_SECONDS)
-    .sort((a, b) => b.duration - a.duration);
+  const lines = cleanSpeech(utterances)
+    .filter((l) => l.speaker === speaker)
+    .sort((a, b) => b.duration - a.duration || a.start - b.start);
 
   const picked: { start: number; duration: number }[] = [];
   let total = 0;
-  for (const line of lines) {
+  for (const { start, duration } of lines) {
     if (total >= targetSeconds) break;
-    picked.push(line);
-    total += line.duration;
+    picked.push({ start, duration });
+    total += duration;
   }
-  return picked.sort((a, b) => a.start - b.start);
+  return picked;
 }
 
 /**
  * Whose voice each speaker is dubbed in. A speaker with enough clean speech keeps their
- * own; one with less than `minSeconds` (a one-word interjection, a misattributed cough)
- * borrows the voice of whoever speaks the most, since a clone from a second of audio
- * sounds like no one. Returns null when nobody has enough speech to clone.
+ * own; one with less than `minSeconds` (a one-word interjection, a misattributed cough,
+ * someone who only ever talks over others) borrows the voice of whoever speaks the most,
+ * since a clone from a second of audio sounds like no one. Returns null when nobody has
+ * enough speech to clone.
  */
 export function assignVoices(utterances: Utterance[], minSeconds = 3): Record<string, string> | null {
   const speech = new Map<string, number>();
-  for (const line of pickableSpeech(utterances)) {
+  for (const line of cleanSpeech(utterances)) {
     speech.set(line.speaker, (speech.get(line.speaker) ?? 0) + line.duration);
   }
   const speakers = [...new Set(utterances.map((u) => u.speaker))];
@@ -330,8 +389,45 @@ export function assignVoices(utterances: Utterance[], minSeconds = 3): Record<st
   );
 }
 
-function pickableSpeech(utterances: Utterance[]) {
-  return utterances
-    .map((u) => ({ speaker: u.speaker, duration: u.end - u.start - 2 * REFERENCE_EDGE_SECONDS }))
-    .filter((l) => l.duration >= REFERENCE_MIN_LINE_SECONDS);
+/**
+ * Cypher's timeline: every line with its source time, its translation, and where its
+ * dub actually plays. A turn speaks several lines, so its placed span is shared out
+ * among them by their share of its text; a line split over several turns runs from the
+ * first piece's start to the last one's end. A line with no translation has no dub time.
+ */
+export function cypherTimeline(
+  utterances: Utterance[],
+  translation: string[],
+  turns: Pick<Turn, 'lines'>[],
+  placed: { start: number; end: number }[],
+): { id: string; speaker: string; start: number; end: number; sourceText: string; translation: string | null; dubStart?: number; dubEnd?: number }[] {
+  const dubbed = new Map<number, { start: number; end: number }>();
+  turns.forEach((turn, t) => {
+    const span = placed[t];
+    if (!span) return;
+    const weights = turn.lines.map((i) => Math.max(1, (translation[i] ?? '').trim().length));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let done = 0;
+    turn.lines.forEach((i, k) => {
+      const start = span.start + ((span.end - span.start) * done) / total;
+      done += weights[k];
+      const end = turn.lines.length === 1 ? span.end : span.start + ((span.end - span.start) * done) / total;
+      const seen = dubbed.get(i);
+      dubbed.set(i, seen ? { start: Math.min(seen.start, start), end: Math.max(seen.end, end) } : { start, end });
+    });
+  });
+  const round = (n: number) => Math.round(n * 1000) / 1000;
+  return utterances.map((u, i) => {
+    const text = (translation[i] ?? '').trim();
+    const dub = dubbed.get(i);
+    return {
+      id: String(i),
+      speaker: u.speaker,
+      start: round(u.start),
+      end: round(u.end),
+      sourceText: u.text,
+      translation: text || null,
+      ...(dub ? { dubStart: round(dub.start), dubEnd: round(dub.end) } : {}),
+    };
+  });
 }

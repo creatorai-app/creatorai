@@ -847,6 +847,9 @@ importers:
       bullmq:
         specifier: 'catalog:'
         version: 5.62.2
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
