@@ -32,8 +32,8 @@ export const STARTER_MAX_DUB_BYTES = 500 * 1024 * 1024;
 export const PAID_MAX_DUB_SECONDS = 180 * 60;
 export const PAID_MAX_DUB_BYTES = 3 * 1024 * 1024 * 1024;
 
-// The dubbing_v1 route (DUBBING_V1_LANGUAGES, below) is a different, smaller endpoint:
-// 1GB / 45 min. A paid user picking one of those languages is held to this instead.
+// ElevenLabs' dubbing_v1 model (DUBBING_V1_LANGUAGES, below: Bengali only) has a smaller
+// ceiling: 1GB / 45 min. A paid user picking Bengali on ElevenLabs is held to this instead.
 export const DUBBING_V1_MAX_SECONDS = 45 * 60;
 export const DUBBING_V1_MAX_BYTES = 1024 * 1024 * 1024;
 
@@ -52,7 +52,7 @@ function anyOnDubbingV1(targets: TargetLanguages): boolean {
 
 /**
  * Longest source clip a plan may dub. The dubbing_v1 route's smaller cap only applies on
- * ElevenLabs; Cypher speaks some of the same languages on its own pipeline. An unknown
+ * ElevenLabs; Cypher runs its own pipeline for every language it speaks. An unknown
  * engine is treated as ElevenLabs, so the cap fails closed.
  */
 export function maxDubSecondsForPlan(
@@ -123,7 +123,7 @@ export const DUB_ENGINE_INFO: Record<DubEngine, { name: string; note?: string; d
   },
   elevenlabs: {
     name: 'ElevenLabs',
-    description: 'ElevenLabs dubbing. Detects speakers automatically, with more languages and accents.',
+    description: 'ElevenLabs dubbing. Detects speakers automatically, with more languages and regional dialects.',
   },
 };
 
@@ -147,12 +147,16 @@ export function formatDubDuration(seconds: number): string {
 export const DUBBING_CANCEL_PREFIX = 'dubbing:cancel:';
 
 /**
- * Every language either engine dubs into, and the label for each: 33, all of them on
+ * Every language either engine dubs into, and the label for each: all of them on
  * ElevenLabs, and the 23 Chatterbox speaks on Cypher (see dubbableLanguagesFor).
  *
  * Also the label table for history: a dub recorded under an older backend keeps its row,
  * and the history pages look the code up here. Removing an entry would turn "Tamil" back
  * into "ta" on a dub that already exists.
+ *
+ * Base codes only. A region (en-GB, es-MX) is a dialect of its language, picked
+ * separately (dialectsByLanguage), never a language of its own. Cantonese is the
+ * exception ElevenLabs makes: `yue` is its own language on Dubbing v2.
  */
 export const supportedLanguages = [
   { value: 'ar', label: 'Arabic' },
@@ -187,10 +191,21 @@ export const supportedLanguages = [
   { value: 'ta', label: 'Tamil' },
   { value: 'tr', label: 'Turkish' },
   { value: 'uk', label: 'Ukrainian' },
+  { value: 'yue', label: 'Cantonese' },
   { value: 'zh', label: 'Chinese (Mandarin)' },
 ] as const;
 
 export type SupportedLanguage = typeof supportedLanguages[number]['value'];
+
+/** "Tamil" for "ta", and the code itself for anything the table does not know. */
+export function dubLanguageLabel(code: string): string {
+  return supportedLanguages.find((l) => l.value === code)?.label ?? code;
+}
+
+/** True for any language in the label table: what a dub's source may be declared as. */
+export function isKnownDubLanguage(code: string): boolean {
+  return supportedLanguages.some((l) => l.value === code);
+}
 
 /**
  * What Chatterbox Multilingual (the model behind modal/dubbing_app.py) actually speaks:
@@ -206,14 +221,55 @@ export const CHATTERBOX_LANGUAGES: readonly string[] = [
 ];
 
 /**
- * The languages a creator can pick with each engine. ElevenLabs speaks the whole table
- * (33); Cypher the 23 Chatterbox speaks, so ten entries (bn, bg, cs, fil, hr, id, ro, sk,
- * ta, uk) are ElevenLabs-only. Public pages quote these counts from here, not by hand.
+ * The target languages of ElevenLabs Dubbing v2 (`model_id=dubbing_v2`) this product
+ * offers, as base codes. Every ElevenLabs dub runs on v2 except Bengali, which only v1
+ * speaks (DUBBING_V1_LANGUAGES).
+ *
+ * Source: the Dubbing v2 table on
+ * https://elevenlabs.io/docs/overview/capabilities/dubbing. Adding a language is two
+ * lines: its code here and its label in `supportedLanguages`. A code v2 does not speak
+ * is refused when the language target is created, after the project has already been
+ * paid for, so only add what the table lists.
+ */
+export const ELEVENLABS_V2_LANGUAGES: readonly string[] = [
+  'ar', 'bg', 'cs', 'da', 'de', 'el', 'en', 'es', 'fi', 'fil', 'fr', 'he', 'hi', 'hr',
+  'id', 'it', 'ja', 'ko', 'ms', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sk', 'sv', 'sw',
+  'ta', 'tr', 'uk', 'yue', 'zh',
+];
+
+/**
+ * Languages ElevenLabs dubs only on the older `dubbing_v1` model. Bengali is in the v1
+ * table and not the v2 one, so it is the one language that still needs v1. Hebrew,
+ * Norwegian and Swahili used to be here and are on v2 now, with its caps and its
+ * cloning control.
+ *
+ * dubbing_v1 has a smaller ceiling (1GB / 45 min, DUBBING_V1_MAX_*), takes no dialect
+ * tag and no cloning strength, and a project is fixed to one model, so a dub with
+ * Bengali and another language becomes two ElevenLabs projects.
+ */
+export const DUBBING_V1_LANGUAGES: readonly string[] = ['bn'];
+
+export function usesDubbingV1(code: string): boolean {
+  return DUBBING_V1_LANGUAGES.includes(code);
+}
+
+/** The ElevenLabs model a target language is dubbed with. */
+export type ElevenLabsDubbingModel = 'dubbing_v1' | 'dubbing_v2';
+
+export function elevenLabsModelFor(code: string): ElevenLabsDubbingModel {
+  return usesDubbingV1(code) ? 'dubbing_v1' : 'dubbing_v2';
+}
+
+const ELEVENLABS_LANGUAGES: readonly string[] = [...ELEVENLABS_V2_LANGUAGES, ...DUBBING_V1_LANGUAGES];
+
+/**
+ * The languages a creator can pick with each engine. ElevenLabs speaks every entry of
+ * the label table; Cypher the 23 Chatterbox speaks. Public pages quote these counts from
+ * here, not by hand.
  */
 export function dubbableLanguagesFor(engine: DubEngine) {
-  return engine === 'elevenlabs'
-    ? supportedLanguages
-    : supportedLanguages.filter((l) => CHATTERBOX_LANGUAGES.includes(l.value));
+  const offered = engine === 'elevenlabs' ? ELEVENLABS_LANGUAGES : CHATTERBOX_LANGUAGES;
+  return supportedLanguages.filter((l) => offered.includes(l.value));
 }
 
 /** The trust boundary: what the API will accept as a dub target for an engine. */
@@ -221,61 +277,232 @@ export function isSupportedDubLanguage(code: string, engine: DubEngine = DEFAULT
   return dubbableLanguagesFor(engine).some((l) => l.value === code);
 }
 
-/**
- * ElevenLabs languages outside the 29 the default /v1/dubbing route has served in
- * production. These go through the dubbing *project* API pinned to
- * `model_id=dubbing_v1`, which speaks what Eleven v3 speaks (88 languages per
- * ElevenLabs' docs, all four of these among them).
- *
- * Adding one is two lines: the entry in `supportedLanguages` above and its code here.
- * The cost is that dubbing_v1 has a smaller ceiling (1GB / 45 min) and ignores
- * `target_accent`, so a language with accents worth offering is better left on the
- * default route.
- */
-export const DUBBING_V1_LANGUAGES: readonly string[] = ['bn', 'he', 'no', 'sw'];
-
-export function usesDubbingV1(code: string): boolean {
-  return DUBBING_V1_LANGUAGES.includes(code);
+/** One regional variety of a language, and the ElevenLabs Dubbing v2 tag that asks for it. */
+export interface DubDialect {
+  /** What `dubbing_outputs.accent` stores. Older rows hold the same values. */
+  value: string;
+  label: string;
+  /** BCP-47 target tag: one of v2's supported dialects, or a base code. */
+  tag: string;
 }
 
 /**
- * Accents the dubbing API can aim for, per language. `target_accent` is marked
- * experimental upstream, so treat these as a preference rather than a guarantee —
- * a language with no entry simply offers the default accent.
+ * The dialects ElevenLabs Dubbing v2 can aim for, per language. These replaced the
+ * experimental `target_accent` of the legacy route: v2 takes a region-qualified target
+ * tag instead, and only for the dialects it lists (ar-EG, zh-TW, en-AU, en-CA, en-GB,
+ * en-US, fr-CA, fr-FR, pt-BR, pt-PT, es-AR, es-CL, es-ES, es-MX). The stored values
+ * are the old accent names where one existed, so dubs made before keep their meaning.
+ * Cantonese is its own language (`yue`) on v2; the Chinese menu still offers it
+ * because older dubs chose it here.
  */
-export const accentsByLanguage: Partial<Record<SupportedLanguage, { value: string; label: string }[]>> = {
+export const dialectsByLanguage: Partial<Record<string, DubDialect[]>> = {
   en: [
-    { value: 'american', label: 'American' },
-    { value: 'british', label: 'British' },
-    { value: 'australian', label: 'Australian' },
-    { value: 'indian', label: 'Indian' },
+    { value: 'american', label: 'American', tag: 'en-US' },
+    { value: 'british', label: 'British', tag: 'en-GB' },
+    { value: 'australian', label: 'Australian', tag: 'en-AU' },
+    { value: 'canadian', label: 'Canadian', tag: 'en-CA' },
   ],
   es: [
-    { value: 'castilian', label: 'Spain (Castilian)' },
-    { value: 'latin american', label: 'Latin American' },
+    { value: 'castilian', label: 'Spain (Castilian)', tag: 'es-ES' },
+    { value: 'latin american', label: 'Latin American (Mexico)', tag: 'es-MX' },
+    { value: 'argentinian', label: 'Argentina', tag: 'es-AR' },
+    { value: 'chilean', label: 'Chile', tag: 'es-CL' },
   ],
   pt: [
-    { value: 'brazilian', label: 'Brazilian' },
-    { value: 'european', label: 'European' },
+    { value: 'brazilian', label: 'Brazilian', tag: 'pt-BR' },
+    { value: 'european', label: 'European', tag: 'pt-PT' },
   ],
   fr: [
-    { value: 'french', label: 'France' },
-    { value: 'canadian', label: 'Canadian' },
+    { value: 'french', label: 'France', tag: 'fr-FR' },
+    { value: 'canadian', label: 'Canadian', tag: 'fr-CA' },
   ],
   zh: [
-    { value: 'mandarin', label: 'Mandarin' },
-    { value: 'cantonese', label: 'Cantonese' },
+    { value: 'mandarin', label: 'Mandarin', tag: 'zh' },
+    { value: 'taiwanese', label: 'Taiwan Mandarin', tag: 'zh-TW' },
+    { value: 'cantonese', label: 'Cantonese', tag: 'yue' },
+  ],
+  ar: [
+    { value: 'egyptian', label: 'Egyptian', tag: 'ar-EG' },
   ],
 };
 
 /**
- * Accents are an ElevenLabs control. Chatterbox reproduces the accent of whoever is in
- * the reference audio and takes no target accent, and the dubbing_v1 route ignores it, so
- * both get no menu rather than a control that does nothing.
+ * Accents a dub could be made with once and no longer can. Indian English has no v2
+ * dialect, so it left the menu; a stored `indian` keeps its label and dubs as plain
+ * English on a retry.
+ */
+const RETIRED_ACCENTS: Partial<Record<string, DubDialect[]>> = {
+  en: [{ value: 'indian', label: 'Indian', tag: 'en' }],
+};
+
+/** Every accent or dialect label ever stored, for history pages. */
+export const accentsByLanguage: Partial<Record<string, { value: string; label: string }[]>> = Object.fromEntries(
+  [...new Set([...Object.keys(dialectsByLanguage), ...Object.keys(RETIRED_ACCENTS)])].map((code) => [
+    code,
+    [...(dialectsByLanguage[code] ?? []), ...(RETIRED_ACCENTS[code] ?? [])].map(({ value, label }) => ({ value, label })),
+  ]),
+);
+
+/** "British" for en/british, or null when the value is unknown. */
+export function accentLabel(language: string, accent?: string | null): string | null {
+  if (!accent) return null;
+  return accentsByLanguage[language]?.find((a) => a.value === accent)?.label ?? null;
+}
+
+/**
+ * The dialect menu for a language. Dialects are an ElevenLabs v2 control: Chatterbox
+ * copies the accent of whoever is in the voice sample, and dubbing_v1 takes no region
+ * tag, so both get no menu rather than a control that does nothing.
  */
 export function accentsFor(language: string, engine: DubEngine = DEFAULT_DUB_ENGINE): { value: string; label: string }[] {
   if (engine !== 'elevenlabs' || usesDubbingV1(language)) return [];
-  return accentsByLanguage[language as SupportedLanguage] ?? [];
+  return (dialectsByLanguage[language] ?? []).map(({ value, label }) => ({ value, label }));
+}
+
+/**
+ * The BCP-47 tag ElevenLabs is asked to dub a language into: the dialect's tag when a
+ * stored accent names one, otherwise the base code. The single place a stored accent
+ * becomes a target tag, so old rows (including the retired `indian`) keep working.
+ */
+export function elevenLabsTargetTag(language: string, accent?: string | null): string {
+  if (!accent || usesDubbingV1(language)) return language;
+  const all = [...(dialectsByLanguage[language] ?? []), ...(RETIRED_ACCENTS[language] ?? [])];
+  return all.find((d) => d.value === accent)?.tag ?? language;
+}
+
+/**
+ * How far a dubbed voice should stay from sounding like the original speaker. One
+ * choice per dub, shown on the new-dub form, and turned into each engine's own control:
+ * ElevenLabs' cloning strength (cloningStrengthFor) and Chatterbox's cfg_weight
+ * (chatterboxParamsFor).
+ */
+export const DUB_VOICE_MODES = ['like_me', 'balanced', 'native'] as const;
+export type DubVoiceMode = (typeof DUB_VOICE_MODES)[number];
+export const DEFAULT_DUB_VOICE_MODE: DubVoiceMode = 'balanced';
+
+export const DUB_VOICE_MODE_INFO: Record<DubVoiceMode, { label: string; help: Record<DubEngine, string> }> = {
+  like_me: {
+    label: 'Keep my voice and accent',
+    help: {
+      elevenlabs: 'Clones each speaker as closely as it can, accent included.',
+      cypher: 'Copies each voice closely. Your accent carries over into the new language.',
+    },
+  },
+  balanced: {
+    label: 'Balanced',
+    help: {
+      elevenlabs: 'Keeps each voice recognisable while the new language still sounds natural.',
+      cypher: 'Keeps each voice recognisable with a light accent. Right for most videos.',
+    },
+  },
+  native: {
+    label: 'Sound native',
+    help: {
+      elevenlabs: 'Loosens the clone so every speaker sounds like a native speaker.',
+      cypher: 'Keeps the voice but drops the original accent, so speech sounds native.',
+    },
+  },
+};
+
+/**
+ * Rough phonetic families, used only to say whether a source and a target are far apart
+ * (cloningStrengthFor). A voice cloned hard across very different sound systems drags
+ * the source's accent into the dub, so far pairs get a slightly looser clone.
+ *
+ * Groups, by script and region: Latin-script European (Germanic, Romance, West Slavic,
+ * Baltic, Finno-Ugric, Turkish), Cyrillic, Arabic-script, Indic, CJK, Southeast Asian,
+ * African. A language in no group (Greek, Hebrew, Armenian, Georgian) is treated like
+ * an unknown source: no adjustment.
+ */
+export const DUB_LANGUAGE_GROUPS: Record<string, readonly string[]> = {
+  latin_european: [
+    'en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'sv', 'da', 'no', 'fi', 'pl', 'cs', 'sk', 'ro', 'hr',
+    'hu', 'et', 'lv', 'lt', 'sl', 'ca', 'gl', 'eu', 'is', 'ga', 'cy', 'mt', 'lb', 'sq', 'bs', 'tr', 'af',
+  ],
+  cyrillic: ['ru', 'uk', 'bg', 'sr', 'mk', 'be', 'kk', 'ky', 'tg', 'mn'],
+  arabic_script: ['ar', 'fa', 'ur', 'ps', 'sd'],
+  indic: ['hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'pa', 'ne', 'or', 'as', 'si'],
+  cjk: ['zh', 'yue', 'ja', 'ko'],
+  southeast_asian: ['id', 'ms', 'fil', 'tl', 'vi', 'th', 'km', 'lo', 'my', 'jv', 'su', 'ceb'],
+  african: ['sw', 'ha', 'yo', 'ig', 'zu', 'xh', 'am', 'so', 'sn', 'wo', 'ln', 'ny'],
+};
+
+/** A language's group, from a base code or a dialect tag ("es-MX" is Spanish). */
+export function dubLanguageGroup(code?: string | null): string | null {
+  const base = code?.toLowerCase().split('-')[0];
+  if (!base) return null;
+  return Object.entries(DUB_LANGUAGE_GROUPS).find(([, codes]) => codes.includes(base))?.[0] ?? null;
+}
+
+/**
+ * ElevenLabs Dubbing v2 cloning strength (0 to 10, ElevenLabs' default 7) for a voice
+ * mode and language pair.
+ *
+ * Starting values, to be tuned by ear: like_me 9, balanced 7 (ElevenLabs' own default),
+ * native 4, one lower when source and target are in different groups
+ * (DUB_LANGUAGE_GROUPS). An unknown source, or a language in no group, gets no
+ * adjustment. Never sent to a dubbing_v1 project, which has no such control.
+ */
+export function cloningStrengthFor({
+  voiceMode,
+  sourceLanguage,
+  targetLanguage,
+}: {
+  voiceMode: DubVoiceMode;
+  sourceLanguage?: string | null;
+  targetLanguage: string;
+}): number {
+  const base = voiceMode === 'like_me' ? 9 : voiceMode === 'native' ? 4 : 7;
+  const from = dubLanguageGroup(sourceLanguage);
+  const to = dubLanguageGroup(targetLanguage);
+  const far = !!from && !!to && from !== to;
+  return Math.min(10, Math.max(0, base - (far ? 1 : 0)));
+}
+
+/**
+ * Chatterbox's generation controls for a voice mode, as the Cypher TTS v2 service takes
+ * them. Per Chatterbox's README: a reference in another language than the target makes
+ * the output inherit the reference's accent, and cfg_weight=0 removes that, so "Sound
+ * native" is cfg_weight 0. The defaults (0.5 / 0.5) are what the README recommends for
+ * most prompts. Only the v2 service reads these; the frozen Modal app takes none.
+ */
+export function chatterboxParamsFor({ voiceMode }: { voiceMode: DubVoiceMode }): { cfg_weight: number; exaggeration: number } {
+  return { cfg_weight: voiceMode === 'native' ? 0 : 0.5, exaggeration: 0.5 };
+}
+
+/**
+ * Names and terms the dub should keep as they are (brands, people, products). ElevenLabs
+ * takes up to 1,000 per project; the form takes 50, which is plenty for one video and
+ * keeps the translation prompt short on Cypher. Each term follows ElevenLabs' rules: at
+ * most 50 characters and 5 words, none of `<>{}[]\`.
+ */
+export const DUB_KEYTERMS_MAX = 50;
+export const DUB_KEYTERM_MAX_CHARS = 50;
+export const DUB_KEYTERM_MAX_WORDS = 5;
+const KEYTERM_FORBIDDEN = /[<>{}[\]\\]/;
+
+/** Why a term would be refused, or null when it is fine. Checked after trimming. */
+export function keytermProblem(term: string): string | null {
+  const trimmed = term.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return 'A term cannot be empty';
+  if (trimmed.length > DUB_KEYTERM_MAX_CHARS) return `Keep each term to ${DUB_KEYTERM_MAX_CHARS} characters`;
+  if (trimmed.split(' ').length > DUB_KEYTERM_MAX_WORDS) return `Keep each term to ${DUB_KEYTERM_MAX_WORDS} words`;
+  if (KEYTERM_FORBIDDEN.test(trimmed)) return 'Terms cannot contain < > { } [ ] or \\';
+  return null;
+}
+
+/** Trimmed, inner spaces collapsed, empties dropped, duplicates removed (first one wins). */
+export function normalizeKeyterms(terms: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const term of terms) {
+    const clean = term.trim().replace(/\s+/g, ' ');
+    const key = clean.toLowerCase();
+    if (!clean || seen.has(key)) continue;
+    seen.add(key);
+    out.push(clean);
+  }
+  return out;
 }
 
 // murfLocaleMap lived here — a locale table for Murf, which stopped powering dubbing

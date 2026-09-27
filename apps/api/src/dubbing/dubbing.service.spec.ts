@@ -230,15 +230,16 @@ describe('DubbingService', () => {
       );
     });
 
-    // Norwegian is on dubbing_v1 only on ElevenLabs; Cypher speaks it on its own pipeline.
-    it('does not hold a Cypher dub to an ElevenLabs route limit', async () => {
+    // Hebrew, Norwegian and Swahili moved to Dubbing v2: an hour-long dub in them is held
+    // to the plan's cap on either engine, not the v1 route's 45 minutes.
+    it.each(['he', 'no', 'sw'])('holds %s to the plan cap on both engines', async (language) => {
       await build({ subscriptions: chain(planResult('Pro')) });
       await expect(
-        service.initUpload({ ...input, targets: [{ language: 'no' }], durationSeconds: 60 * 60 }, USER),
+        service.initUpload({ ...input, targets: [{ language }], durationSeconds: 60 * 60 }, USER),
       ).resolves.toBeTruthy();
       await expect(
-        service.initUpload({ ...input, engine: 'elevenlabs', targets: [{ language: 'no' }], durationSeconds: 60 * 60 }, USER),
-      ).rejects.toThrow(BadRequestException);
+        service.initUpload({ ...input, engine: 'elevenlabs', targets: [{ language }], durationSeconds: 60 * 60 }, USER),
+      ).resolves.toBeTruthy();
     });
 
     // Bengali routes through ElevenLabs' dubbing_v1, which tops out at 1GB / 45 min no

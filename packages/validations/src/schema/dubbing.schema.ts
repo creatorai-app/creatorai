@@ -1,5 +1,16 @@
 import { z } from 'zod';
-import { accentsFor, DUB_ENGINES, isSupportedDubLanguage } from '../consts/dubbing';
+import {
+  accentsFor,
+  DEFAULT_DUB_VOICE_MODE,
+  DUB_ENGINES,
+  DUB_KEYTERMS_MAX,
+  DUB_VOICE_MODES,
+  elevenLabsTargetTag,
+  isKnownDubLanguage,
+  isSupportedDubLanguage,
+  keytermProblem,
+  normalizeKeyterms,
+} from '../consts/dubbing';
 
 const mediaContentType = z
   .string()
@@ -34,6 +45,28 @@ export const InitDubUploadSchema = z
       // false: the browser could not pull the audio out, so the whole file is the "audio".
       extracted: z.boolean(),
     }),
+    // The language spoken in the source. Omitted means "detect it": ElevenLabs and
+    // Gemini both do, and ElevenLabs reports what it found on the source transcript.
+    sourceLanguage: z
+      .string()
+      .min(1)
+      .refine(isKnownDubLanguage, { message: 'Unsupported source language' })
+      .optional(),
+    voiceMode: z.enum(DUB_VOICE_MODES).default(DEFAULT_DUB_VOICE_MODE),
+    // Names and terms to keep as they are. Checked one by one against ElevenLabs' rules,
+    // then trimmed and deduplicated, so what is stored is exactly what is sent.
+    keyterms: z
+      .array(z.string().max(200))
+      .max(DUB_KEYTERMS_MAX * 2, { message: `Add at most ${DUB_KEYTERMS_MAX} names and terms` })
+      .superRefine((terms, ctx) => {
+        terms.forEach((term, i) => {
+          const problem = term.trim() ? keytermProblem(term) : null;
+          if (problem) ctx.addIssue({ code: 'custom', path: [i], message: problem });
+        });
+      })
+      .transform(normalizeKeyterms)
+      .refine((terms) => terms.length <= DUB_KEYTERMS_MAX, { message: `Add at most ${DUB_KEYTERMS_MAX} names and terms` })
+      .optional(),
   })
   .superRefine((input, ctx) => {
     const seen = new Set<string>();
@@ -49,6 +82,11 @@ export const InitDubUploadSchema = z
       if (accent && !accentsFor(language, input.engine).some((a) => a.value === accent)) {
         ctx.addIssue({ code: 'custom', path: ['targets', i, 'accent'], message: 'Unsupported accent' });
       }
+      // Dubbing a language into itself is not a dub. Compared on what would actually be
+      // asked for, so Chinese with the Cantonese dialect counts as Cantonese.
+      if (input.sourceLanguage && [language, elevenLabsTargetTag(language, accent)].includes(input.sourceLanguage)) {
+        ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Pick a target other than the source language' });
+      }
     });
   });
 
@@ -63,6 +101,35 @@ export const DubAudioSessionSchema = z.object({
 export const DUB_STATUSES = ['uploading', 'queued', 'processing', 'cloning', 'awaiting_video', 'completed', 'failed'] as const;
 export const DUB_OUTPUT_STATUSES = ['pending', 'dubbing', 'awaiting_video', 'completed', 'failed'] as const;
 
+/**
+ * One line of a dub's timeline, the same shape whichever engine made it: Cypher fills it
+ * from its own analysis, translation and placements, ElevenLabs from its source and
+ * target transcripts. Times are seconds from the start of the source. `dubStart` and
+ * `dubEnd` are where the dubbed line actually plays when that differs (Cypher only).
+ * `id` is stable per line (ElevenLabs' segment id, or the Cypher line index), which is
+ * what editing a line would address later.
+ */
+export const DubTimelineSegmentSchema = z.object({
+  id: z.string(),
+  speaker: z.string(),
+  start: z.number(),
+  end: z.number(),
+  sourceText: z.string(),
+  translation: z.string().nullable(),
+  dubStart: z.number().optional(),
+  dubEnd: z.number().optional(),
+});
+
+/**
+ * Something about a finished dub worth telling the user. Today only ElevenLabs'
+ * `voices_not_permitted`: those speakers were dubbed in a replacement voice.
+ */
+export const DubWarningSchema = z.object({
+  type: z.string(),
+  speakerIds: z.array(z.string()).optional(),
+  message: z.string().optional(),
+});
+
 /** One language of a dub. */
 export const DubOutputSchema = z.object({
   language: z.string(),
@@ -74,6 +141,8 @@ export const DubOutputSchema = z.object({
   segmentCount: z.number().nullish(),
   creditsConsumed: z.number(),
   errorMessage: z.string().nullish(),
+  timeline: z.array(DubTimelineSegmentSchema).nullish(),
+  warnings: z.array(DubWarningSchema).nullish(),
 });
 
 export const DubResponseSchema = z.object({
@@ -91,6 +160,10 @@ export const DubResponseSchema = z.object({
   isVideo: z.boolean(),
   createdAt: z.string(),
   mediaName: z.string().nullish(),
+  // Null when the source language was left to be detected.
+  sourceLanguage: z.string().nullish(),
+  voiceMode: z.enum(DUB_VOICE_MODES).nullish(),
+  keyterms: z.array(z.string()).nullish(),
   outputs: z.array(DubOutputSchema),
 });
 
@@ -102,6 +175,8 @@ export type DubResponse = z.infer<typeof DubResponseSchema>;
 export type DubStatus = DubResponse['status'];
 export type DubOutputStatus = DubOutput['status'];
 export type DubTarget = InitDubUploadInput['targets'][number];
+export type DubTimelineSegment = z.infer<typeof DubTimelineSegmentSchema>;
+export type DubWarning = z.infer<typeof DubWarningSchema>;
 
 /** What a resume needs: how far each upload got, straight from GCS. */
 export interface DubUploadState {
