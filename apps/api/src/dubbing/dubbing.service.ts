@@ -31,6 +31,7 @@ import {
   paidDubbingMultiplier,
   DUB_ENGINES,
   DUBBING_CANCEL_PREFIX,
+  DEFAULT_DUB_VOICE_MODE,
   type DubEngine,
 } from '@repo/validation';
 import {
@@ -82,7 +83,7 @@ const PROJECT_COLUMNS = [
   'duration_seconds', 'job_id', 'input_gs_uri', 'input_url', 'dubbed_url', 'credits_consumed', 'error_message',
   'audio_object', 'audio_session_uri', 'audio_size', 'audio_content_type', 'audio_extracted',
   'video_object', 'video_upload_id', 'video_part_size', 'video_size', 'video_content_type', 'video_status',
-  'source_fingerprint',
+  'source_fingerprint', 'source_language', 'voice_mode', 'keyterms',
 ].join(', ');
 
 @Injectable()
@@ -127,6 +128,10 @@ export class DubbingService {
   async getAccess(userId: string) {
     const planName = await this.getActivePlanName(userId);
     return {
+      // The engines where the voice mode changes anything: ElevenLabs always (cloning
+      // strength); Cypher only once its TTS v2 service is deployed, since the frozen Modal
+      // app takes no voice controls. Set CYPHER_TTS_V2_URL here too to show it on Cypher.
+      voiceModeEngines: DUB_ENGINES.filter((engine) => engine === 'elevenlabs' || !!process.env.CYPHER_TTS_V2_URL?.trim()),
       success: true,
       allowed: canDub(planName),
       plan: planName,
@@ -367,6 +372,9 @@ export class DubbingService {
       video_size: splitVideo ? input.fileSize : null,
       video_content_type: splitVideo ? input.contentType : null,
       video_status: splitVideo ? 'uploading' : null,
+      source_language: input.sourceLanguage ?? null,
+      voice_mode: input.voiceMode ?? DEFAULT_DUB_VOICE_MODE,
+      keyterms: input.keyterms ?? [],
     });
     const { error: outputsError } = error
       ? { error }
@@ -676,7 +684,10 @@ export class DubbingService {
     const needAudioIds = needAudio.map((o) => o.id);
     const muxOnlyIds = toRun.filter((o) => !needAudioIds.includes(o.id)).map((o) => o.id);
     const freshStart = resetProgress
-      ? { translation: null, segment_count: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null, dubbed_url: null }
+      ? {
+          translation: null, segment_count: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null, dubbed_url: null,
+          timeline: null, warnings: null,
+        }
       : {};
     if (needAudioIds.length) {
       await this.supabase
@@ -697,8 +708,9 @@ export class DubbingService {
         status: 'queued',
         error_message: null,
         credits_consumed: kept + reservedCredits,
-        // A fresh start detects the speakers again; the old result may be why it is rerun.
-        ...(resetProgress ? { analysis: null, dubbed_url: null } : {}),
+        // A fresh start detects the speakers again (a new ElevenLabs project too); the old
+        // result may be why it is rerun. A resume keeps both, so nothing is paid twice.
+        ...(resetProgress ? { analysis: null, dubbed_url: null, vendor_projects: null } : {}),
       })
       .eq('project_id', row.project_id)
       .eq('user_id', userId);
@@ -724,6 +736,9 @@ export class DubbingService {
         durationSeconds: Number(row.duration_seconds),
         planName: opts.planName,
         reservedCredits: opts.reservedCredits,
+        sourceLanguage: row.source_language ?? null,
+        voiceMode: row.voice_mode ?? DEFAULT_DUB_VOICE_MODE,
+        keyterms: row.keyterms ?? [],
       });
       return { jobId };
     } catch (error: any) {
@@ -752,6 +767,10 @@ export class DubbingService {
     durationSeconds: number;
     planName: string | null;
     reservedCredits: number;
+    // For the job's own record; the worker reads the project row, which a retry keeps.
+    sourceLanguage: string | null;
+    voiceMode: string;
+    keyterms: string[];
   }): Promise<string> {
     const bullJobId = `dubbing-${crypto.randomUUID()}`;
 
@@ -855,7 +874,7 @@ export class DubbingService {
   async getDub(userId: string, projectId: string): Promise<DubResponse> {
     const { data, error } = await this.supabase
       .from('dubbing_projects')
-      .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, created_at, media_name, speakers:analysis->speakers')
+      .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, created_at, media_name, source_language, voice_mode, keyterms, speakers:analysis->speakers')
       .eq('user_id', userId)
       .eq('project_id', projectId)
       .single();
@@ -866,7 +885,7 @@ export class DubbingService {
 
     const { data: rows } = await this.supabase
       .from('dubbing_outputs')
-      .select('language, accent, status, dubbed_url, dubbed_audio_url, segments_done, segment_count, credits_consumed, error_message, created_at')
+      .select('language, accent, status, dubbed_url, dubbed_audio_url, segments_done, segment_count, credits_consumed, error_message, timeline, warnings, created_at')
       .eq('project_id', projectId)
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
@@ -882,6 +901,8 @@ export class DubbingService {
           segmentCount: o.segment_count,
           creditsConsumed: o.credits_consumed ?? 0,
           errorMessage: o.error_message,
+          timeline: o.timeline ?? null,
+          warnings: o.warnings ?? null,
         }))
       : // A dub from before per-language outputs: its one language lives on the project.
         [{
@@ -910,6 +931,9 @@ export class DubbingService {
       isVideo: data.is_video,
       createdAt: data.created_at,
       mediaName: data.media_name,
+      sourceLanguage: data.source_language ?? null,
+      voiceMode: data.voice_mode ?? null,
+      keyterms: data.keyterms ?? [],
       outputs,
     };
   }

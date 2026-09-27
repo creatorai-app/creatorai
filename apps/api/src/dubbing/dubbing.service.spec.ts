@@ -130,6 +130,15 @@ describe('DubbingService', () => {
       });
     });
 
+    it('reports voice mode on ElevenLabs, and on Cypher only once its v2 voice service is configured', async () => {
+      await build();
+      delete process.env.CYPHER_TTS_V2_URL;
+      await expect(service.getAccess(USER)).resolves.toMatchObject({ voiceModeEngines: ['elevenlabs'] });
+      process.env.CYPHER_TTS_V2_URL = 'https://tts.example';
+      await expect(service.getAccess(USER)).resolves.toMatchObject({ voiceModeEngines: ['cypher', 'elevenlabs'] });
+      delete process.env.CYPHER_TTS_V2_URL;
+    });
+
     it('prices each engine at its own rate on a paid plan', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
       await expect(service.getAccess(USER)).resolves.toMatchObject({
@@ -315,6 +324,25 @@ describe('DubbingService', () => {
       expect(rpc).not.toHaveBeenCalled();
     });
 
+    it('stores the source language, voice mode and keyterms on the project', async () => {
+      await build();
+      await service.initUpload(
+        { ...input, engine: 'elevenlabs', sourceLanguage: 'en', voiceMode: 'native', keyterms: ['Creator AI', 'Cypher'] },
+        USER,
+      );
+      expect(tables.dubbing_projects.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ source_language: 'en', voice_mode: 'native', keyterms: ['Creator AI', 'Cypher'] }),
+      );
+    });
+
+    it('stores a detected source, the balanced mode and no keyterms by default', async () => {
+      await build();
+      await service.initUpload(input as any, USER);
+      expect(tables.dubbing_projects.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ source_language: null, voice_mode: 'balanced', keyterms: [] }),
+      );
+    });
+
     it('drops a malformed origin rather than passing it to GCS', async () => {
       await build();
       await service.initUpload(input, USER, 'https://evil.example/path');
@@ -420,6 +448,29 @@ describe('DubbingService', () => {
         'dubbing',
         expect.objectContaining({ userId: USER, reservedCredits: DUB_COST * 2, mimeType: 'audio/mp4', isVideo: true }),
         expect.objectContaining({ jobId }),
+      );
+    });
+
+    it('passes the source language, voice mode and keyterms to the job', async () => {
+      await build({
+        dubbing_projects: project({ source_language: 'en', voice_mode: 'like_me', keyterms: ['Creator AI'] }),
+        dubbing_outputs: outputsTable(outputs),
+      });
+      await service.startDub(USER, 'p-1');
+      expect(queue.add).toHaveBeenCalledWith(
+        'dubbing',
+        expect.objectContaining({ sourceLanguage: 'en', voiceMode: 'like_me', keyterms: ['Creator AI'] }),
+        expect.anything(),
+      );
+    });
+
+    it('sends the defaults for a row from before the voice mode existed', async () => {
+      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(outputs) });
+      await service.startDub(USER, 'p-1');
+      expect(queue.add).toHaveBeenCalledWith(
+        'dubbing',
+        expect.objectContaining({ sourceLanguage: null, voiceMode: 'balanced', keyterms: [] }),
+        expect.anything(),
       );
     });
 
@@ -600,9 +651,12 @@ describe('DubbingService', () => {
       await service.regenerateDub(USER, 'p-1');
       expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST * 2 });
       expect(tables.dubbing_outputs.update).toHaveBeenCalledWith(
-        expect.objectContaining({ translation: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null }),
+        expect.objectContaining({
+          translation: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null, timeline: null, warnings: null,
+        }),
       );
-      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ analysis: null }));
+      // A fresh start is a new ElevenLabs project too.
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ analysis: null, vendor_projects: null }));
     });
 
     // A dub from before per-language outputs gets one output row the first time it runs again.
@@ -643,6 +697,28 @@ describe('DubbingService', () => {
       const dub = await service.getDub(USER, 'p-1');
       expect(dub.speakerCount).toBe(2);
       expect(dub.outputs.map((o) => [o.language, o.status])).toEqual([['es', 'completed'], ['fr', 'failed']]);
+    });
+
+    it('returns each language\'s timeline and warnings, and the dub\'s voice settings', async () => {
+      const timeline = [{ id: 's1', speaker: 'speaker_0', start: 0, end: 1.2, sourceText: 'Hi', translation: 'Hola' }];
+      const warnings = [{ type: 'voices_not_permitted', speakerIds: ['speaker_1'] }];
+      await build({
+        dubbing_projects: chain({ data: { ...project, source_language: 'en', voice_mode: 'native', keyterms: ['Cypher'] }, error: null }),
+        dubbing_outputs: outputsTable([{ language: 'es', status: 'completed', segments_done: 0, credits_consumed: 5, timeline, warnings }]),
+      });
+      const dub = await service.getDub(USER, 'p-1');
+      expect(dub).toMatchObject({ sourceLanguage: 'en', voiceMode: 'native', keyterms: ['Cypher'] });
+      expect(dub.outputs[0]).toMatchObject({ timeline, warnings });
+    });
+
+    it('returns no timeline for a language made before timelines', async () => {
+      await build({
+        dubbing_projects: chain({ data: project, error: null }),
+        dubbing_outputs: outputsTable([{ language: 'es', status: 'completed', segments_done: 0, credits_consumed: 5 }]),
+      });
+      const dub = await service.getDub(USER, 'p-1');
+      expect(dub.outputs[0].timeline).toBeNull();
+      expect(dub.voiceMode).toBeNull();
     });
 
     it('shows an older dub as its one language', async () => {

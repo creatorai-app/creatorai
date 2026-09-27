@@ -55,10 +55,18 @@ export class DubbingController {
         targets: {
           type: 'array',
           description: 'One output per language: up to 1 on Starter, 2 on Creator/Pro, 3 on Business/Scale',
-          items: { type: 'object', properties: { language: { type: 'string', example: 'es' }, accent: { type: 'string', description: 'ElevenLabs only' } } },
+          items: { type: 'object', properties: { language: { type: 'string', example: 'es' }, accent: { type: 'string', description: 'ElevenLabs Dubbing v2 dialect, e.g. british (en-GB)' } } },
         },
         mediaName: { type: 'string', maxLength: 100 },
         fingerprint: { type: 'string', description: 'name|size|lastModified, checked on resume' },
+        sourceLanguage: { type: 'string', example: 'en', description: 'Language of the source. Omit to detect it. Must not be a target.' },
+        voiceMode: { type: 'string', enum: ['like_me', 'balanced', 'native'], default: 'balanced', description: 'How close each cloned voice stays to the original' },
+        keyterms: {
+          type: 'array',
+          maxItems: 50,
+          items: { type: 'string', maxLength: 50 },
+          description: 'Names and terms kept as they are. At most 5 words each, none of <>{}[]\\',
+        },
         audio: {
           type: 'object',
           properties: {

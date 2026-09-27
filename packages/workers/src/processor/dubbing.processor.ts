@@ -169,6 +169,11 @@ interface DubJobData {
   durationSeconds: number;
   planName?: string | null;   // for the plan duration cap, re-checked against ffprobe's reading
   reservedCredits: number;    // deducted at enqueue for the languages that need dubbing (0 for a mux-only run)
+  // The job's own record of the dub's settings. The project row is what is read; these
+  // only stand in where a row column is empty.
+  sourceLanguage?: string | null;
+  voiceMode?: DubVoiceMode;
+  keyterms?: string[];
 }
 
 interface OutputRow {
@@ -258,9 +263,9 @@ export class DubbingProcessor extends WorkerHost {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dub-'));
     const ctx: RunContext = {
       job, userId, projectId, bucket, prefix: dubProjectPrefix(userId, projectId), inputUrl, inputObject, dir, isVideo, durationSeconds, engine,
-      sourceLanguage: project.source_language ?? null,
-      voiceMode: project.voice_mode ?? DEFAULT_DUB_VOICE_MODE,
-      keyterms: project.keyterms ?? [],
+      sourceLanguage: project.source_language ?? job.data.sourceLanguage ?? null,
+      voiceMode: project.voice_mode ?? job.data.voiceMode ?? DEFAULT_DUB_VOICE_MODE,
+      keyterms: project.keyterms ?? job.data.keyterms ?? [],
       vendorProjects: { ...(project.vendor_projects ?? {}) },
       vendorWrite: Promise.resolve(),
       fullLengthTrack: project.analysis?.stems?.status === 'done',
