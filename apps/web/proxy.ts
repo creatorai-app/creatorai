@@ -29,7 +29,7 @@ async function getUserRole(
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (BYPASS_PATHS.includes(pathname)) {

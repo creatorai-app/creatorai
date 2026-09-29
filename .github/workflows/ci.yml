@@ -12,7 +12,9 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        # Next 16 requires Node >= 20.9 and the Dockerfiles all run node:20-alpine,
+        # so 18.x was dropped rather than kept as a leg nothing ships on.
+        node-version: [20.x, 22.x]
 
     steps:
     - name: Checkout code
@@ -70,7 +72,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
+        node-version: 20.x
 
     - name: Setup pnpm
       # No version pinned on purpose: the action reads `packageManager` from
@@ -110,7 +112,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
+        node-version: 20.x
 
     - name: Setup pnpm
       # No version pinned on purpose: the action reads `packageManager` from

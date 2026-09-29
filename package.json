@@ -41,7 +41,7 @@
   },
   "packageManager": "pnpm@10.30.2",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.9"
   },
   "dependencies": {
     "@types/node": "^24.9.2",
