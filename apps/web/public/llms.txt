@@ -119,6 +119,7 @@ Full text of every article below is available at https://trycreatorai.com/llms-f
 
 ### Subtitles
 
+- [Open vs Closed Captions: Stop Picking the Wrong One for YouTube](https://trycreatorai.com/blog/open-vs-closed-captions-which-youtube-creators-should-use-2026): Burned-in or a caption file? What open and closed captions actually do on YouTube, Shorts and TikTok, and the hybrid setup most channels should use.
 - [SRT vs VTT: Subtitle Formats Explained (And When Each Breaks)](https://trycreatorai.com/blog/srt-vs-vtt-subtitle-formats-explained-2026): Two formats, one job, and a handful of differences that decide whether your captions render, style, or silently fail. Plus the six subtitle errors that cause most sync complaints.
 - [YouTube Auto Captions Are Wrong Where It Costs You Most](https://trycreatorai.com/blog/youtube-auto-captions-accuracy-how-to-fix-caption-errors-2026): Auto-captions hit 85 to 95% accuracy, and fail hardest on the exact words you want indexed. Here's a 10-minute audit that finds the errors and a workflow that stops them recurring.
 - [The Most Accurate AI Subtitle Generator? 7 Tools Tested on Real Accents](https://trycreatorai.com/blog/accurate-ai-subtitle-generator-for-youtube-tested-2026): Every subtitle tool is accurate on clean studio English. We tested seven on accents, jargon and music beds, the three places captions actually break, and measured the editing minutes each one cost.
@@ -168,6 +169,7 @@ Full text of every article below is available at https://trycreatorai.com/llms-f
 
 ### Growth
 
+- [How to Write YouTube Titles That Get Clicks (7 Proven Formulas)](https://trycreatorai.com/blog/how-to-write-youtube-titles-that-get-clicks-2026): Your title is half your packaging. Length rules, 7 formulas that keep working, the mistakes that kill CTR, and how to A/B test titles in YouTube Studio.
 - [How to Dub YouTube Videos Into Multiple Languages With AI (2026)](https://trycreatorai.com/blog/how-to-dub-youtube-videos-into-multiple-languages-ai): Reach global audiences without reshooting. Learn how AI dubbing works, which languages matter most, and how to grow a multilingual YouTube channel in 2026.
 - [How to Improve YouTube Audience Retention and Watch Time (2026)](https://trycreatorai.com/blog/improve-youtube-audience-retention-watch-time): Your retention graph tells you exactly where viewers leave. Learn how to read it, fix drop-off points, and use AI to write scripts that keep people watching.
 
