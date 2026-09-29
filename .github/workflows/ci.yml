@@ -24,9 +24,10 @@ jobs:
         node-version: ${{ matrix.node-version }}
 
     - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 8.15.5
+      # No version pinned on purpose: the action reads `packageManager` from
+      # package.json, so CI and everyone's machine install the same pnpm and the
+      # lockfile stays readable. v2 no longer runs on current runner Node.
+      uses: pnpm/action-setup@v6
 
     - name: Get pnpm store directory
       shell: bash
@@ -72,9 +73,10 @@ jobs:
         node-version: 18.x
 
     - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 8.15.5
+      # No version pinned on purpose: the action reads `packageManager` from
+      # package.json, so CI and everyone's machine install the same pnpm and the
+      # lockfile stays readable. v2 no longer runs on current runner Node.
+      uses: pnpm/action-setup@v6
 
     - name: Get pnpm store directory
       shell: bash
@@ -111,9 +113,10 @@ jobs:
         node-version: 18.x
 
     - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 8.15.5
+      # No version pinned on purpose: the action reads `packageManager` from
+      # package.json, so CI and everyone's machine install the same pnpm and the
+      # lockfile stays readable. v2 no longer runs on current runner Node.
+      uses: pnpm/action-setup@v6
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
