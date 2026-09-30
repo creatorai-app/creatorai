@@ -59,7 +59,11 @@ jobs:
         CI: true
 
     - name: Build packages
-      run: pnpm run build
+      # web is left out on purpose: its blog pages are statically generated from
+      # Supabase, so `next build` needs working credentials and CI has none. Vercel
+      # builds web on every PR with the real env, so that coverage is not lost here.
+      # Everything else (api, workers and the shared packages) builds in CI.
+      run: pnpm exec turbo run build --filter='!web'
 
   e2e:
     runs-on: ubuntu-latest
