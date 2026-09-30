@@ -56,6 +56,20 @@ const statusColor = (s: string) => {
   }
 }
 
+const CONTENT_PLACEHOLDER = `## About the role
+
+What this person owns.
+
+## What you will do
+
+- First responsibility
+- Second responsibility
+
+## Requirements
+
+- Must have
+`
+
 const emptyJob = {
   title: "",
   team: "Engineering",
@@ -64,6 +78,7 @@ const emptyJob = {
   category: "engineering" as const,
   description: "",
   requirements: "",
+  content: "",
   status: "active" as const,
 }
 
@@ -103,6 +118,7 @@ export default function AdminJobsPage() {
         category: editJob.category || "other",
         description: editJob.description?.trim(),
         requirements: editJob.requirements?.trim() || undefined,
+        content: editJob.content?.trim() || undefined,
         status: editJob.status || "active",
       }
       if (isNew) {
@@ -296,6 +312,12 @@ export default function AdminJobsPage() {
             <div className="space-y-2">
               <Label className="text-slate-400">Requirements</Label>
               <Textarea value={editJob?.requirements || ""} onChange={(e) => updateField("requirements", e.target.value)} rows={3} className="bg-slate-800 border-slate-700 text-slate-200" placeholder="Requirements for this role..." />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-slate-400">Full Description (Markdown)</Label>
+              <Textarea value={editJob?.content || ""} onChange={(e) => updateField("content", e.target.value)} rows={12} className="bg-slate-800 border-slate-700 text-slate-200 font-mono text-xs" placeholder={CONTENT_PLACEHOLDER} />
+              <p className="text-xs text-slate-500">Rendered on the job page at /careers/&lt;slug&gt;. Supports headings, bullets, bold and links. Falls back to the description and requirements above when empty.</p>
             </div>
 
             <div className="flex gap-3 pt-2">

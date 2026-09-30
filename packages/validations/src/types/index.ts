@@ -373,13 +373,18 @@ export type JobCategory = 'engineering' | 'ai' | 'design' | 'marketing' | 'busin
 
 export interface JobPost {
   id: string
+  /** URL key for /careers/<slug>. Generated from the title on insert. */
+  slug: string
   title: string
   team: JobTeam
   location: string
   type: string
   category: JobCategory
+  /** One-paragraph blurb for the careers listing. */
   description: string
   requirements?: string
+  /** Markdown body rendered on the job's own page. */
+  content?: string
   status: 'active' | 'inactive' | 'closed'
   created_at: string
   updated_at: string

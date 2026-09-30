@@ -1054,7 +1054,7 @@ export class AdminService {
   }
 
   private static readonly ALLOWED_JOB_FIELDS = new Set([
-    'title', 'team', 'location', 'type', 'category', 'description', 'requirements', 'status',
+    'title', 'team', 'location', 'type', 'category', 'description', 'requirements', 'content', 'status',
   ]);
 
   private filterJobFields(input: Record<string, unknown>) {
