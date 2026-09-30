@@ -74,7 +74,9 @@ export function AuthorByline({ author }: { author: BlogAuthor }) {
 export function AuthorCard({ author }: { author: BlogAuthor }) {
   return (
     <div className="mt-14 pt-8 border-t border-slate-200">
-      <div className="flex flex-col sm:flex-row gap-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+      {/* items-start, or the default stretch pulls the avatar to the full
+          height of the bio column and the circle renders as an oval. */}
+      <div className="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
         <Avatar author={author} size={64} />
         <div className="min-w-0">
           <p className="font-semibold text-slate-900">{author.name}</p>
