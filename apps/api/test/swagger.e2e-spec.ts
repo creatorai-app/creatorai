@@ -728,6 +728,7 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', '/api/v1/test-db'],
       ['get', '/api/v1/thumbnail'],
       ['post', '/api/v1/thumbnail/generate'],
+      ['post', '/api/v1/thumbnail/surprise'],
       ['get', '/api/v1/thumbnail/status/{jobId}'],
       ['get', '/api/v1/thumbnail/{id}'],
       ['delete', '/api/v1/thumbnail/{id}'],

@@ -101,7 +101,11 @@ jobs:
       run: pnpm install --frozen-lockfile
 
     - name: Run E2E tests
-      run: pnpm run test:e2e
+      # api only, for the same reason web is left out of the build: web's Playwright
+      # config sets `webServer: undefined` under CI, so it expects an app already
+      # served at PLAYWRIGHT_BASE_URL, and serving it needs the Supabase credentials
+      # CI does not have. api's suite is a real check and runs here.
+      run: pnpm exec turbo run test:e2e --filter='!web'
       env:
         CI: true
 
