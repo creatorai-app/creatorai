@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { AuthRetryableFetchError } from '@supabase/supabase-js';
 import { SupabaseAuthGuard } from './auth.guard';
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -54,6 +55,11 @@ describe('SupabaseAuthGuard', () => {
   it('should throw UnauthorizedException when no token provided', async () => {
     const ctx = createMockContext();
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('answers 503, not 401, when Supabase cannot be reached to check the token', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: new AuthRetryableFetchError('fetch failed', 0) });
+    await expect(guard.canActivate(createMockContext('valid-token'))).rejects.toThrow(ServiceUnavailableException);
   });
 
   it('should throw UnauthorizedException for invalid token', async () => {

@@ -48,7 +48,9 @@ describe("createMetadata", () => {
   })
 
   it("resolves relative URLs against an absolute metadataBase", () => {
-    expect(createMetadata().metadataBase?.href).toBe(new URL(siteConfig.url).href)
+    // Next 16 widened metadataBase to `string | URL`; seo.ts still sets a URL, and
+    // normalising through the constructor asserts the resolved value either way.
+    expect(new URL(createMetadata().metadataBase!).href).toBe(new URL(siteConfig.url).href)
   })
 })
 

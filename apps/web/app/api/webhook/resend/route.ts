@@ -10,8 +10,6 @@ import { createSupabaseClient, getSupabaseServiceEnv } from "@repo/supabase";
 const OWN_DOMAINS = ["trycreatorai.com", "tryscriptai.com"];
 const SUPPORT_INBOXES = ["support@trycreatorai.com", "support@tryscriptai.com"];
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
-
 function parseAddress(raw: string | undefined | null): { name?: string; email: string } {
   if (!raw) return { email: "" };
   const match = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
@@ -70,6 +68,11 @@ export async function POST(request: NextRequest) {
 
   try {
     // Fetch full inbound content (webhook payload has only metadata per Resend docs).
+    // Constructed here, not at module scope: the Resend client throws when the key
+    // is missing, and `next build` imports every route to collect its config, so a
+    // module-scope client fails the build wherever the key is not set. Every other
+    // route in this app already builds its client inside the handler.
+    const resend = new Resend(process.env.RESEND_API_KEY!);
     const { data: email } = await resend.emails.receiving.get(email_id);
     // Prefer the HTML body so the admin dashboard can render the email with its
     // real design (like Resend does); fall back to plain text when there's no HTML.

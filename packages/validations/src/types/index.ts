@@ -28,7 +28,24 @@ export interface AdminDashboardStats {
   onlineUsers: number
   onlineWindowMinutes: number
   activeUsers24h: number
+  activeUsers30d: number
+  /** Active in the last 30 days and last seen 24h+ after signing up. */
+  returningUsers30d: number
   errors24h: number
+}
+
+export const ADMIN_USER_SEGMENTS = ['online', 'active24h', 'active30d', 'returning', 'new30d', 'subscribed'] as const
+export type AdminUserSegment = (typeof ADMIN_USER_SEGMENTS)[number]
+
+export interface AdminSegmentUser {
+  user_id: string
+  full_name: string | null
+  name: string | null
+  email: string | null
+  avatar_url: string | null
+  created_at: string
+  last_seen_at: string | null
+  plan: string | null
 }
 
 export interface ErrorLogProfile {
@@ -373,13 +390,18 @@ export type JobCategory = 'engineering' | 'ai' | 'design' | 'marketing' | 'busin
 
 export interface JobPost {
   id: string
+  /** URL key for /careers/<slug>. Generated from the title on insert. */
+  slug: string
   title: string
   team: JobTeam
   location: string
   type: string
   category: JobCategory
+  /** One-paragraph blurb for the careers listing. */
   description: string
   requirements?: string
+  /** Markdown body rendered on the job's own page. */
+  content?: string
   status: 'active' | 'inactive' | 'closed'
   created_at: string
   updated_at: string

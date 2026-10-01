@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Checkbox } from "@repo/ui/checkbox";
 import { Progress } from "@repo/ui/progress";
 import { useSupabase } from "@/components/supabase-provider";
-import { registerUserSchema } from "@repo/validation";
+import { registerUserSchema, supportedLanguages } from "@repo/validation";
 import { api, getApiErrorMessage } from "@/lib/api-client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import {
@@ -254,7 +254,7 @@ function SignupForm() {
     <AuthLayout
       tag="NEW ACCOUNT"
       title="One upload. Everything after it, handled"
-      subhead="Scripts in your voice, subs in 12 languages, dubs in 29, thumbnails that get clicked."
+      subhead={`Scripts in your voice, subs in 12 languages, dubs in ${supportedLanguages.length}, thumbnails that get clicked.`}
     >
       <style>{authKeyframes}</style>
 

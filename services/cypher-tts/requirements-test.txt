@@ -1,0 +1,5 @@
+# CPU-only: the request handling is tested with the model replaced.
+fastapi==0.115.12
+httpx==0.28.1
+numpy<2.0
+pytest==8.3.5

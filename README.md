@@ -41,7 +41,7 @@
 | Auth | Supabase Auth (JWT), Google OAuth |
 | AI | Gemini on Vertex AI — `gemini-3.6-flash` (text), `gemini-3.5-flash-lite`, `gemini-3.1-flash-image` (thumbnails), `gemini-omni-flash-preview` (video), `gemini-embedding-001` |
 | Payments | Lemon Squeezy (checkout, portal, webhooks) |
-| Dubbing | ElevenLabs (voice cloning + dubbing), Modal serverless GPU |
+| Dubbing | Gemini (transcribe + translate), Chatterbox on Modal serverless GPU (voice clone) |
 | Jobs | BullMQ + Redis (train-ai, script, ideation, story-builder, thumbnail, dubbing, video-generation, email-campaign) |
 | Media | FFmpeg, Google Cloud Storage, Supabase Storage |
 | Email | Resend |
@@ -82,7 +82,7 @@ creatorai/
 │           ├── script/               # Script generation (BullMQ)
 │           ├── story-builder/        # Story structure generation (BullMQ)
 │           ├── subtitle/             # Subtitle CRUD + burn (FFmpeg)
-│           ├── dubbing/              # Dubbing (ElevenLabs + Modal)
+│           ├── dubbing/              # Dubbing (Gemini + Modal)
 │           ├── video-generation/     # AI video generation (BullMQ)
 │           ├── thumbnail/            # Thumbnail generation
 │           ├── train-ai/             # AI training job queue
@@ -159,7 +159,7 @@ Fill it in with your credentials. See [`.env.example`](./.env.example) for every
 | Google Vertex AI (Gemini) | `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, ADC (`GOOGLE_APPLICATION_CREDENTIALS`) | Yes | Scripts, ideation, training, subtitles, thumbnails, video |
 | Redis | `REDIS_URL` | Yes | BullMQ job queues (api + worker) |
 | Google Cloud Storage | `GCS_SUBTITLE_BUCKET`, `GCS_VIDEO_BUCKET`, `GCS_DUBBING_BUCKET` | Yes | Direct media uploads, read by Vertex from `gs://` |
-| Modal | `MODAL_API_URL` | Optional | Serverless-GPU dubbing service |
+| Modal | `MODAL_API_URL` | For dubbing | Serverless-GPU voice clone; dubbing fails without it |
 | Resend | `RESEND_API_KEY` | Optional | Transactional emails & campaigns |
 | YouTube | `YOUTUBE_API_KEY` | Optional | Channel integration |
 | Google OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | YouTube OAuth |

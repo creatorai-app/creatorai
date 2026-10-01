@@ -74,8 +74,13 @@
     },
     "db:pull": { "dependsOn": ["^build"], "outputs": ["packages/supabase/migrations/**"] },
     "lint": {},
-    "type-check": {},
-    "test": {},
-    "test:e2e": {}
+    // Internal packages are consumed from their built `dist`, types included, so
+    // anything that resolves `@repo/*` has to build them first. Without this the
+    // tasks only pass when a previous build happened to leave a dist behind: a
+    // clean checkout fails with TS2307 "Cannot find module '@repo/validation'",
+    // which is what CI hit once it could install again.
+    "type-check": { "dependsOn": ["^build"] },
+    "test": { "dependsOn": ["^build"] },
+    "test:e2e": { "dependsOn": ["^build"] }
   }
 }

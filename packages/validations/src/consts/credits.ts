@@ -1,3 +1,5 @@
+import type { DubEngine } from './dubbing';
+
 export const TOKENS_PER_CREDIT = 1000;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,14 +91,48 @@ export const VIDEO_GENERATION_CREDIT_MULTIPLIER = 85;
 // 80% margin at $24.
 export const DUBBING_CREDIT_MULTIPLIER = 1 / 6;
 
-// Starter is a TRIAL, not an allowance. The 60s per-clip cap (STARTER_MAX_DUB_SECONDS)
-// is the deliberate shape of it, and at the paid rate its 500 credits would also buy
-// 50 minutes of dubbing — free, uncapped by signup, and pure COGS. That is the fastest
-// way to drain the grant: ~330 free accounts, versus 55 paying Creator users.
+// Cypher (in-house dubbing: Gemini + Chatterbox on Modal) is priced from its own COGS
+// under the margin policy above, per second of source, per language dubbed:
 //
-// Held at 3/sec, the pre-promo rate the tier was designed around: a 60s dub costs 180,
-// so 500 credits buys the two full-length trial dubs and no more.
+//   Speaker analysis: Gemini audio in (~32 tokens/s) + transcript out   ~$0.0078 / min
+//   Translation: text in and out                                        ~$0.0050 / min
+//   Chatterbox on a Modal L4 ($0.000222/s GPU + CPU/memory): measured
+//     ~1.4 GPU-seconds per second of dubbed speech, dubbed speech ~1.2x
+//     the source, plus one cold start and the 120s scale-down window
+//     spread over a ~5 minute dub                                        ~$0.0360 / min
+//   GCS egress: voice samples to Modal, the video to the worker          ~$0.0050 / min
+//   Total                                                                ~$0.054  / min
+//
+// Gemini at gemini-3.6-flash's list price from 2027 ($1.50/M in, $7.50/M out); it is
+// half that until the end of 2026, so this carries headroom until then.
+// creditsForCost($0.0009 per second) = 1 credit per second, 60 per minute: Creator's
+// 3,000 credits buy 50 minutes. Env-overridable via CYPHER_DUBBING_CREDIT_MULTIPLIER.
+export const CYPHER_DUBBING_CREDIT_MULTIPLIER = 1;
+
+// Starter is a TRIAL, not an allowance, on either engine: at a paid rate its 500 credits
+// would buy up to 50 minutes of dubbing, free and uncapped by signup. That is the
+// fastest way to drain the grant: ~330 free accounts, versus 55 paying Creator users.
+//
+// Held at 3/sec, the pre-promo rate the tier was designed around: 500 credits buy
+// about 2.8 minutes, enough to hear a real dub and no more.
 export const STARTER_DUBBING_CREDIT_MULTIPLIER = 3;
+
+/**
+ * An engine's paid per-second rate, with its env override when one is set and valid.
+ * Shared by the API (reserves) and the worker (settles) so the two cannot disagree.
+ */
+export function paidDubbingMultiplier(
+  engine: DubEngine,
+  env: Record<string, string | undefined> = {},
+): number {
+  const [key, fallback] =
+    engine === 'cypher'
+      ? ['CYPHER_DUBBING_CREDIT_MULTIPLIER', CYPHER_DUBBING_CREDIT_MULTIPLIER]
+      : ['DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER];
+  const raw = env[key];
+  const parsed = raw ? Number(raw) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : (fallback as number);
+}
 
 /**
  * Credits per second for a plan. Mirrors maxDubSecondsForPlan's convention exactly —
@@ -131,6 +167,11 @@ export function formatDubbingAllowance(
 ): string {
   const hours = dubbingHoursForPlan(credits, planName, paidMultiplier);
   return hours < 1 ? `${(hours * 60).toFixed(1)} min` : `${hours.toFixed(1)} hrs`;
+}
+
+/** The same allowance at one engine's published (not env-overridden) rate, for public pages. */
+export function formatDubbingAllowanceFor(credits: number, planName: string | null | undefined, engine: DubEngine): string {
+  return formatDubbingAllowance(credits, planName, paidDubbingMultiplier(engine));
 }
 
 export const FeatureType = {

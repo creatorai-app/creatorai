@@ -23,7 +23,7 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 - Voice-matched script generation trained on your channel
 - AI thumbnail generator (1280×720, CTR-optimized)
 - Subtitle generation with SRT/VTT export
-- Video dubbing into 30 languages, in your own cloned voice
+- Video dubbing into 94 languages, every speaker in their own cloned voice: Cypher (in-house, 23 languages) or ElevenLabs (94)
 - AI video generation: short clips with audio from a text prompt or a start image
 - Topic and trend research for your niche
 - Story blueprint planning for video structure
@@ -34,7 +34,7 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 - Learns creator voice from actual YouTube videos, not text prompts
 - Voice-cloning dubbing preserves the creator's real voice across languages
 - Free Starter plan: 500 credits a month, no credit card
-- Dubbing is available on every plan, with clips capped at 60 seconds on Starter
+- Dubbing is available on every plan, priced per minute per language; Creator and Pro dub into 2 languages at once, Business and Scale into 3
 - Video generation requires a Pro plan or above
 - Supports niches: tech, finance, gaming, education, beauty, productivity, entertainment
 
@@ -84,6 +84,20 @@ For head-to-head comparisons see:
 
 Full text of every article below is available at https://trycreatorai.com/llms-full.txt
 
+### Subtitles
+
+- [Open vs Closed Captions: Stop Picking the Wrong One for YouTube](https://trycreatorai.com/blog/open-vs-closed-captions-which-youtube-creators-should-use-2026): Burned-in or a caption file? What open and closed captions actually do on YouTube, Shorts and TikTok, and the hybrid setup most channels should use.
+- [SRT vs VTT: Subtitle Formats Explained (And When Each Breaks)](https://trycreatorai.com/blog/srt-vs-vtt-subtitle-formats-explained-2026): Two formats, one job, and a handful of differences that decide whether your captions render, style, or silently fail. Plus the six subtitle errors that cause most sync complaints.
+- [YouTube Auto Captions Are Wrong Where It Costs You Most](https://trycreatorai.com/blog/youtube-auto-captions-accuracy-how-to-fix-caption-errors-2026): Auto-captions hit 85 to 95% accuracy, and fail hardest on the exact words you want indexed. Here's a 10-minute audit that finds the errors and a workflow that stops them recurring.
+- [The Most Accurate AI Subtitle Generator? 7 Tools Tested on Real Accents](https://trycreatorai.com/blog/accurate-ai-subtitle-generator-for-youtube-tested-2026): Every subtitle tool is accurate on clean studio English. We tested seven on accents, jargon and music beds, the three places captions actually break, and measured the editing minutes each one cost.
+- [How Subtitles Increase YouTube Views and Watch Time](https://trycreatorai.com/blog/how-subtitles-boost-youtube-views-and-watch-time): Subtitles aren't just accessibility, they're a growth lever. Here's the data on why captions boost views, watch time, and global reach.
+
+### Growth
+
+- [How to Write YouTube Titles That Get Clicks (7 Proven Formulas)](https://trycreatorai.com/blog/how-to-write-youtube-titles-that-get-clicks-2026): Your title is half your packaging. Length rules, 7 formulas that keep working, the mistakes that kill CTR, and how to A/B test titles in YouTube Studio.
+- [How to Dub YouTube Videos Into Multiple Languages With AI (2026)](https://trycreatorai.com/blog/how-to-dub-youtube-videos-into-multiple-languages-ai): Reach global audiences without reshooting. Learn how AI dubbing works, which languages matter most, and how to grow a multilingual YouTube channel in 2026.
+- [How to Improve YouTube Audience Retention and Watch Time (2026)](https://trycreatorai.com/blog/improve-youtube-audience-retention-watch-time): Your retention graph tells you exactly where viewers leave. Learn how to read it, fix drop-off points, and use AI to write scripts that keep people watching.
+
 ### Workflows
 
 - [Creator AI + vidIQ: The YouTube SEO Workflow That Skips the Tag Theatre](https://trycreatorai.com/blog/creator-ai-plus-vidiq-youtube-seo-workflow-2026): vidIQ finds the demand. YouTube says tags are not important. Here is the six step handoff that turns a researched keyword into a script, a title and a video the search page actually wants.
@@ -116,14 +130,6 @@ Full text of every article below is available at https://trycreatorai.com/llms-f
 - [Best AI Dubbing Tool for YouTubers in 2026 (Compared)](https://trycreatorai.com/blog/best-ai-dubbing-tool-for-youtubers-2026-compared): We compared the top AI dubbing tools for creators on price, voice cloning, lip-sync, and languages, from YouTube's free auto-dub to ElevenLabs, HeyGen, Rask, and Creator AI.
 - [How Much Does AI Dubbing Cost in 2026? Real Prices vs Studio Dubbing](https://trycreatorai.com/blog/how-much-does-ai-dubbing-cost-vs-traditional-dubbing-2026): Published per-minute prices for seven AI dubbing tools, what a traditional studio actually quotes, the hidden line items nobody mentions, and the break-even math for a 10-minute video in five languages.
 - [YouTube Auto-Dubbing vs AI Voice Cloning: Why Your Dub Sounds Robotic](https://trycreatorai.com/blog/youtube-auto-dubbing-vs-ai-voice-cloning-explained): YouTube's free auto-dub gets your words into 27 languages, but it uses a stranger's voice, not yours. Here's why that quietly kills retention, and how voice cloning fixes it.
-
-### Subtitles
-
-- [Open vs Closed Captions: Stop Picking the Wrong One for YouTube](https://trycreatorai.com/blog/open-vs-closed-captions-which-youtube-creators-should-use-2026): Burned-in or a caption file? What open and closed captions actually do on YouTube, Shorts and TikTok, and the hybrid setup most channels should use.
-- [SRT vs VTT: Subtitle Formats Explained (And When Each Breaks)](https://trycreatorai.com/blog/srt-vs-vtt-subtitle-formats-explained-2026): Two formats, one job, and a handful of differences that decide whether your captions render, style, or silently fail. Plus the six subtitle errors that cause most sync complaints.
-- [YouTube Auto Captions Are Wrong Where It Costs You Most](https://trycreatorai.com/blog/youtube-auto-captions-accuracy-how-to-fix-caption-errors-2026): Auto-captions hit 85 to 95% accuracy, and fail hardest on the exact words you want indexed. Here's a 10-minute audit that finds the errors and a workflow that stops them recurring.
-- [The Most Accurate AI Subtitle Generator? 7 Tools Tested on Real Accents](https://trycreatorai.com/blog/accurate-ai-subtitle-generator-for-youtube-tested-2026): Every subtitle tool is accurate on clean studio English. We tested seven on accents, jargon and music beds, the three places captions actually break, and measured the editing minutes each one cost.
-- [How Subtitles Increase YouTube Views and Watch Time](https://trycreatorai.com/blog/how-subtitles-boost-youtube-views-and-watch-time): Subtitles aren't just accessibility, they're a growth lever. Here's the data on why captions boost views, watch time, and global reach.
 
 ### Script Writing
 
@@ -166,12 +172,6 @@ Full text of every article below is available at https://trycreatorai.com/llms-f
 - [Best ChatGPT Alternatives for YouTubers in 2026 (Compared)](https://trycreatorai.com/blog/best-chatgpt-alternatives-for-youtubers-2026): ChatGPT wasn't built for YouTube. Compare the best ChatGPT alternatives for YouTubers, from voice-matched scripting to thumbnails, subtitles, and full workflows.
 - [Creator AI vs ChatGPT: Why Generic AI Falls Short for YouTube](https://trycreatorai.com/blog/creator-ai-vs-chatgpt-for-youtube-creators): You spent hours prompting ChatGPT for a script that sounds nothing like you. Here's how a dedicated YouTube AI tool compares on voice, retention, and full-video workflow.
 - [The AI That Learns Your Voice: Which Script Tools Actually Train on Your Videos](https://trycreatorai.com/blog/ai-script-tool-that-learns-your-voice-from-your-videos): Almost every AI writing tool claims it can match your tone. Only a few train on your actual uploads. Here is the difference, how the training works, and which tools really do it.
-
-### Growth
-
-- [How to Write YouTube Titles That Get Clicks (7 Proven Formulas)](https://trycreatorai.com/blog/how-to-write-youtube-titles-that-get-clicks-2026): Your title is half your packaging. Length rules, 7 formulas that keep working, the mistakes that kill CTR, and how to A/B test titles in YouTube Studio.
-- [How to Dub YouTube Videos Into Multiple Languages With AI (2026)](https://trycreatorai.com/blog/how-to-dub-youtube-videos-into-multiple-languages-ai): Reach global audiences without reshooting. Learn how AI dubbing works, which languages matter most, and how to grow a multilingual YouTube channel in 2026.
-- [How to Improve YouTube Audience Retention and Watch Time (2026)](https://trycreatorai.com/blog/improve-youtube-audience-retention-watch-time): Your retention graph tells you exactly where viewers leave. Learn how to read it, fix drop-off points, and use AI to write scripts that keep people watching.
 
 ### AI & Creators
 

@@ -13,7 +13,16 @@ import {
   Languages,
   Film,
 } from "lucide-react";
+import { dubbableLanguagesFor, formatDubbingAllowanceFor, supportedLanguages } from "@repo/validation";
 import type { ContentFaq, ContentSection, ContentStep } from "./content-shapes";
+
+// Dubbing figures quoted on the public page, from the same constants the product uses,
+// so the page cannot advertise a language or an hour the app does not have.
+const DUB_LANGUAGES = supportedLanguages.length;
+const CYPHER_LANGUAGES = dubbableLanguagesFor("cypher").length;
+const ELEVENLABS_LANGUAGES = dubbableLanguagesFor("elevenlabs").length;
+const CREATOR_DUBBING_ELEVENLABS = formatDubbingAllowanceFor(3000, "creator", "elevenlabs");
+const CREATOR_DUBBING_CYPHER = formatDubbingAllowanceFor(3000, "creator", "cypher");
 
 /**
  * The canonical list of what Creator AI ships.
@@ -755,12 +764,12 @@ export const CORE_FEATURES: ProductFeature[] = [
       "Dub your videos into other languages using a clone of your own voice rather than a stock narrator.",
     tagline: "Reach a global audience in your own voice",
     description:
-      "Dub a finished video into another language without hiring a voice actor. The AI clones your voice, so the translated version still sounds like your channel rather than a stock narrator.",
+      `Dub a finished video into any of ${DUB_LANGUAGES} languages without hiring a voice actor. Every speaker is cloned, so the translated version still sounds like your channel rather than a stock narrator.`,
     highlights: [
-      "Dub finished videos into other languages",
-      "Voice cloning keeps your own delivery",
-      "Translated audio timed to the original video",
-      "Download the dubbed track when it is done",
+      `Dub finished videos into ${DUB_LANGUAGES} languages`,
+      "Every speaker keeps their own cloned voice",
+      `Cypher (in-house, ${CYPHER_LANGUAGES} languages) or ElevenLabs (${ELEVENLABS_LANGUAGES})`,
+      "Up to three languages from one upload",
     ],
     icon: Languages,
     gradient: "from-teal-500 to-emerald-500",
@@ -777,7 +786,7 @@ export const CORE_FEATURES: ProductFeature[] = [
     ],
     h1: "Dub Videos in Your Own Voice, Not a Stranger's",
     answerSummary:
-      "Creator AI dubs a finished video into another language using a clone of your own voice, so the translated version still sounds like your channel. The translated audio is timed against the original video and downloads as a track you can attach to your upload. The alternative, on YouTube's own auto-dubbing and on most tools, is a competent stranger reading your script.",
+      `Creator AI dubs a finished video into any of ${DUB_LANGUAGES} languages using a clone of each speaker's own voice, so the translated version still sounds like your channel. You pick Cypher, the in-house engine (${CYPHER_LANGUAGES} languages), or ElevenLabs (${ELEVENLABS_LANGUAGES}), and the translated audio is timed against the original video. The alternative, on YouTube's own auto-dubbing and on most tools, is a competent stranger reading your script.`,
     steps: [
       {
         title: "Upload the finished video",
@@ -785,9 +794,9 @@ export const CORE_FEATURES: ProductFeature[] = [
           "Dubbing runs on a finished cut rather than a script, so what gets translated is what viewers actually hear.",
       },
       {
-        title: "Pick the target language",
+        title: "Pick the engine and languages",
         description:
-          "The AI translates and performs the audio in a clone of your voice rather than handing it to a stock narrator.",
+          "Choose Cypher or ElevenLabs and up to three languages. Each speaker is found, cloned and re-voiced in their own voice rather than handed to a stock narrator.",
       },
       {
         title: "Download the dubbed track",
@@ -806,7 +815,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         heading: "What dubbing costs, and when it is worth it",
         body: [
-          "Dubbing is priced per minute of finished video, so the cost of testing a language is one video rather than a commitment. That is the sensible way to find out whether a market exists for your content before translating a back catalogue into it.",
+          `Dubbing is priced per minute of finished video, per language, on every plan, so the cost of testing a language is one video rather than a commitment. Creator's monthly credits cover ${CREATOR_DUBBING_ELEVENLABS} of ElevenLabs dubbing or ${CREATOR_DUBBING_CYPHER} with Cypher. That is the sensible way to find out whether a market exists for your content before translating a back catalogue into it.`,
           "The videos worth dubbing first are usually evergreen. A tutorial that still pulls traffic two years on earns the translation back; a news reaction does not.",
         ],
       },
@@ -837,7 +846,17 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         question: "How is dubbing priced?",
         answer:
-          "Per minute of finished video, which makes a single video a cheap way to test whether an audience exists in a language before committing to more.",
+          `Per minute of finished video, per language, on every plan. Each engine has its own rate: Creator's credits cover ${CREATOR_DUBBING_ELEVENLABS} with ElevenLabs or ${CREATOR_DUBBING_CYPHER} with Cypher. A single video is a cheap way to test whether an audience exists in a language before committing to more.`,
+      },
+      {
+        question: "How many languages can I dub into?",
+        answer:
+          `${DUB_LANGUAGES} in total. ElevenLabs covers all ${ELEVENLABS_LANGUAGES}; Cypher, the in-house engine, covers ${CYPHER_LANGUAGES} of them. Creator and Pro dub into two languages from one upload, Business and Scale into three.`,
+      },
+      {
+        question: "What if more than one person speaks in the video?",
+        answer:
+          "Both engines find every speaker and clone each one separately, so a host and a guest each keep their own voice in the dub.",
       },
     ],
     relatedFeatures: ["subtitles", "ai-studio"],

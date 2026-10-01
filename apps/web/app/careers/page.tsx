@@ -220,7 +220,7 @@ export default function CareersPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3">
                     <div>
                       <h3 className="text-xl font-semibold text-slate-800 group-hover:text-purple-700 transition-colors">
-                        {job.title}
+                        <Link href={`/careers/${job.slug}`}>{job.title}</Link>
                       </h3>
                       <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-slate-500">
                         <span className="flex items-center gap-1">
@@ -237,14 +237,22 @@ export default function CareersPage() {
                       </div>
                     </div>
                     <Link
-                      href={`/careers/apply?position=${encodeURIComponent(job.title)}&id=${job.id}`}
+                      href={`/careers/${job.slug}?tab=apply`}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors self-start sm:self-center"
                     >
                       Apply
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
-                  <p className="text-sm text-slate-600">{job.description}</p>
+                  {/* Two lines only: the full role lives on its own page. */}
+                  <p className="text-sm text-slate-600 line-clamp-2">{job.description}</p>
+                  <Link
+                    href={`/careers/${job.slug}`}
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors"
+                  >
+                    View role
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </motion.div>
               ))}
 

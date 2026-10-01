@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import * as motion from "motion/react-m";
 import Link from "next/link";
 import { Button } from "@repo/ui/button";
+import { Badge } from "@repo/ui/badge";
 import { Input } from "@repo/ui/input";
 import { toast } from "sonner";
 import { useSupabase } from "@/components/supabase-provider";
@@ -13,7 +14,7 @@ import { ContentCard } from "@/components/dashboard/common/ContentCard";
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton";
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg";
 import { getDubbings, deleteDubbing, DubbingProject } from "@/lib/api/getDubbings";
-import { supportedLanguages } from "@repo/validation"
+import { dubLanguageLabel } from "@repo/validation"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -32,15 +33,15 @@ const emptyStateVariants = {
   },
 }
 
-function getLanguageLabel(code: string): string {
-  return supportedLanguages.find((l) => l.value === code)?.label ?? code
+function languageNames(project: DubbingProject): string {
+  return project.languages.map(dubLanguageLabel).join(", ")
 }
 
 function formatTitle(project: DubbingProject): string {
-  if (project.media_name) return project.media_name
-  const lang = getLanguageLabel(project.target_language)
+  const languages = languageNames(project)
+  if (project.media_name) return languages ? `${project.media_name} (${languages})` : project.media_name
   const type = project.is_video ? "Video" : "Audio"
-  return `${type} dubbed to ${lang}`
+  return `${type} dubbed to ${languages}`
 }
 
 export default function DubbingList() {
@@ -92,7 +93,7 @@ export default function DubbingList() {
     const title = formatTitle(d).toLowerCase()
     return (
       title.includes(query) ||
-      d.target_language.toLowerCase().includes(query) ||
+      d.languages.some((code) => code.toLowerCase().includes(query)) ||
       (d.media_name?.toLowerCase().includes(query) ?? false)
     )
   })
@@ -154,6 +155,15 @@ export default function DubbingList() {
                   onDelete={handleDeleteDubbing}
                   setToDelete={setDubbingToDelete}
                   type="dubbing"
+                  statusBadge={
+                    dubbing.status === "uploading" || (dubbing.status !== "completed" && dubbing.video_status === "uploading") ? (
+                      <Badge variant="outline" className="text-xs">Upload unfinished</Badge>
+                    ) : dubbing.status === "awaiting_video" ? (
+                      <Badge variant="outline" className="text-xs">Waiting for video</Badge>
+                    ) : dubbing.status === "failed" ? (
+                      <Badge variant="outline" className="text-xs text-red-600 dark:text-red-400">Failed</Badge>
+                    ) : undefined
+                  }
                 />
               ))}
             </motion.div>
