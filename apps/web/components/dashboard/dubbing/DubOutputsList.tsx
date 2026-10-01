@@ -77,8 +77,8 @@ export function DubOutputsList({
   return (
     <div className={outputs.length > 1 ? "grid grid-cols-1 gap-6 lg:grid-cols-2" : "space-y-6"}>
       {outputs.map((output) => {
+        // Only a finished language has media (the API holds back the rest until it is paid for).
         const finalUrl = output.dubbedUrl
-        // A video dub's track plays before its video is ready.
         const previewUrl = finalUrl ?? output.dubbedAudioUrl
         const previewIsVideo = !!finalUrl && isVideo
         return (
@@ -106,19 +106,12 @@ export function DubOutputsList({
             </div>
 
             {previewUrl ? (
-              <>
-                <DubbingMediaPlayer
-                  url={previewUrl}
-                  isVideo={previewIsVideo}
-                  title={`${mediaName || "Dub"} (${languageName(output)})`}
-                  seek={seek[output.language] ?? null}
-                />
-                {!finalUrl && isVideo && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    The dubbed audio is ready. The video follows once it is combined with the original.
-                  </p>
-                )}
-              </>
+              <DubbingMediaPlayer
+                url={previewUrl}
+                isVideo={previewIsVideo}
+                title={`${mediaName || "Dub"} (${languageName(output)})`}
+                seek={seek[output.language] ?? null}
+              />
             ) : output.status === "failed" ? (
               <p className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

@@ -326,7 +326,7 @@ describe('Swagger / OpenAPI Specification', () => {
       ['post', '{id}/upload/video-complete'],
       ['post', '{id}/start'],
       ['post', '{id}/resume'],
-      ['post', '{id}/regenerate'],
+      ['post', '{id}/cancel'],
       ['post', 'stop/{jobId}'],
       ['get', 'status/{jobId}'],
     ])('%s /%s', (method, path) => {
@@ -676,8 +676,8 @@ describe('Swagger / OpenAPI Specification', () => {
       ['post', '/api/v1/dubbing/stop/{jobId}'],
       ['get', '/api/v1/dubbing/{id}'],
       ['delete', '/api/v1/dubbing/{id}'],
-      ['post', '/api/v1/dubbing/{id}/regenerate'],
       ['post', '/api/v1/dubbing/{id}/resume'],
+      ['post', '/api/v1/dubbing/{id}/cancel'],
       ['post', '/api/v1/dubbing/{id}/start'],
       ['get', '/api/v1/dubbing/{id}/upload'],
       ['post', '/api/v1/dubbing/{id}/upload/audio-session'],

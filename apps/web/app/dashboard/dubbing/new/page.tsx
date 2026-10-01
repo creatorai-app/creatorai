@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as motion from "motion/react-m";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "motion/react";
-import { toast } from "sonner";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
@@ -13,15 +12,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/
 import {
   Loader2, Play, UploadCloud, ArrowLeft, CheckCircle2,
   Mic, Languages, FileAudio, FileVideo, ArrowUpRight, Type,
-  Clapperboard, Music, RotateCw, Plus, List, Lock, HelpCircle, Coins, Cpu,
-  AudioWaveform, Tags,
+  RotateCw, Plus, List, Lock, HelpCircle, Coins, Cpu,
+  AudioWaveform, Tags, Clapperboard, Music,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@repo/ui/sheet";
 import { useDubbing } from "@/hooks/useDubbing";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
-import { supportedLanguages, dubbableLanguagesFor, formatDubDuration, formatUploadLimit } from "@repo/validation";
+import { supportedLanguages, dubLanguageLabel, dubbableLanguagesFor, formatDubDuration, formatUploadLimit, DUB_VIDEO_WAIT_HOURS } from "@repo/validation";
+import { useSupabase } from "@/components/supabase-provider";
 import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress";
+import { DubbingResumeUpload, useDubResumeUpload } from "@/components/dashboard/dubbing/DubbingResumeUpload";
 import { DubbingHowItWorks } from "@/components/dashboard/dubbing/DubbingHowItWorks";
 import { DubbingVoiceAnimation } from "@/components/dashboard/dubbing/DubbingVoiceAnimation";
 import { DubEngineCards } from "@/components/dashboard/dubbing/DubEngineCards";
@@ -109,8 +110,25 @@ function IconAction({
   );
 }
 
-export default function NewDubbing() {
+export default function NewDubbingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    }>
+      <NewDubbing />
+    </Suspense>
+  );
+}
+
+function NewDubbing() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { session } = useSupabase();
+  // ?dub=<id> picks up an existing dub; &retry=1 resumes it if it failed.
+  const dubId = searchParams.get("dub");
+  const retryRef = useRef(searchParams.get("retry") === "1");
   const {
     fileInputRef,
     mediaFile,
@@ -139,8 +157,9 @@ export default function NewDubbing() {
     maxUploadBytes,
     estimatedCredits,
     creditsPerSecond,
-    canCancel,
     cancelDub,
+    attached,
+    attach,
     videoUpload,
     resumeVideoUpload,
     handleFileChange,
@@ -148,6 +167,68 @@ export default function NewDubbing() {
     resetForm,
     handleDubMedia,
   } = useDubbing();
+
+  const reattach = useCallback(() => {
+    if (dubId) void attach(dubId, retryRef.current);
+  }, [dubId, attach]);
+  const upload = useDubResumeUpload(dubId ?? "", reattach);
+
+  useEffect(() => {
+    if (!dubId || !session?.access_token) return;
+    // A refresh must not retry, and charge, again.
+    if (retryRef.current) router.replace(`/dashboard/dubbing/new?dub=${dubId}`);
+    reattach();
+    // Once per dub and sign-in: reattach is re-run by the upload and the poll, not by this.
+  }, [dubId, session?.access_token]);
+
+  // A dub waiting on a video uploading elsewhere moves on once that upload lands.
+  const waitingElsewhere = !!dubId && attached?.status === "awaiting_video" && !upload.status;
+  useEffect(() => {
+    if (!waitingElsewhere) return;
+    const iv = setInterval(reattach, 5000);
+    return () => clearInterval(iv);
+  }, [waitingElsewhere, reattach]);
+
+  // This page only runs a dub; once one it picked up has failed (or was cancelled), its
+  // details page shows what happened and offers the retry.
+  useEffect(() => {
+    if (!dubId || progress.state !== "failed") return;
+    // A dub that never started is discarded by a cancel, and one not found has no page.
+    router.replace(attached && attached.status !== "uploading" ? `/dashboard/dubbing/${dubId}` : "/dashboard/dubbing");
+  }, [dubId, attached, progress.state, router]);
+
+  // The upload stopped: the audio never landed, or the video is still partial.
+  const needsFile = !!attached && attached.status !== "completed"
+    && (attached.status === "uploading" || attached.videoStatus === "uploading");
+
+  const stop = () => {
+    upload.stop();
+    void cancelDub();
+  };
+
+  // A picked-up dub that never started is waiting on its audio; one already running keeps its own progress.
+  const progressView = attached?.status === "uploading" && upload.status
+    ? { progress: 1 + (upload.status.percent * 14) / 100, message: `${upload.status.label} ${upload.status.percent}%` }
+    : progress;
+  const progressHint = videoUpload.state === "uploading"
+    ? `Uploading your video alongside the dub: ${videoUpload.percent}%. Keep this tab open.`
+    : upload.status?.phase === "video"
+      ? `Uploading your video alongside the dub: ${upload.status.percent}%. Keep this tab open.`
+      : needsFile && !upload.status
+        ? `The dub finishes once the video upload does. Left unfinished for ${DUB_VIDEO_WAIT_HOURS} hours, it is cancelled and not charged.`
+        : isVideo ? "Rendering video can take a few minutes" : "Longer clips are dubbed in segments and take a few minutes";
+  const progressSteps: GenerationProgressStep[] = [
+    { label: "Queued", icon: Loader2, threshold: 0 },
+    { label: engine === "cypher" ? "Finding speakers" : "Translating", icon: Languages, threshold: 5 },
+    { label: "Cloning", icon: Mic, threshold: 25 },
+    { label: isVideo ? "Rendering" : "Finalizing", icon: isVideo ? Clapperboard : Music, threshold: 82 },
+    { label: "Done", icon: CheckCircle2, threshold: 100 },
+  ];
+
+  const startOver = () => {
+    resetForm();
+    if (dubId) router.replace("/dashboard/dubbing/new");
+  };
 
   const [isDragging, setIsDragging] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -173,7 +254,7 @@ export default function NewDubbing() {
 
   const pickedLanguages = targets.filter((t) => t.language).map((t) => t.language);
   const selectedLanguageLabel = pickedLanguages
-    .map((code) => supportedLanguages.find((l) => l.value === code)?.label ?? code)
+    .map(dubLanguageLabel)
     .join(", ");
   const isComplete = !!dubbedResult && progress.state === "completed";
 
@@ -186,15 +267,6 @@ export default function NewDubbing() {
     },
     [handleFileSelect, isLoading],
   );
-
-  // Stepped states for the animated progress bar (AI Studio pattern).
-  const DUB_STEPS: GenerationProgressStep[] = [
-    { label: "Queued", icon: Loader2, threshold: 0 },
-    { label: engine === "cypher" ? "Finding speakers" : "Translating", icon: Languages, threshold: 5 },
-    { label: "Cloning", icon: Mic, threshold: 25 },
-    { label: isVideo ? "Rendering" : "Finalizing", icon: isVideo ? Clapperboard : Music, threshold: 82 },
-    { label: "Done", icon: CheckCircle2, threshold: 100 },
-  ];
 
   return (
     <motion.div
@@ -226,17 +298,19 @@ export default function NewDubbing() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Mic className="h-6 w-6 sm:h-7 sm:w-7 text-purple-500" />
-            New Dubbing
+            {dubId ? mediaName || "Dubbing" : "New Dubbing"}
           </h1>
           <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1 text-base">
-            Upload an audio or video file and dub it into another language in the original voice.
+            {dubId
+              ? "Picking up this dub from where it stopped."
+              : "Upload an audio or video file and dub it into another language in the original voice."}
           </p>
         </div>
       </motion.div>
 
       {gate.banner && <div className="mb-8">{gate.banner}</div>}
 
-      {accessLoading ? (
+      {accessLoading || (dubId && !attached) ? (
         <motion.div variants={itemVariants} className="flex justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
         </motion.div>
@@ -244,22 +318,21 @@ export default function NewDubbing() {
         <div className="mx-auto w-full max-w-3xl">
           <motion.div variants={itemVariants}>
             <AnimatePresence mode="wait">
-              {isLoading ? (
+              {isLoading || upload.status ? (
                 <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <GenerationProgress
-                    progress={Math.round(progress.progress)}
-                    statusMessage={progress.message || "Starting…"}
+                    progress={Math.round(progressView.progress)}
+                    statusMessage={progressView.message || "Starting…"}
                     title="Dubbing in Progress"
                     icon={Mic}
-                    steps={DUB_STEPS}
-                    hint={
-                      videoUpload.state === "uploading"
-                        ? `Uploading your video alongside the dub: ${videoUpload.percent}%. Keep this tab open.`
-                        : isVideo ? "Rendering video can take a few minutes" : "Longer clips are dubbed in segments and take a few minutes"
-                    }
-                    onStop={canCancel ? cancelDub : undefined}
+                    steps={progressSteps}
+                    hint={progressHint}
+                    onStop={stop}
                     stopLabel="Cancel Dubbing"
                   />
+                  {needsFile && !upload.status && (
+                    <DubbingResumeUpload banner onPick={(file) => void upload.resume(file)} />
+                  )}
                   {videoUpload.state === "failed" && (
                     <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
                       <p>
@@ -292,12 +365,15 @@ export default function NewDubbing() {
                           <IconAction label="Back to list" onClick={() => router.push("/dashboard/dubbing")}>
                             <List className="h-4 w-4" />
                           </IconAction>
-                          <IconAction label="Dub another file" onClick={resetForm}>
+                          <IconAction label="Dub another file" onClick={startOver}>
                             <Plus className="h-4 w-4" />
                           </IconAction>
-                          <IconAction label="Regenerate" onClick={handleDubMedia}>
-                            <RotateCw className="h-4 w-4" />
-                          </IconAction>
+                          {/* Needs the file in this tab; a picked-up dub has none. */}
+                          {mediaFile && (
+                            <IconAction label="Regenerate" onClick={handleDubMedia}>
+                              <RotateCw className="h-4 w-4" />
+                            </IconAction>
+                          )}
                         </div>
                       </TooltipProvider>
                     </CardHeader>
@@ -305,6 +381,24 @@ export default function NewDubbing() {
                       <DubOutputsList outputs={dubbedResult!.outputs} isVideo={isVideo} mediaName={mediaName} />
                     </CardContent>
                   </Card>
+                </motion.div>
+              ) : dubId ? (
+                <motion.div key="resume" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  {needsFile ? (
+                    <Card>
+                      <CardContent>
+                        <DubbingResumeUpload
+                          onPick={(file) => void upload.resume(file)}
+                          onCancel={attached?.status === "uploading" ? stop : undefined}
+                        />
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    // Settling into one of the states above, or on the way to the details page.
+                    <div className="flex justify-center py-24">
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                    </div>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

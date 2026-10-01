@@ -421,11 +421,14 @@ runs the mux.
 | What broke | What the user sees | What happens |
 |---|---|---|
 | Connection drop during an upload | Nothing, or "Video upload paused" with **Resume upload** | Retries with backoff; resume sends only what GCS lacks |
-| Tab closed during an upload | Dub page: **Finish uploading** (pick the same file) | Audio re-sent, then the dub starts; video sends only missing parts |
-| One language failed | Its card says so, "not charged"; **Retry from where it stopped** | Only unfinished languages run again; finished ones are untouched |
+| Tab closed during an upload | Dub page: **View progress**, then pick the same file | Audio re-sent, then the dub starts; video sends only missing parts |
+| One language failed | Its card says so, "not charged"; **Retry** | Only unfinished languages run again; finished ones are untouched |
 | Dub failed before a language's audio was ready | **Retry** | That language is charged again (the failure refunded it); translation, dubbed turns and the ElevenLabs dub id are kept |
-| Mux failed after the audio was ready | Its dubbed audio plays; **Retry** | Free; only the mux runs again |
-| Regenerate | Same button as before | Every language from scratch, speakers detected again |
+| Mux failed after the audio was ready | **Retry** | Charged again (the failure refunded it); only the mux runs |
+
+The dub's page only shows its details, status and finished media. **Retry** and **View
+progress** open the generation page (`/dashboard/dubbing/new?dub=<id>`, plus `&retry=1`
+for a retry), which resumes or follows the dub there.
 
 Cypher's speaker analysis is saved after every window, each language's translation after
 every batch, and each dubbed turn as it lands, so a retry resumes inside a language, not
@@ -437,8 +440,13 @@ at its start. A resume refuses a different file (`source_fingerprint`: name, siz
 - Checked (not charged) at `POST /uploads`: `cost × languages`.
 - Reserved at `POST /:id/start`, per language. A conditional update stops two tabs from starting twice.
 - Settled by the worker against the ffprobe duration, for all languages at once.
-- **Per language, earned once its dubbed audio exists.** A language failing before that
-  is refunded; after it (the mux), the charge stands and the retry that finishes the mux is free.
+- **Per language, paid only when it finishes.** A language that fails at any step (the
+  mux and a cancelled or expired wait for the video included) is refunded in full; a
+  retry charges it again and reuses what it already had. Unfinished media is not handed out.
+- Each output's `credits_consumed` is the charge it holds, so every refund gives back
+  exactly what its rows hold, whoever reserved it.
+- A dub whose job died without settling (a worker crash, a database outage) is settled
+  when the stalled job is detected, or else the next time the dub is read.
 
 ## Statuses
 
@@ -465,7 +473,7 @@ and `20260928000000_dubbing_voice_mode_and_timelines.sql`.
 | `source_language` | What the source is spoken in; null means detect it |
 | `voice_mode` | `like_me`, `balanced` (default) or `native` |
 | `keyterms` | Names and terms kept as they are (`text[]`, default empty) |
-| `vendor_projects` | ElevenLabs project per model and the regenerate generation: `{ dubbing_v2, dubbing_v1, generation }` |
+| `vendor_projects` | ElevenLabs project per model: `{ dubbing_v2, dubbing_v1 }`, plus `generation` on dubs from the removed regenerate |
 
 New table `dubbing_outputs`: `language`, `accent`, `status`, `translation` (Cypher),
 `segment_count` / `segments_done`, `vendor_dub_id` (ElevenLabs), `dubbed_audio_url`,
@@ -491,11 +499,13 @@ Removed: `POST /dubbing/sign-upload`, `POST /dubbing`.
 | `POST /dubbing/:id/upload/video-part` | Signed URL for one part |
 | `POST /dubbing/:id/upload/video-complete` | Assembles the parts; queues the mux if a dub is waiting |
 | `POST /dubbing/:id/resume` | Retry the unfinished languages from where they stopped |
+| `POST /dubbing/:id/cancel` | Cancel whatever the dub is doing: stop its job, end a wait for the video (refunded), or discard a dub that never started |
 | `GET /dubbing/:id` | Now returns `engine`, `speakerCount` and `outputs` (one per language) |
 | `GET /dubbing` | Each dub now carries `languages` (one query for all outputs, not one per dub) |
 
-Unchanged: regenerate, stop, status SSE, delete (which now also removes the outputs and
-`dubbed/<projectId>/`).
+Removed: regenerate (it had no UI once the dub's page became read-only). Unchanged: stop,
+status SSE (now without media URLs: it is unauthenticated), delete (which now also removes
+the outputs and `dubbed/<projectId>/`).
 
 ## Storage layout
 
@@ -648,9 +658,9 @@ Automated (`pnpm test`, plus the two self-checks):
 - `packages/workers/src/processor/utils/ffmpeg.check.ts`: every ffmpeg command against real
   media (needs ffmpeg): both speech presets, raw PCM stems, joining, trimming, atempo,
   loudness, the mix and the mux (`npx tsx packages/workers/src/processor/utils/ffmpeg.check.ts`).
-- `apps/api/src/dubbing/dubbing.service.spec.ts`: the new fields stored and passed to the
-  job, regenerate's new generation, resume keeping the project, timelines in `getDub`,
-  voice mode engines in `/access`.
+- `apps/api/src/dubbing/dubbing.service.spec.ts`: the new fields stored, resume keeping the
+  project and re-charging what failed, refunds on cancel and on a job that died unsettled,
+  only finished media in `getDub`, timelines, voice mode engines in `/access`.
 - `apps/web/components/__tests__/dubbing-options.test.tsx`: keyterm chips and their rules,
   the voice mode picker, the timeline and its seek.
 - `services/cypher-tts/test_server.py`: request validation with the model replaced
@@ -676,7 +686,8 @@ Manual, after the migrations and bucket changes:
 6. Names and terms: add "Creator AI"; the dub keeps it untranslated on both engines.
 7. On Starter, a second language cannot be added; on Creator, a third cannot.
 8. The language menu shows each engine's count and greys out the other engine's languages.
-9. Mid video upload, close the tab; pick the same file on the dub's page and it continues.
+9. Mid video upload, close the tab; on the dub's page press **View progress**, pick the same
+   file and it continues.
 10. Stop the worker mid-dub, restart it, press **Retry**: the log resumes at "line k of N",
     and on ElevenLabs no second project appears in the ElevenLabs dashboard.
 11. A music-only file: fails with "No speech was found", not charged.

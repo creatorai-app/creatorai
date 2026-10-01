@@ -62,19 +62,6 @@ export async function deleteDubbing(
   }
 }
 
-/** Re-run a dub with the same source + target language (reuses the stored GCS object). */
-export async function regenerateDubbing(
-  projectId: string,
-  accessToken?: string
-): Promise<{ projectId: string; jobId: string }> {
-  return api.post<{ projectId: string; jobId: string }>(
-    `/api/v1/dubbing/${projectId}/regenerate`,
-    {},
-    { requireAuth: true, accessToken },
-  )
-}
-
-
 /** Retry a failed dub from where it stopped (keeps the translation and finished segments). */
 export async function resumeDubbing(
   projectId: string,
@@ -85,4 +72,9 @@ export async function resumeDubbing(
     {},
     { requireAuth: true, accessToken },
   )
+}
+
+/** Cancel a dub: stops its job, ends a wait for the video upload, or discards one that never started. */
+export async function cancelDubbing(projectId: string, accessToken?: string): Promise<{ message: string }> {
+  return api.post<{ message: string }>(`/api/v1/dubbing/${projectId}/cancel`, {}, { requireAuth: true, accessToken })
 }

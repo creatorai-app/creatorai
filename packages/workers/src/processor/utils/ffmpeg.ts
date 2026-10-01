@@ -248,11 +248,6 @@ export async function mixDub(opts: Parameters<typeof mixArgs>[0]): Promise<void>
   await runFfmpeg(mixArgs(opts));
 }
 
-/** The assembled raw track as the MP3 every dubbed track is stored as. */
-export async function dubPcmToMp3(inputPath: string, outputPath: string): Promise<void> {
-  await runFfmpeg(['-y', ...PCM_INPUT, '-i', inputPath, '-c:a', 'libmp3lame', '-q:a', '2', outputPath]);
-}
-
 /** Any audio or video file's sound as MP3 (ElevenLabs may hand back either). */
 export async function toMp3(inputPath: string, outputPath: string): Promise<void> {
   await runFfmpeg(['-y', '-i', inputPath, '-vn', '-c:a', 'libmp3lame', '-q:a', '2', outputPath]);

@@ -32,6 +32,7 @@ import {
   DUB_ENGINES,
   DUBBING_CANCEL_PREFIX,
   DEFAULT_DUB_VOICE_MODE,
+  DUB_JOB_STATUSES,
   type DubEngine,
 } from '@repo/validation';
 import {
@@ -49,10 +50,6 @@ import {
   completeMultipartUpload,
   abortMultipartUpload,
 } from '../utils';
-
-// A dub in one of these states has a worker (or a queue slot) attached to it: it cannot
-// be regenerated or deleted without orphaning a running job and its reservation.
-const IN_FLIGHT_STATUSES = ['queued', 'processing', 'cloning'];
 
 // Parts are at least 16 MiB and grow so no upload needs more than 1000 of them, which
 // keeps a resume to a single ListParts page.
@@ -511,9 +508,8 @@ export class DubbingService {
     this.assertDurationAllowed(planName, durationSeconds, languages, engine);
 
     let size: number;
-    let contentType: string;
     try {
-      ({ size, contentType } = await gcsObjectMetadata(this.configService, row.audio_object, this.bucket));
+      ({ size } = await gcsObjectMetadata(this.configService, row.audio_object, this.bucket));
     } catch {
       throw new BadRequestException('The audio upload has not finished yet.');
     }
@@ -548,7 +544,7 @@ export class DubbingService {
       .eq('project_id', projectId)
       .eq('user_id', userId);
 
-    return this.enqueueOrRefund(userId, row, { mimeType: contentType, planName, reservedCredits });
+    return this.enqueueOrRefund(userId, row, planName);
   }
 
   /** One signed URL per part, minted just before the browser sends it so none expire mid-upload. */
@@ -613,203 +609,128 @@ export class DubbingService {
       .select('project_id');
     if (!waiting?.length) return { jobId: null };
 
-    return this.enqueueOrRefund(userId, row, { planName: await this.getActivePlanName(userId), reservedCredits: 0 });
+    return this.enqueueOrRefund(userId, row, await this.getActivePlanName(userId));
   }
 
   /**
    * Retry a failed dub from where it stopped. Finished languages are left alone; for the
    * rest the translation, dubbed segments, ElevenLabs dub id and any dubbed audio are
-   * kept. A language whose audio was already delivered only needs the video mux, which is
-   * free; the others are charged again, since the failure refunded them.
+   * kept, so a language that only lacks its video mux only redoes the mux. Each is
+   * charged again, since the failure refunded it.
    */
   async resumeDub(userId: string, projectId: string): Promise<{ projectId: string; jobId: string }> {
     const row = await this.getOwnedRow(userId, projectId);
     if (row.status !== 'failed') throw new BadRequestException('Only a failed dub can be resumed.');
-    const jobId = await this.requeue(userId, row, { resetProgress: false });
-    return { projectId, jobId };
-  }
-
-  /**
-   * Re-run a finished or failed dub from scratch with the SAME input and languages: the
-   * stored source is reused (no re-upload), the speakers are detected again and every
-   * language is dubbed again.
-   */
-  async regenerateDub(userId: string, projectId: string): Promise<{ projectId: string; jobId: string }> {
-    const row = await this.getOwnedRow(userId, projectId);
-    // A second run while the first is still going would charge twice and race the same
-    // output objects: the in-flight run has to finish or be cancelled first.
-    if (IN_FLIGHT_STATUSES.includes(row.status)) {
-      throw new BadRequestException('This dub is still running. Wait for it to finish, or cancel it first.');
-    }
-    if (row.status === 'uploading') throw new BadRequestException('Finish uploading this dub first.');
-    const jobId = await this.requeue(userId, row, { resetProgress: true });
-    return { projectId, jobId };
-  }
-
-  private async requeue(userId: string, row: DubRow, { resetProgress }: { resetProgress: boolean }): Promise<string> {
     const planName = await this.assertCanDub(userId);
     if (!row.input_gs_uri || !row.duration_seconds) {
       throw new BadRequestException('This dub is missing its source media and cannot be run again.');
     }
     const durationSeconds = Number(row.duration_seconds);
 
-    // The stored source must still exist in GCS, and gives us its content type.
     const objectName = String(row.input_gs_uri).split('/').slice(3).join('/');
-    let contentType: string;
     try {
-      ({ contentType } = await gcsObjectMetadata(this.configService, objectName, this.bucket));
+      await gcsObjectMetadata(this.configService, objectName, this.bucket);
     } catch {
       throw new BadRequestException('The original media is no longer available. Please create a new dub.');
     }
 
-    let outputs = await this.getOutputs(userId, row.project_id);
+    let outputs = await this.getOutputs(userId, projectId);
     if (!outputs.length) outputs = await this.ensureLegacyOutput(userId, row);
-
-    const toRun = resetProgress ? outputs : outputs.filter((o) => o.status !== 'completed');
+    const toRun = outputs.filter((o) => o.status !== 'completed');
     if (!toRun.length) throw new BadRequestException('Every language of this dub is already finished.');
-    const needAudio = resetProgress ? toRun : toRun.filter((o) => !o.dubbed_audio_url);
 
+    // Re-check the caps: a downgrade since the first run must not let a long clip through
+    // the back door.
     const engine = this.engineOf(row);
-    let perLanguage = 0;
-    if (needAudio.length) {
-      // Re-check the caps: a downgrade since the first run must not let a long clip
-      // through the back door.
-      this.assertDurationAllowed(planName, durationSeconds, needAudio.map((o) => o.language), engine);
-      await this.assertCanAffordDub(userId, durationSeconds, planName, needAudio.length, engine);
-      perLanguage = this.dubCost(durationSeconds, planName, engine);
-      await this.reserveCredits(userId, perLanguage * needAudio.length);
-    }
-    const reservedCredits = perLanguage * needAudio.length;
+    this.assertDurationAllowed(planName, durationSeconds, toRun.map((o) => o.language), engine);
+    await this.assertCanAffordDub(userId, durationSeconds, planName, toRun.length, engine);
+    const perLanguage = this.dubCost(durationSeconds, planName, engine);
+    const reservedCredits = perLanguage * toRun.length;
+    await this.reserveCredits(userId, reservedCredits);
 
-    const needAudioIds = needAudio.map((o) => o.id);
-    const muxOnlyIds = toRun.filter((o) => !needAudioIds.includes(o.id)).map((o) => o.id);
-    const freshStart = resetProgress
-      ? {
-          translation: null, segment_count: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null, dubbed_url: null,
-          timeline: null, warnings: null,
-        }
-      : {};
-    if (needAudioIds.length) {
-      await this.supabase
-        .from('dubbing_outputs')
-        .update({ status: 'pending', error_message: null, credits_consumed: perLanguage, ...freshStart })
-        .in('id', needAudioIds);
-    }
-    if (muxOnlyIds.length) {
-      await this.supabase.from('dubbing_outputs').update({ status: 'pending', error_message: null }).in('id', muxOnlyIds);
-    }
-
+    const toRunIds = toRun.map((o) => o.id);
     const kept = outputs
-      .filter((o) => !needAudioIds.includes(o.id))
+      .filter((o) => !toRunIds.includes(o.id))
       .reduce((sum, o) => sum + Number(o.credits_consumed ?? 0), 0);
-    await this.supabase
+    // Conditional, so two retries sent at once (two tabs, a double click) cannot both
+    // charge and queue: the loser gets its reservation back.
+    const { data: claimed } = await this.supabase
       .from('dubbing_projects')
-      .update({
-        status: 'queued',
-        error_message: null,
-        credits_consumed: kept + reservedCredits,
-        // A fresh start detects the speakers again, on a new ElevenLabs project: the
-        // generation bump gives it a new reference, so the worker's lookup for a lost
-        // project cannot find the old one. A resume keeps both, so nothing is paid twice.
-        ...(resetProgress
-          ? { analysis: null, dubbed_url: null, vendor_projects: { generation: Number(row.vendor_projects?.generation ?? 0) + 1 } }
-          : {}),
-      })
-      .eq('project_id', row.project_id)
-      .eq('user_id', userId);
-
-    const { jobId } = await this.enqueueOrRefund(userId, row, { mimeType: contentType, planName, reservedCredits });
-    return jobId;
-  }
-
-  /** Queue the worker; on failure hand the reservation back and mark the row failed. */
-  private async enqueueOrRefund(
-    userId: string,
-    row: DubRow,
-    opts: { mimeType?: string; planName: string | null; reservedCredits: number },
-  ): Promise<{ jobId: string }> {
-    try {
-      const jobId = await this.enqueue({
-        userId,
-        projectId: row.project_id,
-        inputGsUri: row.input_gs_uri,
-        inputUrl: row.input_url,
-        mimeType: opts.mimeType ?? row.audio_content_type ?? 'application/octet-stream',
-        isVideo: !!row.is_video,
-        durationSeconds: Number(row.duration_seconds),
-        planName: opts.planName,
-        reservedCredits: opts.reservedCredits,
-        sourceLanguage: row.source_language ?? null,
-        voiceMode: row.voice_mode ?? DEFAULT_DUB_VOICE_MODE,
-        keyterms: row.keyterms ?? [],
-      });
-      return { jobId };
-    } catch (error: any) {
-      await this.refundCredits(userId, opts.reservedCredits);
-      await this.markUndeliveredFailed(row.project_id, 'Could not be queued. Please try again.');
-      this.logger.error(`Failed to enqueue dub ${row.project_id}: ${error?.message}`);
-      throw new InternalServerErrorException('Failed to queue the dubbing job');
+      .update({ status: 'queued', error_message: null, credits_consumed: kept + reservedCredits })
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .eq('status', 'failed')
+      .select('project_id');
+    if (!claimed?.length) {
+      await this.refundCredits(userId, reservedCredits);
+      throw new BadRequestException('This dub has already been started again.');
     }
+    await this.supabase
+      .from('dubbing_outputs')
+      .update({ status: 'pending', error_message: null, credits_consumed: perLanguage })
+      .in('id', toRunIds);
+
+    const { jobId } = await this.enqueueOrRefund(userId, row, planName);
+    return { projectId, jobId };
   }
 
   /**
-   * Push the job and record its id.
+   * Queue the worker and record its job id; on failure refund and fail the dub.
    *
    * The job id is a random UUID, not `dubbing-{userId}-{timestamp}`: the SSE status
    * route is unauthenticated (EventSource cannot send an Authorization header), so the
    * id is the only thing standing between a job's progress and a stranger. A predictable
    * id built from a user id and a millisecond is guessable; a UUID is not.
    */
-  private async enqueue(data: {
-    userId: string;
-    projectId: string;
-    inputGsUri: string;
-    inputUrl: string;
-    mimeType: string;
-    isVideo: boolean;
-    durationSeconds: number;
-    planName: string | null;
-    reservedCredits: number;
-    // For the job's own record; the worker reads the project row, which a retry keeps.
-    sourceLanguage: string | null;
-    voiceMode: string;
-    keyterms: string[];
-  }): Promise<string> {
-    const bullJobId = `dubbing-${crypto.randomUUID()}`;
-
-    await this.queue.add('dubbing', { ...data, bullJobId }, { jobId: bullJobId });
-    await this.supabase.from('dubbing_projects').update({ job_id: bullJobId }).eq('project_id', data.projectId);
-
-    return bullJobId;
+  private async enqueueOrRefund(userId: string, row: DubRow, planName: string | null): Promise<{ jobId: string }> {
+    const jobId = `dubbing-${crypto.randomUUID()}`;
+    try {
+      await this.queue.add('dubbing', {
+        userId,
+        projectId: row.project_id,
+        inputGsUri: row.input_gs_uri,
+        inputUrl: row.input_url,
+        isVideo: !!row.is_video,
+        durationSeconds: Number(row.duration_seconds),
+        // The plan the dub was priced on, so the worker settles at the same rate.
+        planName,
+      }, { jobId });
+      await this.supabase.from('dubbing_projects').update({ job_id: jobId }).eq('project_id', row.project_id);
+      return { jobId };
+    } catch (error: any) {
+      await this.failUnfinished(userId, row.project_id, 'Could not be queued. Nothing was charged. Please try again.');
+      this.logger.error(`Failed to enqueue dub ${row.project_id}: ${error?.message}`);
+      throw new InternalServerErrorException('Failed to queue the dubbing job');
+    }
   }
 
   /**
-   * A run that never got going: every language without dubbed audio is refunded (by the
-   * caller) and failed with no charge; a language whose audio was delivered keeps its
-   * charge and only needs the mux on a retry.
+   * Fail every language that has not finished and give back what each one holds: only a
+   * finished language is paid for. Each row's credits_consumed is the charge it carries,
+   * so this refunds exactly what was taken, whatever reserved it. Any dubbed audio stays
+   * on the row for a retry to reuse. Callers must own the dub at this point (no job running).
    */
-  private async markUndeliveredFailed(projectId: string, message: string): Promise<void> {
-    await this.supabase
-      .from('dubbing_outputs')
-      .update({ status: 'failed', error_message: message, credits_consumed: 0 })
-      .eq('project_id', projectId)
-      .is('dubbed_audio_url', null)
-      .neq('status', 'completed');
-    await this.supabase
-      .from('dubbing_outputs')
-      .update({ status: 'failed', error_message: message })
-      .eq('project_id', projectId)
-      .not('dubbed_audio_url', 'is', null)
-      .neq('status', 'completed');
-    const { data: outputs } = await this.supabase
-      .from('dubbing_outputs')
-      .select('credits_consumed')
-      .eq('project_id', projectId);
-    const credits = (outputs ?? []).reduce((sum: number, o: any) => sum + Number(o.credits_consumed ?? 0), 0);
+  private async failUnfinished(userId: string, projectId: string, message: string): Promise<void> {
+    const outputs = await this.getOutputs(userId, projectId);
+    const unfinished = outputs.filter((o) => o.status !== 'completed');
+    await this.refundCredits(
+      userId,
+      unfinished.reduce((sum, o) => sum + Number(o.credits_consumed ?? 0), 0),
+    );
+    if (unfinished.length) {
+      await this.supabase
+        .from('dubbing_outputs')
+        .update({ status: 'failed', error_message: message, credits_consumed: 0 })
+        .in('id', unfinished.map((o) => o.id));
+    }
+    const kept = outputs
+      .filter((o) => o.status === 'completed')
+      .reduce((sum, o) => sum + Number(o.credits_consumed ?? 0), 0);
     await this.supabase
       .from('dubbing_projects')
-      .update({ status: 'failed', error_message: message, credits_consumed: credits })
-      .eq('project_id', projectId);
+      .update({ status: 'failed', error_message: message, credits_consumed: kept })
+      .eq('project_id', projectId)
+      .eq('user_id', userId);
   }
 
   /**
@@ -832,9 +753,8 @@ export class DubbingService {
       // remove() throws if the job went active in the meantime, so reaching the next
       // line means the worker never picked it up and the refund cannot double up.
       await job.remove();
-      await this.refundCredits(userId, Number(job.data?.reservedCredits ?? 0));
-      // Mark the rows too, otherwise they sit 'queued' forever.
-      await this.markUndeliveredFailed(job.data.projectId, 'Cancelled by user');
+      // Refunds what the rows hold, and marks them, otherwise they sit 'queued' forever.
+      await this.failUnfinished(userId, job.data.projectId, 'Cancelled by user');
       return { message: 'Dubbing cancelled' };
     }
 
@@ -843,10 +763,40 @@ export class DubbingService {
       await client.set(`${DUBBING_CANCEL_PREFIX}${jobId}`, '1', 'EX', 3600);
       // "Requested", not "cancelled": the worker only checks between stages, so a run
       // already past its last checkpoint will finish and charge normally.
-      return { message: 'Cancellation requested — it will stop at the next step if it has not already finished.' };
+      return { message: 'Cancellation requested. It stops at the next step, unless it has already finished.' };
     }
 
     return { message: 'Job already finished' };
+  }
+
+  /**
+   * Cancel a dub, whatever it is doing: a running job is stopped like stopDub; a dub
+   * waiting on its video stops waiting and is refunded, since nothing was delivered. A
+   * retry reuses its dubbed audio (the worker ends a wait the same way once
+   * DUB_VIDEO_WAIT_HOURS pass).
+   */
+  async cancelDub(userId: string, projectId: string): Promise<{ message: string }> {
+    const row = await this.getOwnedRow(userId, projectId);
+    if (DUB_JOB_STATUSES.includes(row.status) && row.job_id) return this.stopDub(userId, row.job_id);
+    // Never started: nothing was charged or dubbed, so cancelling is discarding the uploads.
+    if (row.status === 'uploading') {
+      await this.deleteDub(userId, projectId);
+      return { message: 'Dubbing cancelled. Nothing was charged.' };
+    }
+    if (row.status !== 'awaiting_video') throw new BadRequestException('This dub is not running.');
+
+    const message = 'Cancelled while waiting for the video. Nothing was charged.';
+    // Conditional, so it cannot race the upload completing and queueing the mux.
+    const { data } = await this.supabase
+      .from('dubbing_projects')
+      .update({ status: 'failed', error_message: message })
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .eq('status', 'awaiting_video')
+      .select('project_id');
+    if (!data?.length) throw new BadRequestException('The video finished uploading, so this dub is already being finished.');
+    await this.failUnfinished(userId, projectId, message);
+    return { message: 'Dubbing cancelled. Nothing was charged.' };
   }
 
   async listDubs(userId: string, pageSize = 100) {
@@ -874,16 +824,41 @@ export class DubbingService {
     }));
   }
 
+  /**
+   * A dub whose row says it is running but whose job has failed or is gone was never
+   * settled: the worker's own settle could not be written (the same outage that killed the
+   * job, say). Nothing will move it again, so settle it here: fail and refund what did not
+   * finish. A job only reaches 'failed' once the worker is done with it, so this never
+   * races a run in progress. Returns whether it settled anything.
+   */
+  private async settleIfJobEnded(userId: string, row: { project_id: string; status: string; job_id: string | null }): Promise<boolean> {
+    if (!DUB_JOB_STATUSES.includes(row.status) || !row.job_id) return false;
+    const job = await this.queue.getJob(row.job_id);
+    if (job && (await job.getState()) !== 'failed') return false;
+    await this.failUnfinished(
+      userId,
+      row.project_id,
+      'The dubbing job stopped before it finished. Nothing was charged. Retry to continue from where it stopped.',
+    );
+    return true;
+  }
+
   async getDub(userId: string, projectId: string): Promise<DubResponse> {
-    const { data, error } = await this.supabase
-      .from('dubbing_projects')
-      .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, created_at, media_name, source_language, voice_mode, keyterms, speakers:analysis->speakers')
-      .eq('user_id', userId)
-      .eq('project_id', projectId)
-      .single();
+    const read = () =>
+      this.supabase
+        .from('dubbing_projects')
+        .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, created_at, media_name, source_language, voice_mode, keyterms, speakers:analysis->speakers')
+        .eq('user_id', userId)
+        .eq('project_id', projectId)
+        .single();
+    let { data, error } = await read();
 
     if (error || !data) {
       throw new BadRequestException('Dub not found or access denied');
+    }
+    if (await this.settleIfJobEnded(userId, data)) {
+      ({ data, error } = await read());
+      if (error || !data) throw new BadRequestException('Dub not found or access denied');
     }
 
     const { data: rows } = await this.supabase
@@ -893,26 +868,31 @@ export class DubbingService {
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
+    // Only a finished language is paid for, so only a finished one hands out its media. An
+    // unfinished one keeps its dubbed audio in storage for a retry to reuse.
     const outputs: DubOutput[] = rows?.length
-      ? rows.map((o) => ({
-          language: o.language,
-          accent: o.accent,
-          status: o.status,
-          dubbedUrl: o.dubbed_url,
-          dubbedAudioUrl: o.dubbed_audio_url,
-          segmentsDone: o.segments_done ?? 0,
-          segmentCount: o.segment_count,
-          creditsConsumed: o.credits_consumed ?? 0,
-          errorMessage: o.error_message,
-          timeline: o.timeline ?? null,
-          warnings: o.warnings ?? null,
-        }))
+      ? rows.map((o) => {
+          const done = o.status === 'completed';
+          return {
+            language: o.language,
+            accent: o.accent,
+            status: o.status,
+            dubbedUrl: done ? o.dubbed_url : null,
+            dubbedAudioUrl: done ? o.dubbed_audio_url : null,
+            segmentsDone: o.segments_done ?? 0,
+            segmentCount: o.segment_count,
+            creditsConsumed: o.credits_consumed ?? 0,
+            errorMessage: o.error_message,
+            timeline: done ? (o.timeline ?? null) : null,
+            warnings: o.warnings ?? null,
+          };
+        })
       : // A dub from before per-language outputs: its one language lives on the project.
         [{
           language: data.target_language,
           accent: data.target_accent,
           status: data.status === 'completed' || data.status === 'failed' ? data.status : 'dubbing',
-          dubbedUrl: data.dubbed_url,
+          dubbedUrl: data.status === 'completed' ? data.dubbed_url : null,
           dubbedAudioUrl: null,
           segmentsDone: 0,
           segmentCount: null,
@@ -950,7 +930,7 @@ export class DubbingService {
       .eq('user_id', userId)
       .eq('project_id', projectId)
       .maybeSingle();
-    if (existing && IN_FLIGHT_STATUSES.includes(existing.status)) {
+    if (existing && DUB_JOB_STATUSES.includes(existing.status)) {
       throw new BadRequestException('This dub is still running. Cancel it before deleting.');
     }
 

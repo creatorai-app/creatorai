@@ -446,31 +446,8 @@ describe('DubbingService', () => {
       expect(jobId).not.toContain(USER);
       expect(queue.add).toHaveBeenCalledWith(
         'dubbing',
-        expect.objectContaining({ userId: USER, reservedCredits: DUB_COST * 2, mimeType: 'audio/mp4', isVideo: true }),
+        expect.objectContaining({ userId: USER, projectId: 'p-1', isVideo: true }),
         expect.objectContaining({ jobId }),
-      );
-    });
-
-    it('passes the source language, voice mode and keyterms to the job', async () => {
-      await build({
-        dubbing_projects: project({ source_language: 'en', voice_mode: 'like_me', keyterms: ['Creator AI'] }),
-        dubbing_outputs: outputsTable(outputs),
-      });
-      await service.startDub(USER, 'p-1');
-      expect(queue.add).toHaveBeenCalledWith(
-        'dubbing',
-        expect.objectContaining({ sourceLanguage: 'en', voiceMode: 'like_me', keyterms: ['Creator AI'] }),
-        expect.anything(),
-      );
-    });
-
-    it('sends the defaults for a row from before the voice mode existed', async () => {
-      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(outputs) });
-      await service.startDub(USER, 'p-1');
-      expect(queue.add).toHaveBeenCalledWith(
-        'dubbing',
-        expect.objectContaining({ sourceLanguage: null, voiceMode: 'balanced', keyterms: [] }),
-        expect.anything(),
       );
     });
 
@@ -502,7 +479,9 @@ describe('DubbingService', () => {
     });
 
     it('refunds and fails the languages when the job cannot be queued', async () => {
-      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(outputs) });
+      // The rows as start left them, holding the reservation the refund gives back.
+      const charged = outputs.map((o) => ({ ...o, credits_consumed: DUB_COST }));
+      await build({ dubbing_projects: project(), dubbing_outputs: outputsTable(charged) });
       queue.add.mockRejectedValueOnce(new Error('redis down'));
       await expect(service.startDub(USER, 'p-1')).rejects.toThrow(/Failed to queue/);
       expect(rpc).toHaveBeenLastCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
@@ -569,7 +548,7 @@ describe('DubbingService', () => {
       (gcsObjectMetadata as jest.Mock).mockResolvedValueOnce({ size: 40 * MiB, contentType: 'video/mp4' });
       const { jobId } = await service.completeVideo(USER, 'p-1');
       expect(jobId).toMatch(/^dubbing-/);
-      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ reservedCredits: 0 }), expect.anything());
+      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ projectId: 'p-1' }), expect.anything());
       expect(rpc).not.toHaveBeenCalled();
     });
 
@@ -582,7 +561,7 @@ describe('DubbingService', () => {
     });
   });
 
-  describe('resumeDub and regenerateDub', () => {
+  describe('resumeDub', () => {
     const row = {
       project_id: 'p-1',
       user_id: USER,
@@ -594,85 +573,61 @@ describe('DubbingService', () => {
       input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
       input_url: `https://storage.googleapis.com/dub-bucket/${USER}/dubbing/p-1/audio.m4a`,
     };
+    // The project row, and the conditional claim that re-queues it.
+    const dub = (over: object = {}, claimed: unknown = { data: [{ project_id: 'p-1' }], error: null }) =>
+      chain({ data: { ...row, ...over }, error: null }, claimed);
     const done = { id: 'o-es', language: 'es', status: 'completed', dubbed_audio_url: 'x.mp3', dubbed_url: 'x.mp4', credits_consumed: DUB_COST };
     const undelivered = { id: 'o-fr', language: 'fr', status: 'failed', dubbed_audio_url: null, credits_consumed: 0 };
-    const unmuxed = { id: 'o-de', language: 'de', status: 'failed', dubbed_audio_url: 'd.mp3', credits_consumed: DUB_COST };
+    // Its dubbed audio landed but the mux failed, so the failure refunded it.
+    const unmuxed = { id: 'o-de', language: 'de', status: 'failed', dubbed_audio_url: 'd.mp3', credits_consumed: 0 };
+
+    // Two retries sent at once: the one that loses the claim gives its reservation back.
+    it('refunds a retry that lost the race to another one', async () => {
+      await build({ dubbing_projects: dub({}, { data: [], error: null }), dubbing_outputs: outputsTable([undelivered]) });
+      await expect(service.resumeDub(USER, 'p-1')).rejects.toThrow(/already been started again/);
+      expect(rpc).toHaveBeenLastCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
+      expect(queue.add).not.toHaveBeenCalled();
+      expect(tables.dubbing_outputs.update).not.toHaveBeenCalled();
+    });
 
     it('only resumes a failed dub', async () => {
-      await build({ dubbing_projects: chain({ data: { ...row, status: 'completed' }, error: null }) });
+      await build({ dubbing_projects: dub({ status: 'completed' }) });
       await expect(service.resumeDub(USER, 'p-1')).rejects.toThrow(/Only a failed dub/);
     });
 
-    it('re-charges only the languages whose audio never landed, and keeps their progress', async () => {
+    it('re-charges every unfinished language, keeps their progress and leaves the finished one alone', async () => {
       await build({
-        dubbing_projects: chain({ data: row, error: null }),
+        dubbing_projects: dub(),
         dubbing_outputs: outputsTable([done, undelivered, unmuxed]),
       });
       await service.resumeDub(USER, 'p-1');
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST * 2 });
+      expect(rpc).toHaveBeenCalledTimes(1);
       const updates = (tables.dubbing_outputs.update as jest.Mock).mock.calls.map((c) => c[0]);
-      expect(updates).toContainEqual({ status: 'pending', error_message: null, credits_consumed: DUB_COST });
-      expect(updates).toContainEqual({ status: 'pending', error_message: null });
-      for (const u of updates) expect(u).not.toHaveProperty('translation');
+      expect(updates).toEqual([{ status: 'pending', error_message: null, credits_consumed: DUB_COST }]);
+      expect(tables.dubbing_outputs.in).toHaveBeenCalledWith('id', ['o-fr', 'o-de']);
       expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'queued', credits_consumed: DUB_COST * 3 }),
       );
-      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ reservedCredits: DUB_COST }), expect.anything());
+      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ projectId: 'p-1' }), expect.anything());
     });
 
-    it('re-runs only the free mux when every unfinished language has its audio', async () => {
-      await build({ dubbing_projects: chain({ data: row, error: null }), dubbing_outputs: outputsTable([done, unmuxed]) });
+    // The failed mux was refunded, so finishing it is paid for like any delivered language.
+    it('charges a language that only needs its mux, since its failure was refunded', async () => {
+      await build({ dubbing_projects: dub(), dubbing_outputs: outputsTable([done, unmuxed]) });
       await service.resumeDub(USER, 'p-1');
-      expect(rpc).not.toHaveBeenCalled();
-      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ reservedCredits: 0 }), expect.anything());
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
+      expect(queue.add).toHaveBeenCalledWith('dubbing', expect.objectContaining({ projectId: 'p-1' }), expect.anything());
     });
 
     it('refuses to resume a dub whose every language finished', async () => {
-      await build({ dubbing_projects: chain({ data: row, error: null }), dubbing_outputs: outputsTable([done]) });
+      await build({ dubbing_projects: dub(), dubbing_outputs: outputsTable([done]) });
       await expect(service.resumeDub(USER, 'p-1')).rejects.toThrow(/already finished/);
-    });
-
-    it.each(['queued', 'processing', 'cloning'])('refuses to regenerate a %s dub', async (status) => {
-      await build({ dubbing_projects: chain({ data: { ...row, status }, error: null }) });
-      await expect(service.regenerateDub(USER, 'p-1')).rejects.toThrow(/still running/);
-      expect(queue.add).not.toHaveBeenCalled();
-    });
-
-    it('refuses to regenerate a dub that is still uploading', async () => {
-      await build({ dubbing_projects: chain({ data: { ...row, status: 'uploading' }, error: null }) });
-      await expect(service.regenerateDub(USER, 'p-1')).rejects.toThrow(/Finish uploading/);
-    });
-
-    it('regenerates every language from scratch and detects the speakers again', async () => {
-      await build({
-        dubbing_projects: chain({ data: { ...row, status: 'completed' }, error: null }),
-        dubbing_outputs: outputsTable([done, { ...undelivered, status: 'completed' }]),
-      });
-      await service.regenerateDub(USER, 'p-1');
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST * 2 });
-      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          translation: null, segments_done: 0, vendor_dub_id: null, dubbed_audio_url: null, timeline: null, warnings: null,
-        }),
-      );
-      // A fresh start is a new ElevenLabs project too, under a new reference.
-      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
-        expect.objectContaining({ analysis: null, vendor_projects: { generation: 1 } }),
-      );
-    });
-
-    it('bumps the generation again on a second regenerate', async () => {
-      await build({
-        dubbing_projects: chain({ data: { ...row, status: 'completed', vendor_projects: { dubbing_v2: 'proj_1', generation: 1 } }, error: null }),
-        dubbing_outputs: outputsTable([done]),
-      });
-      await service.regenerateDub(USER, 'p-1');
-      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ vendor_projects: { generation: 2 } }));
     });
 
     it('keeps the ElevenLabs project on a resume', async () => {
       await build({
-        dubbing_projects: chain({ data: { ...row, status: 'failed', vendor_projects: { dubbing_v2: 'proj_1' } }, error: null }),
+        dubbing_projects: dub({ status: 'failed', vendor_projects: { dubbing_v2: 'proj_1' } }),
         dubbing_outputs: outputsTable([undelivered]),
       });
       await service.resumeDub(USER, 'p-1');
@@ -681,7 +636,7 @@ describe('DubbingService', () => {
     });
 
     // A dub from before per-language outputs gets one output row the first time it runs again.
-    it('gives an older single-language dub an output row when it is regenerated', async () => {
+    it('gives an older single-language dub an output row when it is resumed', async () => {
       const legacyOutputs = chain(
         { data: null, error: null },
         { data: [], error: null },
@@ -690,10 +645,10 @@ describe('DubbingService', () => {
         select: () => Promise.resolve({ data: [{ id: 'o-1', language: 'bn', status: 'pending', credits_consumed: 0 }], error: null }),
       }));
       await build({
-        dubbing_projects: chain({ data: { ...row, status: 'completed', engine: null, target_language: 'bn' }, error: null }),
+        dubbing_projects: dub({ engine: null, target_language: 'bn' }),
         dubbing_outputs: legacyOutputs,
       });
-      await service.regenerateDub(USER, 'p-1');
+      await service.resumeDub(USER, 'p-1');
       expect(legacyOutputs.insert).toHaveBeenCalledWith(expect.objectContaining({ language: 'bn' }));
       // Bengali has no Chatterbox voice, so the older dub is picked up by ElevenLabs.
       expect(tables.dubbing_projects.update).toHaveBeenCalledWith({ engine: 'elevenlabs' });
@@ -742,6 +697,43 @@ describe('DubbingService', () => {
       expect(dub.voiceMode).toBeNull();
     });
 
+    // A refunded language's dubbed audio stays in storage for a retry, but is not handed out.
+    it('hands out media only for finished languages', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...project, status: 'failed' }, error: null }),
+        dubbing_outputs: outputsTable([
+          { language: 'es', status: 'completed', dubbed_url: 'es.mp4', dubbed_audio_url: 'es.mp3', segments_done: 0, credits_consumed: 5 },
+          { language: 'fr', status: 'failed', dubbed_audio_url: 'fr.mp3', timeline: [{ id: 's1' }], segments_done: 0, credits_consumed: 0 },
+        ]),
+      });
+      const [es, fr] = (await service.getDub(USER, 'p-1')).outputs;
+      expect(es).toMatchObject({ dubbedUrl: 'es.mp4', dubbedAudioUrl: 'es.mp3' });
+      expect(fr).toMatchObject({ dubbedUrl: null, dubbedAudioUrl: null, timeline: null });
+    });
+
+    // The worker could not record its own failure: the row says queued, the job is failed.
+    it('settles a dub whose job failed without settling it, refunding what it held', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...project, status: 'queued', job_id: 'job-1' }, error: null }),
+        dubbing_outputs: outputsTable([{ id: 'o-es', language: 'es', status: 'pending', segments_done: 0, credits_consumed: 715 }]),
+      });
+      queue.getJob.mockResolvedValue({ getState: () => Promise.resolve('failed') });
+      await service.getDub(USER, 'p-1');
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: 715 });
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', credits_consumed: 0 }));
+    });
+
+    it.each([['active', { getState: () => Promise.resolve('active') }], ['waiting', { getState: () => Promise.resolve('waiting') }]])(
+      'leaves a dub whose job is %s alone',
+      async (_state, job) => {
+        await build({ dubbing_projects: chain({ data: { ...project, status: 'processing', job_id: 'job-1' }, error: null }) });
+        queue.getJob.mockResolvedValue(job);
+        await service.getDub(USER, 'p-1');
+        expect(rpc).not.toHaveBeenCalled();
+        expect(tables.dubbing_projects.update).not.toHaveBeenCalled();
+      },
+    );
+
     it('shows an older dub as its one language', async () => {
       await build({ dubbing_projects: chain({ data: { ...project, speakers: null }, error: null }) });
       const dub = await service.getDub(USER, 'p-1');
@@ -759,8 +751,13 @@ describe('DubbingService', () => {
       await expect(service.stopDub(USER, 'job-1')).rejects.toThrow(NotFoundException);
     });
 
-    it('removes a waiting job, refunds it and fails its undelivered languages', async () => {
-      await build();
+    it('removes a waiting job, refunds what its languages hold and fails them', async () => {
+      await build({
+        dubbing_outputs: outputsTable([
+          { id: 'o-es', status: 'pending', credits_consumed: DUB_COST },
+          { id: 'o-fr', status: 'pending', credits_consumed: DUB_COST },
+        ]),
+      });
       const remove = jest.fn();
       queue.getJob.mockResolvedValue({
         data: { userId: USER, projectId: 'p-1', reservedCredits: DUB_COST * 2 },
@@ -775,23 +772,31 @@ describe('DubbingService', () => {
         { status: 'failed', error_message: 'Cancelled by user', credits_consumed: 0 },
       );
       expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'failed', error_message: 'Cancelled by user' }),
+        { status: 'failed', error_message: 'Cancelled by user', credits_consumed: 0 },
       );
       expect(res.message).toBe('Dubbing cancelled');
     });
 
-    // A queued mux-only job holds no reservation: a language whose audio was delivered
-    // keeps the charge it earned.
-    it('keeps the earned charge of delivered languages when a free mux job is cancelled', async () => {
-      await build();
+    // A mux job queued after the video arrived reserves nothing: its languages were charged
+    // when they were dubbed. Cancelling it still refunds them, and only them.
+    it('refunds the unfinished languages of a cancelled mux job and keeps the finished one', async () => {
+      await build({
+        dubbing_outputs: outputsTable([
+          { id: 'o-es', status: 'completed', credits_consumed: DUB_COST },
+          { id: 'o-fr', status: 'pending', dubbed_audio_url: 'fr.mp3', credits_consumed: DUB_COST },
+        ]),
+      });
       queue.getJob.mockResolvedValue({
         data: { userId: USER, projectId: 'p-1', reservedCredits: 0 },
         getState: () => Promise.resolve('waiting'),
         remove: jest.fn(),
       });
       await service.stopDub(USER, 'job-1');
-      expect(rpc).not.toHaveBeenCalled();
-      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith({ status: 'failed', error_message: 'Cancelled by user' });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
+      expect(tables.dubbing_outputs.in).toHaveBeenCalledWith('id', ['o-fr']);
+      expect(tables.dubbing_projects.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'failed', credits_consumed: DUB_COST }),
+      );
     });
 
     it('sets the Redis cancel flag for an active job', async () => {
@@ -804,6 +809,32 @@ describe('DubbingService', () => {
       expect(redis.set).toHaveBeenCalledWith(`${DUBBING_CANCEL_PREFIX}job-1`, '1', 'EX', 3600);
       expect(res.message).toMatch(/^Cancellation requested/);
       // The worker refunds an active job when it aborts - the API must not double-refund.
+      expect(rpc).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancelDub', () => {
+    it('refunds a dub cancelled while it waits for its video', async () => {
+      await build({
+        dubbing_projects: chain(
+          { data: { project_id: 'p-1', user_id: USER, status: 'awaiting_video' }, error: null },
+          { data: [{ project_id: 'p-1' }], error: null },
+        ),
+        dubbing_outputs: outputsTable([{ id: 'o-es', status: 'awaiting_video', dubbed_audio_url: 'es.mp3', credits_consumed: DUB_COST }]),
+      });
+      await expect(service.cancelDub(USER, 'p-1')).resolves.toEqual({ message: 'Dubbing cancelled. Nothing was charged.' });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: DUB_COST });
+      expect(tables.dubbing_outputs.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', credits_consumed: 0 }));
+    });
+
+    it('refunds nothing when the video finished first and the mux was already queued', async () => {
+      await build({
+        dubbing_projects: chain(
+          { data: { project_id: 'p-1', user_id: USER, status: 'awaiting_video' }, error: null },
+          { data: [], error: null },
+        ),
+      });
+      await expect(service.cancelDub(USER, 'p-1')).rejects.toThrow(/already being finished/);
       expect(rpc).not.toHaveBeenCalled();
     });
   });

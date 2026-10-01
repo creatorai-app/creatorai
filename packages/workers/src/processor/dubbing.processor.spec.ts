@@ -1,4 +1,4 @@
-import { calculateDubbingCreditsByDuration, paidDubbingMultiplier } from '@repo/validation';
+import { calculateDubbingCreditsByDuration, paidDubbingMultiplier, DUB_VIDEO_WAIT_HOURS } from '@repo/validation';
 import { DubbingProcessor } from './dubbing.processor';
 import * as elevenlabs from './utils/elevenlabs-dubbing';
 
@@ -55,6 +55,8 @@ const fakeDb = {
   tables: {} as Record<string, Row[]>,
   writes: [] as { table: string; fields: Row }[],
   rpc: jest.fn(async (_name: string, _args: Row) => ({ error: null })),
+  /** Makes matching writes fail the way a dropped connection does. */
+  failWrite: null as ((table: string, fields: Row) => boolean) | null,
   client: null as any,
 };
 fakeDb.client = {
@@ -80,7 +82,13 @@ fakeDb.client = {
         const rows = run();
         return rows.length ? { data: rows[0], error: null } : { data: null, error: { message: 'no rows' } };
       },
-      then: (res: any, rej: any) => Promise.resolve({ data: run(), error: null }).then(res, rej),
+      maybeSingle: async () => ({ data: run()[0] ?? null, error: null }),
+      then: (res: any, rej: any) =>
+        Promise.resolve(
+          update && fakeDb.failWrite?.(table, update)
+            ? { data: null, error: { message: 'TypeError: fetch failed' } }
+            : { data: run(), error: null },
+        ).then(res, rej),
     };
     return q;
   },
@@ -99,7 +107,7 @@ function seed({
   fakeDb.writes = [];
   fakeDb.tables = {
     dubbing_projects: [{
-      project_id: 'p1', engine: 'elevenlabs', video_object: null, analysis: null, status: 'queued',
+      project_id: 'p1', user_id: 'u1', engine: 'elevenlabs', video_object: null, analysis: null, status: 'queued',
       source_language: 'en', voice_mode: 'balanced', keyterms: ['Creator AI'], vendor_projects: null, ...project,
     }],
     dubbing_outputs: outputs.map((o, i) => ({
@@ -119,9 +127,9 @@ function makeJob() {
   return {
     id: 'job-1',
     data: {
-      userId: 'u1', projectId: 'p1', bullJobId: 'job-1', inputGsUri: 'gs://dub-bucket/u1/dubbing/p1/audio.m4a',
-      inputUrl: 'https://storage.googleapis.com/dub-bucket/u1/dubbing/p1/audio.m4a', mimeType: 'audio/mp4',
-      isVideo: false, durationSeconds: 30, planName: 'Creator', reservedCredits: 0,
+      userId: 'u1', projectId: 'p1', inputGsUri: 'gs://dub-bucket/u1/dubbing/p1/audio.m4a',
+      inputUrl: 'https://storage.googleapis.com/dub-bucket/u1/dubbing/p1/audio.m4a',
+      isVideo: false, durationSeconds: 30, planName: 'Creator',
     },
     updateProgress: jest.fn(async () => undefined),
     log: jest.fn(async () => undefined),
@@ -136,6 +144,7 @@ let targetSeq: number;
 beforeEach(() => {
   jest.clearAllMocks();
   cancelFlag = null;
+  fakeDb.failWrite = null;
   targetSeq = 0;
   el.createProject.mockImplementation(async (o: any) => `proj_${o.modelId}`);
   el.createLanguageTarget.mockImplementation(async (o: any) => `lang_${o.targetLanguage}_${++targetSeq}`);
@@ -242,7 +251,7 @@ describe('DubbingProcessor on ElevenLabs', () => {
     expect(output('es').vendor_dub_id).toBe('project:proj_A:lang_LOST');
   });
 
-  it('gives a regenerated dub its own reference, so the old project is not found', async () => {
+  it('keeps a dub with a generation on its own reference, so the project of an older run is not found', async () => {
     seed({ project: { vendor_projects: { generation: 2 } }, outputs: [{ language: 'es' }] });
     await makeProcessor().process(makeJob());
     expect(el.findProjectByReference).toHaveBeenCalledWith(expect.anything(), 'p1#2', 'dubbing_v2');
@@ -367,5 +376,118 @@ describe('DubbingProcessor on ElevenLabs', () => {
     const charges = fakeDb.rpc.mock.calls.filter(([, a]) => a.credit_change < 0).map(([, a]) => a.credit_change);
     expect(charges).toEqual([-(owed - PER_LANGUAGE)]);
     expect(output('es').credits_consumed).toBe(owed);
+  });
+});
+
+describe('DubbingProcessor waiting for the video', () => {
+  const deadline = (parkedJobId: string) =>
+    ({ name: 'video-deadline', data: { projectId: 'p1', parkedJobId }, log: jest.fn(async () => undefined) }) as any;
+
+  it('schedules a deadline when it parks a finished dub on its video', async () => {
+    seed({ project: { video_object: 'u1/dubbing/p1/video.mp4', video_status: 'uploading' }, outputs: [{ language: 'es' }] });
+    const add = jest.fn(async () => undefined);
+    const processor = new DubbingProcessor({ client: Promise.resolve({ get: jest.fn(async () => null) }), add } as any);
+    const job = makeJob();
+    job.data.isVideo = true;
+
+    await processor.process(job);
+
+    expect(projectRow().status).toBe('awaiting_video');
+    expect(add).toHaveBeenCalledWith(
+      'video-deadline',
+      { projectId: 'p1', parkedJobId: 'job-1' },
+      expect.objectContaining({ delay: DUB_VIDEO_WAIT_HOURS * 3600 * 1000, jobId: 'dubbing-video-deadline-job-1' }),
+    );
+  });
+
+  it('cancels only the wait it was scheduled for, refunding it since nothing was delivered', async () => {
+    seed({
+      project: { status: 'awaiting_video', job_id: 'job-2' },
+      outputs: [{ language: 'es', status: 'awaiting_video', dubbed_audio_url: 'https://x/es.mp3' }],
+    });
+
+    // A retry since then parked under a new job: the old deadline must not touch it.
+    await makeProcessor().process(deadline('job-1'));
+    expect(projectRow().status).toBe('awaiting_video');
+
+    await makeProcessor().process(deadline('job-2'));
+    expect(projectRow().status).toBe('failed');
+    expect(output('es').status).toBe('failed');
+    expect(output('es').credits_consumed).toBe(0);
+    expect(refunds()).toEqual([PER_LANGUAGE]);
+    // Kept for the retry, which reuses it rather than dubbing again.
+    expect(output('es').dubbed_audio_url).toBe('https://x/es.mp3');
+  });
+
+  it('refunds a language whose dubbed track landed but whose mux failed', async () => {
+    const ffmpeg = jest.requireMock('./utils/ffmpeg');
+    ffmpeg.muxDubbedAudio.mockRejectedValueOnce(new Error('ffmpeg exited 1'));
+    seed({ project: { video_object: 'u1/dubbing/p1/video.mp4', video_status: 'uploaded' }, outputs: [{ language: 'es' }] });
+    const job = makeJob();
+    job.data.isVideo = true;
+
+    await expect(makeProcessor().process(job)).rejects.toThrow();
+
+    expect(output('es')).toMatchObject({ status: 'failed', credits_consumed: 0 });
+    expect(output('es').dubbed_audio_url).toBeTruthy();
+    expect(refunds()).toEqual([PER_LANGUAGE]);
+    expect(projectRow()).toMatchObject({ status: 'failed', credits_consumed: 0 });
+  });
+});
+
+describe('DubbingProcessor setup', () => {
+  // The read that starts a run used to sit outside the try, so a blip on it left the dub
+  // queued for good with its credits held.
+  it('settles and refunds a run whose first read fails', async () => {
+    seed({ outputs: [{ language: 'es' }] });
+    const processor = makeProcessor();
+    jest.spyOn(processor as any, 'loadProject').mockRejectedValueOnce(new Error('dubbing_projects read failed: TypeError: fetch failed'));
+
+    await expect(processor.process(makeJob())).rejects.toThrow('fetch failed');
+
+    expect(refunds()).toEqual([PER_LANGUAGE]);
+    expect(output('es')).toMatchObject({ status: 'failed', credits_consumed: 0 });
+    expect(projectRow().status).toBe('failed');
+  });
+});
+
+describe('DubbingProcessor after a worker crash', () => {
+  function stalledProcessor(state: string) {
+    const job = { ...makeJob(), name: 'dubbing', getState: async () => state };
+    const queue = { client: Promise.resolve({ get: jest.fn(async () => null) }), getJob: jest.fn(async () => job) } as any;
+    return new DubbingProcessor(queue);
+  }
+
+  it('refunds a job BullMQ failed for stalling, since its catch never ran', async () => {
+    seed({ project: { status: 'processing', job_id: 'job-1' }, outputs: [{ language: 'es' }, { language: 'fr' }] });
+    await stalledProcessor('failed').onStalled('job-1');
+    expect(refunds()).toEqual([PER_LANGUAGE, PER_LANGUAGE]);
+    expect(projectRow()).toMatchObject({ status: 'failed', credits_consumed: 0 });
+  });
+
+  it('leaves a stalled job that BullMQ put back to run again', async () => {
+    seed({ project: { status: 'processing', job_id: 'job-1' }, outputs: [{ language: 'es' }] });
+    await stalledProcessor('waiting').onStalled('job-1');
+    expect(refunds()).toEqual([]);
+    expect(projectRow().status).toBe('processing');
+  });
+
+  it('leaves a dub a newer job has taken over', async () => {
+    seed({ project: { status: 'processing', job_id: 'job-2' }, outputs: [{ language: 'es' }] });
+    await stalledProcessor('failed').onStalled('job-1');
+    expect(refunds()).toEqual([]);
+  });
+});
+
+describe('DubbingProcessor storing a dubbed track', () => {
+  it('refunds a language whose track never made it onto its row', async () => {
+    seed({ outputs: [{ language: 'es' }] });
+    fakeDb.failWrite = (table, fields) => table === 'dubbing_outputs' && 'dubbed_audio_url' in fields;
+
+    await makeProcessor().process(makeJob()).catch(() => undefined);
+
+    expect(output('es').status).toBe('failed');
+    expect(output('es').credits_consumed).toBe(0);
+    expect(refunds()).toEqual([PER_LANGUAGE]);
   });
 });

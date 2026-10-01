@@ -14,7 +14,7 @@ import { ContentCard } from "@/components/dashboard/common/ContentCard";
 import ContentCardSkeleton from "@/components/dashboard/common/skeleton/ContentCardSkeleton";
 import { EmptySvg } from "@/components/dashboard/common/EmptySvg";
 import { getDubbings, deleteDubbing, DubbingProject } from "@/lib/api/getDubbings";
-import { supportedLanguages } from "@repo/validation"
+import { dubLanguageLabel } from "@repo/validation"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -33,12 +33,8 @@ const emptyStateVariants = {
   },
 }
 
-function getLanguageLabel(code: string): string {
-  return supportedLanguages.find((l) => l.value === code)?.label ?? code
-}
-
 function languageNames(project: DubbingProject): string {
-  return project.languages.map(getLanguageLabel).join(", ")
+  return project.languages.map(dubLanguageLabel).join(", ")
 }
 
 function formatTitle(project: DubbingProject): string {

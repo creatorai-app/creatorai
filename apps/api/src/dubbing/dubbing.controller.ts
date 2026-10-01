@@ -157,26 +157,11 @@ export class DubbingController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Retry a failed dub from where it stopped',
-    description: 'Keeps the translation, finished segments and any dubbed audio. Charges again only if the dubbed audio was never delivered.',
+    description: 'Keeps the translation, finished segments and any dubbed audio. Charges each unfinished language again, since a failure refunds it.',
   })
   @ApiParam({ name: 'id', description: 'dubbing project_id' })
   async resume(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.service.resumeDub(req.user!.id, id);
-  }
-
-  @Post(':id/regenerate')
-  @UseGuards(SupabaseAuthGuard, OnboardedGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Regenerate a dub from its original media',
-    description: 'Re-runs the same source (reused from GCS) with the same target language, resetting the project in place and enqueuing a fresh job. Charges credits like a new dub.',
-  })
-  @ApiParam({ name: 'id', description: 'dubbing project_id' })
-  @ApiResponse({ status: 201, description: '{ projectId, jobId }' })
-  @ApiResponse({ status: 400, description: 'Original media no longer available' })
-  @ApiResponse({ status: 403, description: 'Free plan or insufficient credits' })
-  async regenerate(@Req() req: AuthRequest, @Param('id') id: string) {
-    return this.service.regenerateDub(req.user!.id, id);
   }
 
   @Post('stop/:jobId')
@@ -190,6 +175,20 @@ export class DubbingController {
   @ApiResponse({ status: 201, description: '{ message }' })
   async stop(@Req() req: AuthRequest, @Param('jobId') jobId: string) {
     return this.service.stopDub(req.user!.id, jobId);
+  }
+
+  @Post(':id/cancel')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Cancel a dub, whatever stage it is in',
+    description: 'A queued or running job is stopped as with /stop/{jobId}. A dub waiting on its video upload stops waiting, is marked failed and refunded; its dubbed audio is kept for a retry. A dub whose upload never finished is deleted, since nothing was charged.',
+  })
+  @ApiParam({ name: 'id', description: 'dubbing project_id' })
+  @ApiResponse({ status: 201, description: '{ message }' })
+  @ApiResponse({ status: 400, description: 'The dub is not running' })
+  async cancel(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.service.cancelDub(req.user!.id, id);
   }
 
   @Sse('status/:jobId')
@@ -208,11 +207,9 @@ export class DubbingController {
         completed: 'Dubbing complete!',
         failed: 'Dubbing failed',
       },
-      extractResult: (job) => ({
-        dubbedUrl: job.returnvalue?.dubbedUrl,
-        dubbedAudioUrl: job.returnvalue?.dubbedAudioUrl,
-        awaitingVideo: !!job.returnvalue?.awaitingVideo,
-      }),
+      // No media URLs: this route is unauthenticated, and the dub's own GET hands out
+      // finished media to its owner.
+      extractResult: (job) => ({ awaitingVideo: !!job.returnvalue?.awaitingVideo }),
     });
   }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import * as motion from "motion/react-m";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@repo/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
@@ -10,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/
 import { toast } from "sonner";
 import {
   ArrowLeft, Loader2, Trash2, CheckCircle2, Languages, Video, Music,
-  XCircle, RotateCw, Coins, CalendarDays, Play, Cpu, Users, Mic, type LucideIcon,
+  XCircle, Coins, CalendarDays, Play, Cpu, Users, Mic, Activity, type LucideIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -24,14 +25,13 @@ import {
   AlertDialogFooter,
 } from "@repo/ui/alert-dialog";
 import { useSupabase } from "@/components/supabase-provider";
-import { getDubbing, deleteDubbing, regenerateDubbing, resumeDubbing } from "@/lib/api/getDubbings";
-import { DubResponse, DubStatus, dubEngineLabel, supportedLanguages } from "@repo/validation";
+import { getDubbing, deleteDubbing } from "@/lib/api/getDubbings";
+import { DubResponse, DubStatus, DUB_JOB_STATUSES, dubEngineLabel, dubLanguageLabel } from "@repo/validation";
 import { DubbingMediaPlayer } from "@/components/dashboard/dubbing/DubbingMediaPlayer"
-import { DubbingResumeUpload } from "@/components/dashboard/dubbing/DubbingResumeUpload"
 import { DubOutputsList } from "@/components/dashboard/dubbing/DubOutputsList"
 
 const STATUS_LABELS: Record<DubStatus, string> = {
-  uploading: "Uploading",
+  uploading: "Upload unfinished",
   queued: "Queued",
   processing: "Processing",
   cloning: "Dubbing",
@@ -40,14 +40,7 @@ const STATUS_LABELS: Record<DubStatus, string> = {
   failed: "Failed",
 }
 
-// A worker (or a pending upload elsewhere) will move these on by itself.
-const POLLED_STATUSES: DubStatus[] = ["queued", "processing", "cloning", "awaiting_video"]
-
-function getLanguageLabel(code: string): string {
-  return supportedLanguages.find((l) => l.value === code)?.label ?? code
-}
-
-/** Glassy stat card — mirrors the main dashboard's Quick Actions card design. */
+/** Glassy stat card, mirroring the main dashboard's Quick Actions card design. */
 function StatCard({ icon: Icon, label, value, iconClassName }: {
   icon: LucideIcon
   label: string
@@ -67,6 +60,10 @@ function StatCard({ icon: Icon, label, value, iconClassName }: {
   )
 }
 
+/**
+ * A dub's details, status and finished media. Running, resuming and finishing a dub all
+ * happen on the generation page, which this hands off to.
+ */
 export default function DubbingDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -76,90 +73,40 @@ export default function DubbingDetailPage() {
   const [dubbing, setDubbing] = useState<DubResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isRegenerating, setIsRegenerating] = useState(false)
-  const [isResuming, setIsResuming] = useState(false)
-
-  useEffect(() => {
-    const fetchDubbing = async () => {
-      if (!projectId || !session?.access_token) return
-
-      setLoading(true)
-      try {
-        const data = await getDubbing(projectId, session.access_token)
-        if (!data) {
-          toast.error("Dubbing not found")
-          router.push("/dashboard/dubbing")
-          return
-        }
-        setDubbing(data);
-      } catch (error: any) {
-        toast.error("Error loading dubbing", {
-          description: error.message || "Failed to fetch dubbing details.",
-        })
-        router.push("/dashboard/dubbing")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchDubbing()
-  }, [projectId, session?.access_token, router])
 
   const refresh = useCallback(async () => {
-    const fresh = await getDubbing(projectId, session?.access_token).catch(() => null)
+    const fresh = await getDubbing(projectId, session?.access_token)
     if (fresh) setDubbing(fresh)
+    return fresh
   }, [projectId, session?.access_token])
 
-  // Poll while a job is in flight; this page has no SSE.
+  useEffect(() => {
+    if (!projectId || !session?.access_token) return
+    setLoading(true)
+    void refresh().then((data) => {
+      setLoading(false)
+      if (!data) router.push("/dashboard/dubbing")
+    })
+  }, [projectId, session?.access_token, refresh, router])
+
+  // The status is the point of this page, so it follows a dub that is still moving.
   const status = dubbing?.status
   useEffect(() => {
-    if (!session?.access_token || !status || !POLLED_STATUSES.includes(status)) return
-    const iv = setInterval(refresh, 4000)
+    if (!status || status === "completed" || status === "failed") return
+    const iv = setInterval(refresh, 5000)
     return () => clearInterval(iv)
-  }, [status, session?.access_token, refresh])
+  }, [status, refresh])
 
   const handleDelete = async () => {
-    if (!projectId) return
     setIsDeleting(true)
     try {
-      const success = await deleteDubbing(projectId, session?.access_token)
-      if (success) {
-        toast.success("Dubbing deleted!", { description: "The dubbed media has been successfully deleted." })
-        router.push("/dashboard/dubbing")
-      } else {
-        throw new Error("Failed to delete")
-      }
+      if (!(await deleteDubbing(projectId, session?.access_token))) throw new Error("Failed to delete dubbing.")
+      toast.success("Dubbing deleted!", { description: "The dubbed media has been successfully deleted." })
+      router.push("/dashboard/dubbing")
     } catch (error: any) {
       toast.error("Error deleting dubbing", { description: error.message || "Failed to delete dubbing." })
     } finally {
       setIsDeleting(false)
-    }
-  }
-
-  const handleRegenerate = async () => {
-    setIsRegenerating(true)
-    try {
-      await regenerateDubbing(projectId, session?.access_token)
-      toast.success("Regeneration started", { description: "Re-dubbing your media with the same settings." })
-      const fresh = await getDubbing(projectId, session?.access_token).catch(() => null)
-      if (fresh) setDubbing(fresh)
-    } catch (error: any) {
-      toast.error("Could not regenerate", { description: error?.message || "Please try again." })
-    } finally {
-      setIsRegenerating(false)
-    }
-  }
-
-  const handleResume = async () => {
-    setIsResuming(true)
-    try {
-      await resumeDubbing(projectId, session?.access_token)
-      toast.success("Retrying", { description: "Picking up from where it stopped." })
-      await refresh()
-    } catch (error: any) {
-      toast.error("Could not retry", { description: error?.message || "Please try again." })
-    } finally {
-      setIsResuming(false)
     }
   }
 
@@ -172,16 +119,11 @@ export default function DubbingDetailPage() {
   }
   if (!dubbing) return null
 
-  const languageLabel = dubbing.outputs.map((o) => getLanguageLabel(o.language)).join(", ")
-  // Lifecycle: uploading → queued → processing → cloning → (awaiting_video) → completed | failed
+  const languageLabel = dubbing.outputs.map((o) => dubLanguageLabel(o.language)).join(", ")
   const isCompleted = dubbing.status === "completed"
   const isFailed = dubbing.status === "failed"
-  const isProcessing = !isCompleted && !isFailed
-  // The browser's upload stopped: the audio never landed, or the video is still partial.
-  const needsUpload = dubbing.status === "uploading" || (!isCompleted && dubbing.videoStatus === "uploading")
-  const finishedCount = dubbing.outputs.filter((o) => o.status === "completed").length
-  const hasAnyAudio = dubbing.outputs.some((o) => o.dubbedAudioUrl || o.dubbedUrl)
-  const deliveredButUnmuxed = dubbing.outputs.some((o) => o.status === "failed" && o.dubbedAudioUrl)
+  const isRunning = !isCompleted && !isFailed
+  const finished = dubbing.outputs.filter((o) => o.status === "completed")
 
   const StatusIcon = isCompleted ? CheckCircle2 : isFailed ? XCircle : Loader2
   const statusColor = isCompleted
@@ -190,13 +132,24 @@ export default function DubbingDetailPage() {
       ? "text-red-500"
       : "text-purple-600 dark:text-purple-400"
 
+  const description = isCompleted
+    ? `Dubbed into ${languageLabel}.`
+    : isFailed
+      ? finished.length
+        ? "Some languages did not finish. Only the finished ones were charged. Retry to continue the rest from where they stopped."
+        : "This dubbing did not finish, so nothing was charged. Retry to continue from where it stopped."
+      : dubbing.status === "uploading"
+        ? "The upload stopped before dubbing could start. Nothing has been charged."
+        : dubbing.status === "awaiting_video"
+          ? "The dubbed audio is ready. The dub finishes once the video upload does."
+          : "Your dubbing is in progress. This page updates automatically."
+
   const createdLabel = new Date(dubbing.createdAt).toLocaleDateString(undefined, {
     year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   })
 
   return (
     <div className="container py-8">
-      {/* Header — icon-only back button on the left */}
       <div className="mb-8 flex items-center gap-4">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
@@ -208,13 +161,10 @@ export default function DubbingDetailPage() {
             <TooltipContent>Back to Dubbings</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Details</h1>
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Details</h1>
       </div>
 
       <motion.div className="space-y-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-        {/* 1. Details — glassy quick-action-style cards, full width */}
         <section aria-label="Details">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">Details</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -222,75 +172,55 @@ export default function DubbingDetailPage() {
             {dubbing.engine && <StatCard icon={Cpu} label="Engine" value={dubEngineLabel(dubbing.engine)} />}
             <StatCard icon={Languages} label={dubbing.outputs.length > 1 ? "Languages" : "Target Language"} value={languageLabel} />
             {dubbing.speakerCount ? <StatCard icon={Users} label="Speakers" value={`${dubbing.speakerCount}`} /> : null}
-            {dubbing.sourceLanguage ? <StatCard icon={Mic} label="Spoken language" value={getLanguageLabel(dubbing.sourceLanguage)} /> : null}
-            <StatCard icon={StatusIcon} label="Status" value={STATUS_LABELS[dubbing.status] ?? dubbing.status} iconClassName={`${statusColor} ${isProcessing ? "[&>svg]:animate-spin" : ""}`} />
-            <StatCard icon={Coins} label="Credits Used" value={dubbing.creditsConsumed ? `${dubbing.creditsConsumed}` : "—"} />
+            {dubbing.sourceLanguage ? <StatCard icon={Mic} label="Spoken language" value={dubLanguageLabel(dubbing.sourceLanguage)} /> : null}
+            <StatCard icon={StatusIcon} label="Status" value={STATUS_LABELS[dubbing.status] ?? dubbing.status} iconClassName={`${statusColor} ${isRunning ? "[&>svg]:animate-spin" : ""}`} />
+            <StatCard icon={Coins} label="Credits Used" value={dubbing.creditsConsumed ? `${dubbing.creditsConsumed}` : "0"} />
             <StatCard icon={CalendarDays} label="Created" value={createdLabel} />
           </div>
         </section>
 
-        {/* 2. Main media section — full width */}
-        <section aria-label="Preview">
+        <section aria-label="Status and media">
           <Card>
             <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 space-y-0">
               <div className="min-w-0">
                 <CardTitle className="flex items-center gap-2">
-                  <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor} ${isProcessing ? "animate-spin" : ""}`} />
-                  <span className="truncate">
-                    {dubbing.mediaName || (isCompleted ? "Dubbing Complete" : isFailed ? "Dubbing Failed" : "Processing…")}
-                  </span>
+                  <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor} ${isRunning ? "animate-spin" : ""}`} />
+                  <span className="truncate">{dubbing.mediaName || STATUS_LABELS[dubbing.status]}</span>
                 </CardTitle>
-                <CardDescription className="mt-1.5">
-                  {isCompleted
-                    ? `Dubbed into ${languageLabel}. Preview and download below.`
-                    : isFailed
-                      ? deliveredButUnmuxed
-                        ? "The dubbed audio is ready, but adding it to the video failed. Retry to finish it at no extra cost."
-                        : finishedCount
-                          ? "Some languages did not finish and were not charged. Retry to continue them from where they stopped."
-                          : "This dubbing did not complete. No credits were charged. Retry to continue from where it stopped."
-                      : dubbing.status === "awaiting_video"
-                        ? "The dubbed audio is ready. The video is added as soon as its upload finishes."
-                        : "Your dubbing is being processed. This page updates automatically."}
-                </CardDescription>
+                <CardDescription className="mt-1.5">{description}</CardDescription>
               </div>
 
-              {/* Icon toolbar — before the preview */}
-              <TooltipProvider delayDuration={0}>
-                <div className="flex items-center gap-2 shrink-0">
-                  {isFailed && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="icon" onClick={handleResume} disabled={isResuming} className="bg-purple-600 hover:bg-purple-700 text-white" aria-label="Retry from where it stopped">
-                          {isResuming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Retry from where it stopped</TooltipContent>
-                    </Tooltip>
-                  )}
+              <div className="flex items-center gap-2 shrink-0">
+                {isFailed && (
+                  <Button asChild className="bg-purple-600 hover:bg-purple-700 text-white">
+                    <Link href={`/dashboard/dubbing/new?dub=${projectId}&retry=1`}>
+                      <Play className="mr-2 h-4 w-4" /> Retry
+                    </Link>
+                  </Button>
+                )}
+                {isRunning && (
+                  <Button asChild variant="outline">
+                    <Link href={`/dashboard/dubbing/new?dub=${projectId}`}>
+                      <Activity className="mr-2 h-4 w-4" /> View progress
+                    </Link>
+                  </Button>
+                )}
 
-                  {!isProcessing && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={handleRegenerate} disabled={isRegenerating} aria-label="Regenerate">
-                          {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Regenerate with same input</TooltipContent>
-                    </Tooltip>
-                  )}
-
+                {/* A dub with a job running can't be deleted (the API refuses it too). */}
+                {!DUB_JOB_STATUSES.includes(dubbing.status) && (
                   <AlertDialog>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="icon" disabled={isDeleting} className="text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30 hover:border-red-500/50" aria-label="Delete dubbing">
-                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          </Button>
-                        </AlertDialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete dubbing</TooltipContent>
-                    </Tooltip>
+                    <TooltipProvider delayDuration={0}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="icon" disabled={isDeleting} className="text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30 hover:border-red-500/50" aria-label="Delete dubbing">
+                              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>Delete dubbing</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -304,24 +234,22 @@ export default function DubbingDetailPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </div>
-              </TooltipProvider>
+                )}
+              </div>
             </CardHeader>
 
-            <CardContent className="space-y-8">
-              {needsUpload && <DubbingResumeUpload projectId={projectId} onProgressed={refresh} />}
-
-              {dubbing.originalMediaUrl && hasAnyAudio && (
-                <div className="space-y-3">
-                  <Label>Original Media</Label>
-                  <DubbingMediaPlayer url={dubbing.originalMediaUrl} isVideo={dubbing.isVideo} title="Original media" />
-                </div>
-              )}
-
-              {(!needsUpload || hasAnyAudio) && (
+            {/* The API hands out media only for finished languages; the rest show their state. */}
+            {dubbing.status !== "uploading" && (
+              <CardContent className="space-y-8">
+                {dubbing.originalMediaUrl && finished.length > 0 && (
+                  <div className="space-y-3">
+                    <Label>Original Media</Label>
+                    <DubbingMediaPlayer url={dubbing.originalMediaUrl} isVideo={dubbing.isVideo} title="Original media" />
+                  </div>
+                )}
                 <DubOutputsList outputs={dubbing.outputs} isVideo={dubbing.isVideo} mediaName={dubbing.mediaName} />
-              )}
-            </CardContent>
+              </CardContent>
+            )}
           </Card>
         </section>
       </motion.div>

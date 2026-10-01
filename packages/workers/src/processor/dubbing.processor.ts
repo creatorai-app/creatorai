@@ -1,4 +1,4 @@
-import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
+import { Processor, WorkerHost, InjectQueue, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { createSupabaseClient, getSupabaseServiceEnv, reportError, SupabaseClient } from '@repo/supabase';
@@ -16,7 +16,8 @@ import {
   cloningStrengthFor,
   elevenLabsModelFor,
   elevenLabsTargetTag,
-  DEFAULT_DUB_VOICE_MODE,
+  DUB_VIDEO_WAIT_HOURS,
+  DUB_JOB_STATUSES,
   type DubEngine,
   type DubTimelineSegment,
   type DubVoiceMode,
@@ -163,19 +164,11 @@ class DubbingCancelledError extends Error {
 interface DubJobData {
   userId: string;
   projectId: string;
-  bullJobId: string;
   inputGsUri: string;   // gs:// audio source, read by Gemini (a legacy dub's whole file)
   inputUrl: string;     // public GCS URL of the same: probed, cut into voice samples, sent to ElevenLabs
-  mimeType: string;
   isVideo: boolean;
   durationSeconds: number;
-  planName?: string | null;   // for the plan duration cap, re-checked against ffprobe's reading
-  reservedCredits: number;    // deducted at enqueue for the languages that need dubbing (0 for a mux-only run)
-  // The job's own record of the dub's settings. The project row is what is read; these
-  // only stand in where a row column is empty.
-  sourceLanguage?: string | null;
-  voiceMode?: DubVoiceMode;
-  keyterms?: string[];
+  planName?: string | null;   // for the plan duration cap and the rate the charge is settled at
 }
 
 interface OutputRow {
@@ -194,8 +187,8 @@ interface OutputRow {
 
 /**
  * ElevenLabs project ids per model, as stored on dubbing_projects.vendor_projects.
- * `generation` counts regenerates (the API bumps it), so each fresh start has its own
- * project `reference` and a lookup never finds the previous run's project.
+ * `generation` was bumped by the since-removed regenerate, giving each fresh start its own
+ * project `reference`; dubs that carry one keep resolving to their own project.
  */
 type VendorProjects = Partial<Record<ElevenLabsDubbingModel, string>> & { generation?: number };
 
@@ -204,8 +197,8 @@ interface ProjectRow {
   video_object: string | null;
   analysis: SourceAnalysis | null;
   source_language: string | null;
-  voice_mode: DubVoiceMode | null;
-  keyterms: string[] | null;
+  voice_mode: DubVoiceMode;
+  keyterms: string[];
   vendor_projects: VendorProjects | null;
 }
 
@@ -234,7 +227,23 @@ interface RunContext {
   fullLengthTrack: boolean;
 }
 
+/** What failing a language needs; a run's full context, or just a job and its dub. */
+type FailContext = Pick<RunContext, 'userId' | 'projectId'> & { job: Job };
+
 type DubResult = { dubbedUrl: string | null; awaitingVideo?: boolean };
+
+// Queued (delayed) on the dubbing queue when a dub parks to wait for its video: if the
+// same wait is still on when it fires, the dub is cancelled. See DUB_VIDEO_WAIT_HOURS.
+const VIDEO_DEADLINE_JOB = 'video-deadline';
+const VIDEO_WAIT_EXPIRED =
+  `The video did not finish uploading within ${DUB_VIDEO_WAIT_HOURS} hours, so this dub was cancelled and not charged. ` +
+  'Retry and pick the same file to finish it from where it stopped.';
+
+interface VideoDeadlineData {
+  projectId: string;
+  /** The job that parked. A retry or a finished upload queues a new job, which retires this deadline. */
+  parkedJobId: string;
+}
 
 @Processor('dubbing', { concurrency: 2 })
 export class DubbingProcessor extends WorkerHost {
@@ -259,30 +268,69 @@ export class DubbingProcessor extends WorkerHost {
     if (await client.get(`${DUBBING_CANCEL_PREFIX}${jobId}`)) throw new DubbingCancelledError();
   }
 
-  async process(job: Job<DubJobData>): Promise<DubResult> {
+  /**
+   * A job that stalls past maxStalledCount (the worker died mid-run) is failed by BullMQ's
+   * stalled checker, which never runs the processor's catch. Settle it here instead, or
+   * its reservation is never refunded and the dub sits in 'processing' for good.
+   */
+  @OnWorkerEvent('stalled')
+  async onStalled(jobId: string): Promise<void> {
+    const job = (await this.queue.getJob(jobId)) as Job<DubJobData> | undefined;
+    if (!job || job.name === VIDEO_DEADLINE_JOB || (await job.getState()) !== 'failed') return;
+    const { data } = await this.supabase
+      .from('dubbing_projects')
+      .select('status, job_id')
+      .eq('project_id', job.data.projectId)
+      .maybeSingle();
+    if (!data || data.job_id !== job.id || !DUB_JOB_STATUSES.includes(data.status)) return;
+    await this.failUnfinished(
+      { job, userId: job.data.userId, projectId: job.data.projectId },
+      'The dubbing worker stopped unexpectedly. Nothing was charged. Retry to continue from where it stopped.',
+    );
+  }
+
+  async process(job: Job): Promise<DubResult> {
+    if (job.name === VIDEO_DEADLINE_JOB) {
+      const { projectId, parkedJobId } = job.data as VideoDeadlineData;
+      await this.stopWaitingForVideo(job, projectId, VIDEO_WAIT_EXPIRED, parkedJobId);
+      return { dubbedUrl: null };
+    }
+    return this.dub(job as Job<DubJobData>);
+  }
+
+  private async dub(job: Job<DubJobData>): Promise<DubResult> {
     const { userId, projectId, inputGsUri, inputUrl, isVideo, durationSeconds, planName } = job.data;
-    const { bucket, objectName: inputObject } = parseGsUri(inputGsUri);
-    const project = await this.loadProject(projectId);
-    const engine: DubEngine = project.engine ?? 'cypher';
-    const outputs = (await this.loadOutputs(projectId)).filter((o) => o.status !== 'completed');
-    const needAudio = outputs.filter((o) => !o.dubbed_audio_url);
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dub-'));
-    const ctx: RunContext = {
-      job, userId, projectId, bucket, prefix: dubProjectPrefix(userId, projectId), inputUrl, inputObject, dir, isVideo, durationSeconds, engine,
-      sourceLanguage: project.source_language ?? job.data.sourceLanguage ?? null,
-      voiceMode: project.voice_mode ?? job.data.voiceMode ?? DEFAULT_DUB_VOICE_MODE,
-      keyterms: project.keyterms ?? job.data.keyterms ?? [],
-      vendorProjects: { ...(project.vendor_projects ?? {}) },
-      vendorWrite: Promise.resolve(),
-      fullLengthTrack: project.analysis?.stems?.status === 'done',
-    };
     // Set once the outcome is written, so the catch below never settles credits twice.
     let settled = false;
+    let dir: string | null = null;
+    // For the error report, filled in as the setup gets that far.
+    const report: { engine: DubEngine | null; languages: string[] } = { engine: null, languages: [] };
 
-    await job.updateProgress(needAudio.length ? 0 : 90);
-    await job.log(needAudio.length ? `Dubbing into ${needAudio.map((o) => o.language).join(', ')}...` : 'Finishing the video...');
-
+    // Everything from the first read on runs inside the try: a failure anywhere, a dropped
+    // connection on that very read included, has to settle the dub. Before, a failed
+    // loadProject skipped the catch and left the dub queued for good, holding its credits.
     try {
+      const { bucket, objectName: inputObject } = parseGsUri(inputGsUri);
+      const project = await this.loadProject(projectId);
+      const engine: DubEngine = project.engine ?? 'cypher';
+      const outputs = (await this.loadOutputs(projectId)).filter((o) => o.status !== 'completed');
+      report.engine = engine;
+      report.languages = outputs.map((o) => o.language);
+      const needAudio = outputs.filter((o) => !o.dubbed_audio_url);
+      dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dub-'));
+      const ctx: RunContext = {
+        job, userId, projectId, bucket, prefix: dubProjectPrefix(userId, projectId), inputUrl, inputObject, dir, isVideo, durationSeconds, engine,
+        sourceLanguage: project.source_language,
+        voiceMode: project.voice_mode,
+        keyterms: project.keyterms,
+        vendorProjects: { ...(project.vendor_projects ?? {}) },
+        vendorWrite: Promise.resolve(),
+        fullLengthTrack: project.analysis?.stems?.status === 'done',
+      };
+
+      await job.updateProgress(needAudio.length ? 0 : 90);
+      await job.log(needAudio.length ? `Dubbing into ${needAudio.map((o) => o.language).join(', ')}...` : 'Finishing the video...');
+
       await this.throwIfCancelled(job.id!);
       await this.updateProject(projectId, { status: 'processing' });
 
@@ -312,6 +360,7 @@ export class DubbingProcessor extends WorkerHost {
       if (toMux.length && project.video_object && (await this.parkUntilVideoArrives(projectId))) {
         await this.updateOutputs(toMux.map((o) => o.id), { status: 'awaiting_video' });
         settled = true;
+        await this.scheduleVideoDeadline(projectId, job.id!);
         await job.updateProgress(100);
         await job.log('Dubbed audio ready. Waiting for the video upload to finish.');
         return { dubbedUrl: null, awaitingVideo: true };
@@ -328,7 +377,7 @@ export class DubbingProcessor extends WorkerHost {
       const cancelled = error instanceof DubbingCancelledError;
       // Nothing was delivered for these, so nothing is owed: hand each reservation back
       // before anything else, including before the error is reported.
-      await this.failUnfinished(ctx, cancelled ? 'Cancelled by user' : error.message);
+      await this.failUnfinished({ job, userId, projectId }, cancelled ? 'Cancelled by user' : error.message);
       await job.log(cancelled ? 'Cancelled by user.' : `Fatal error: ${error.message}`);
       if (!cancelled) {
         this.logger.error(`Job ${job.id} failed: ${error.message}`, error.stack);
@@ -338,12 +387,12 @@ export class DubbingProcessor extends WorkerHost {
           feature: 'dubbing',
           userId,
           error,
-          context: { jobId: job.id, projectId, engine, languages: outputs.map((o) => o.language), durationSeconds, planName, isVideo },
+          context: { jobId: job.id, projectId, ...report, durationSeconds, planName, isVideo },
         });
       }
       throw error;
     } finally {
-      await fs.rm(dir, { recursive: true, force: true }).catch(() => null);
+      if (dir) await fs.rm(dir, { recursive: true, force: true }).catch(() => null);
     }
   }
 
@@ -538,7 +587,7 @@ export class DubbingProcessor extends WorkerHost {
     }
   }
 
-  /** Our `reference` on ElevenLabs projects: the dub's id, plus its generation after a regenerate. */
+  /** Our `reference` on ElevenLabs projects: the dub's id, plus its generation if it has one. */
   private vendorReference(ctx: RunContext): string {
     return ctx.vendorProjects.generation ? `${ctx.projectId}#${ctx.vendorProjects.generation}` : ctx.projectId;
   }
@@ -1131,8 +1180,8 @@ export class DubbingProcessor extends WorkerHost {
   // ──────────────────────────── Shared stages ───────────────────────────
 
   /**
-   * Store a language's dubbed track. From here its charge is earned: a later failure
-   * (the mux) keeps it, and the retry that finishes the mux is free. An audio dub is done.
+   * Store a language's dubbed track. An audio dub is done; a video dub still needs the
+   * mux, and if that fails the language is refunded but a retry reuses this track.
    */
   private async storeDubbedAudio(
     ctx: RunContext,
@@ -1142,13 +1191,15 @@ export class DubbingProcessor extends WorkerHost {
   ): Promise<void> {
     const { audio } = dubOutputObjects(ctx.projectId, o.language);
     await uploadGcsFile(ctx.bucket, audio.objectName, mp3Path, audio.contentType);
-    o.dubbed_audio_url = gcsPublicUrl(ctx.bucket, audio.objectName);
+    const url = gcsPublicUrl(ctx.bucket, audio.objectName);
     await this.updateOutputs([o.id], {
-      dubbed_audio_url: o.dubbed_audio_url,
+      dubbed_audio_url: url,
       error_message: null,
       ...extra,
-      ...(ctx.isVideo ? {} : { status: 'completed', dubbed_url: o.dubbed_audio_url }),
+      ...(ctx.isVideo ? {} : { status: 'completed', dubbed_url: url }),
     });
+    // Only once the row has it: a track the row never recorded is not reused by a retry.
+    o.dubbed_audio_url = url;
   }
 
   /**
@@ -1202,27 +1253,27 @@ export class DubbingProcessor extends WorkerHost {
   }
 
   /**
-   * A language failed on its own. Without a delivered track it is refunded and costs
-   * nothing; with one, the charge stands and a retry only redoes the mux. An ElevenLabs
-   * dub that ElevenLabs itself failed is forgotten, so the retry starts a new one.
+   * A language failed on its own: it is refunded in full, since only a finished language
+   * is paid for. Its dubbed track (if one was made) stays on the row, so a retry reuses it
+   * instead of dubbing again; the API hides it until the language completes. An
+   * ElevenLabs dub that ElevenLabs itself failed is forgotten, so the retry starts a new one.
    */
-  private async failOutput(ctx: RunContext, o: OutputRow, error: Error): Promise<void> {
-    const delivered = !!o.dubbed_audio_url;
-    if (!delivered) await this.refundCredits(ctx.userId, o.credits_consumed);
+  private async failOutput(ctx: FailContext, o: OutputRow, error: Error): Promise<void> {
+    await this.refundCredits(ctx.userId, o.credits_consumed);
     await ctx.job.log(`${o.language} failed: ${error.message}`);
     this.logger.warn(`Dub ${ctx.projectId} (${o.language}) failed: ${error.message}`);
     await this.updateOutputs([o.id], {
       status: 'failed',
       error_message: error.message?.slice(0, 2000),
-      ...(delivered ? {} : { credits_consumed: 0 }),
+      credits_consumed: 0,
       ...(error instanceof ElevenLabsDubFailedError ? { vendor_dub_id: null } : {}),
     });
-    if (!delivered) o.credits_consumed = 0;
+    o.credits_consumed = 0;
     o.status = 'failed';
   }
 
-  /** The whole run stopped: fail every language that is not finished, refunding the undelivered. */
-  private async failUnfinished(ctx: RunContext, message: string): Promise<void> {
+  /** The whole run stopped: fail and refund every language that is not finished. */
+  private async failUnfinished(ctx: FailContext, message: string): Promise<void> {
     try {
       for (const o of await this.loadOutputs(ctx.projectId)) {
         if (o.status === 'completed' || o.status === 'failed') continue;
@@ -1293,6 +1344,32 @@ export class DubbingProcessor extends WorkerHost {
     return !!data?.length;
   }
 
+  /** Never fails the run: without a deadline the dub only waits longer for its video. */
+  private async scheduleVideoDeadline(projectId: string, parkedJobId: string): Promise<void> {
+    const data: VideoDeadlineData = { projectId, parkedJobId };
+    await this.queue
+      .add(VIDEO_DEADLINE_JOB, data, { delay: DUB_VIDEO_WAIT_HOURS * 3600 * 1000, jobId: `dubbing-video-deadline-${parkedJobId}` })
+      .catch((error) => this.logger.warn(`Dub ${projectId}: could not schedule the video deadline: ${error?.message}`));
+  }
+
+  /**
+   * End a dub's wait for its video. The video never arrived, so nothing was delivered and
+   * every waiting language is refunded; a retry reuses their dubbed audio. Conditional on
+   * the dub still waiting (and on the same wait), so it cannot race the upload finishing.
+   */
+  private async stopWaitingForVideo(job: Job, projectId: string, message: string, parkedJobId: string): Promise<void> {
+    const { data, error } = await this.supabase
+      .from('dubbing_projects')
+      .update({ status: 'failed', error_message: message })
+      .eq('project_id', projectId)
+      .eq('status', 'awaiting_video')
+      .eq('job_id', parkedJobId)
+      .select('user_id');
+    if (error) throw new Error(`dubbing_projects update failed: ${error.message}`);
+    if (!data?.length) return;
+    await this.failUnfinished({ job, userId: data[0].user_id, projectId }, message);
+  }
+
   // ─────────────────────────────── Credits ──────────────────────────────
 
   /**
@@ -1310,7 +1387,8 @@ export class DubbingProcessor extends WorkerHost {
     const perLanguage = owedTotal / outputs.length;
     for (const o of outputs) o.credits_consumed = perLanguage;
     await this.updateOutputs(outputs.map((o) => o.id), { credits_consumed: perLanguage });
-    await this.writeProjectTotals(ctx.projectId, {});
+    // Kept on the row so a retry is priced on the measured length, not the browser's.
+    await this.writeProjectTotals(ctx.projectId, { duration_seconds: probedSec });
   }
 
   /**

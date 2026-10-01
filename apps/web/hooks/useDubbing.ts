@@ -8,12 +8,14 @@ import {
   DubUploadTargets,
   DEFAULT_DUB_ENGINE,
   DEFAULT_DUB_VOICE_MODE,
+  DUB_JOB_STATUSES,
   accentsFor,
   isSupportedDubLanguage,
   type DubEngine,
+  type DubResponse,
   type DubTarget,
   type DubVoiceMode,
-  supportedLanguages,
+  dubLanguageLabel,
   calculateDubbingCreditsByDuration,
   formatDubDuration,
   formatUploadLimit,
@@ -25,7 +27,7 @@ import {
 import { api, getApiErrorMessage } from "@/lib/api-client";
 import { useSupabase } from "@/components/supabase-provider";
 import { BACKEND_URL } from "@/lib/constants";
-import { getDubbing } from "@/lib/api/getDubbings";
+import { cancelDubbing, getDubbing, resumeDubbing } from "@/lib/api/getDubbings";
 import {
   extractAudioTrack,
   fileFingerprint,
@@ -36,10 +38,7 @@ import {
   uploadDubVideo,
 } from "@/lib/dubbing-upload";
 
-const languageLabel = (code: string) =>
-  supportedLanguages.find((l) => l.value === code)?.label ?? code;
-
-const languageList = (codes: string[]) => codes.map(languageLabel).join(", ");
+const languageList = (codes: string[]) => codes.map(dubLanguageLabel).join(", ");
 
 // BullMQ SSE state -> the UI's DubbingProgress state.
 function mapState(state: string): DubbingProgress["state"] {
@@ -108,14 +107,17 @@ export function useDubbing() {
   const [voiceModeEngines, setVoiceModeEngines] = useState<DubEngine[]>(["elevenlabs"]);
   const [plan, setPlan] = useState<string | null>(null);
 
-  // Mid-run cancellation: the BullMQ job id of the in-flight dub, and whether the
-  // user asked to cancel (suppresses the generic failure toast).
+  // The job followed over SSE (null when none), and whether the user asked to cancel
+  // (suppresses the generic failure toast).
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const cancelRequestedRef = useRef(false);
 
   // The dub the current run belongs to, and the background upload of its video.
   const [projectId, setProjectId] = useState<string | null>(null);
   const [videoUpload, setVideoUpload] = useState<VideoUploadState>({ state: "idle", percent: 0 });
+  // An existing dub this page picked up (see `attach`), as it was last read.
+  const [attached, setAttached] = useState<DubResponse | null>(null);
+  const attachingRef = useRef<string | null>(null);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -150,8 +152,8 @@ export function useDubbing() {
       .finally(() => setAccessLoading(false));
   }, []);
 
-  // Closing the tab mid-upload loses nothing (it resumes from the dub's page), but the
-  // browser should still ask first.
+  // Closing the tab mid-upload loses nothing (the dub's page can pick it back up), but
+  // the browser should still ask first.
   useEffect(() => {
     if (videoUpload.state !== "uploading") return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -245,6 +247,7 @@ export function useDubbing() {
     setMediaName("");
     setDubbedResult(null);
     setProjectId(null);
+    setAttached(null);
     setVideoUpload({ state: "idle", percent: 0 });
     setProgress({ state: "idle", progress: 0, message: "" });
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -265,7 +268,6 @@ export function useDubbing() {
         message: string;
         finished: boolean;
         error?: string;
-        dubbedUrl?: string;
         awaitingVideo?: boolean;
       };
 
@@ -308,7 +310,9 @@ export function useDubbing() {
     };
 
     eventSource.onerror = () => {
-      eventSource.close();
+      // A dropped connection reconnects on its own (an API restart, a network blip). Only
+      // a refused one, which the browser gives up on, means the job can't be followed.
+      if (eventSource.readyState !== EventSource.CLOSED) return;
       setActiveJobId(null);
       updateProgress("failed", 0, "Connection lost");
       toast.error("Connection lost", { description: "Your dub keeps running. Open it from your dubbings to follow it." });
@@ -451,26 +455,81 @@ export function useDubbing() {
     }
   }, [projectId, mediaFile, runVideoUpload]);
 
-  /** Cancel the in-flight dub: queued jobs stop instantly, active ones abort between stages. */
+  /**
+   * Pick up an existing dub, opened from its details page: load its settings and carry on
+   * from wherever it is. A running job is followed; a failed one is resumed from where it
+   * stopped when `retry` is set. A dub whose upload stopped is left for the page to ask
+   * for the file again (see useDubResumeUpload), which calls this again once it is in.
+   */
+  const attach = useCallback(async (id: string, retry: boolean) => {
+    // StrictMode and the upload's double callback can call this twice at once: one
+    // retry is one charge.
+    if (attachingRef.current === id) return;
+    attachingRef.current = id;
+    try {
+      const dub = await getDubbing(id, session?.access_token);
+      if (!dub) {
+        updateProgress("failed", 0, "Dubbing not found");
+        return;
+      }
+      setAttached(dub);
+      setProjectId(id);
+      // What the progress card and the result show; the form itself is not shown here.
+      setIsVideo(dub.isVideo);
+      setMediaName(dub.mediaName ?? "");
+      setEngineState(dub.engine ?? DEFAULT_DUB_ENGINE);
+      setTargetsState(dub.outputs.map((o) => ({ language: o.language })));
+
+      if (dub.status === "completed") {
+        setDubbedResult({ projectId: id, outputs: dub.outputs });
+        updateProgress("completed", 100, "Dubbing complete!");
+      } else if (DUB_JOB_STATUSES.includes(dub.status) && dub.jobId) {
+        followJob(dub.jobId, id);
+      } else if (dub.status === "awaiting_video") {
+        updateProgress("processing", 90, "Dubbed audio ready. Finishing the video upload...");
+      } else if (dub.status === "failed" && !retry) {
+        updateProgress("failed", 0, dub.errorMessage ?? "Dubbing failed.");
+      } else if (dub.status === "failed" && dub.videoStatus !== "uploading") {
+        updateProgress("processing", 1, "Picking up from where it stopped...");
+        try {
+          const { jobId } = await resumeDubbing(id, session?.access_token);
+          followJob(jobId, id);
+        } catch (error) {
+          const message = getApiErrorMessage(error, "Please try again.");
+          updateProgress("failed", 0, message);
+          toast.error("Could not retry", { description: message });
+        }
+      } else {
+        // Its upload stopped, or a retry needs the video first: the page asks for the file.
+        updateProgress("idle", 0, "");
+      }
+    } finally {
+      attachingRef.current = null;
+    }
+  }, [session, followJob, updateProgress]);
+
+  /**
+   * Cancel the dub, whatever it is doing: a queued job is dropped, a running one stops at
+   * its next step, a wait for the video ends, and one that never started is discarded.
+   * Before the dub is registered there is only the local upload to stop.
+   */
   const cancelDub = useCallback(async () => {
     uploadAbortRef.current?.abort();
-    if (!activeJobId) {
+    if (!projectId) {
       updateProgress("failed", 0, "Cancelled");
       return;
     }
     cancelRequestedRef.current = true;
     try {
-      const res = await api.post<{ message: string }>(
-        `/api/v1/dubbing/stop/${activeJobId}`,
-        {},
-        { requireAuth: true, accessToken: session?.access_token },
-      );
+      const res = await cancelDubbing(projectId, session?.access_token);
       toast.info(res.message);
+      // A followed job reports its own end over SSE; nothing else will.
+      if (!activeJobId) updateProgress("failed", 0, "Cancelled");
     } catch (error) {
       cancelRequestedRef.current = false;
       toast.error("Could not cancel", { description: getApiErrorMessage(error, "Please try again.") });
     }
-  }, [activeJobId, session, updateProgress]);
+  }, [projectId, activeJobId, session, updateProgress]);
 
   const isLoading = progress.state === "uploading" || progress.state === "processing";
 
@@ -512,10 +571,10 @@ export function useDubbing() {
     maxUploadBytes,
     estimatedCredits,
     creditsPerSecond,
-    projectId,
+    attached,
+    attach,
     videoUpload,
     resumeVideoUpload,
-    canCancel: !!activeJobId || progress.state === "uploading",
     cancelDub,
     handleFileChange,
     handleFileSelect,

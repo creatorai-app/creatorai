@@ -100,6 +100,8 @@ export const DubAudioSessionSchema = z.object({
 
 export const DUB_STATUSES = ['uploading', 'queued', 'processing', 'cloning', 'awaiting_video', 'completed', 'failed'] as const;
 export const DUB_OUTPUT_STATUSES = ['pending', 'dubbing', 'awaiting_video', 'completed', 'failed'] as const;
+/** A dub in one of these has a worker job behind it: it can be followed and cancelled, not deleted or re-run. */
+export const DUB_JOB_STATUSES: readonly string[] = ['queued', 'processing', 'cloning'] satisfies (typeof DUB_STATUSES)[number][];
 
 /**
  * One line of a dub's timeline, the same shape whichever engine made it: Cypher fills it

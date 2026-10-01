@@ -146,6 +146,11 @@ export function formatDubDuration(seconds: number): string {
 // flag; the worker checks it between pipeline stages and aborts.
 export const DUBBING_CANCEL_PREFIX = 'dubbing:cancel:';
 
+// A video dub whose dubbed audio is done but whose video never finishes uploading is
+// cancelled this long after it started waiting. Well inside the bucket's 7-day abort of
+// unfinished uploads, so a retry still finds the parts already sent.
+export const DUB_VIDEO_WAIT_HOURS = 24;
+
 /**
  * Every language either engine dubs into, and the label for each: all of them on
  * ElevenLabs, and the 23 Chatterbox speaks on Cypher (see dubbableLanguagesFor).

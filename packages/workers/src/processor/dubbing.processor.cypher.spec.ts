@@ -161,9 +161,9 @@ const job = () =>
   ({
     id: 'job-1',
     data: {
-      userId: 'u1', projectId: 'p1', bullJobId: 'job-1', inputGsUri: `gs://dub-bucket/${PREFIX}audio.m4a`,
-      inputUrl: `https://storage.googleapis.com/dub-bucket/${PREFIX}audio.m4a`, mimeType: 'audio/mp4', isVideo: false,
-      durationSeconds: 30, planName: 'Creator', reservedCredits: 0,
+      userId: 'u1', projectId: 'p1', inputGsUri: `gs://dub-bucket/${PREFIX}audio.m4a`,
+      inputUrl: `https://storage.googleapis.com/dub-bucket/${PREFIX}audio.m4a`, isVideo: false,
+      durationSeconds: 30, planName: 'Creator',
     },
     updateProgress: jest.fn(async () => undefined),
     log: jest.fn(async () => undefined),
