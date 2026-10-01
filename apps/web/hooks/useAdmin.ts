@@ -3,6 +3,8 @@ import { api } from '@/lib/api-client';
 import type {
   AdminDashboardStats,
   AdminFunnel,
+  AdminSegmentUser,
+  AdminUserSegment,
   BlogPost,
   MailMessage,
   ActivityFeedItem,
@@ -24,9 +26,10 @@ export function useAdminStats() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // `loading` covers the first load only, so the dashboard's polling refresh
+  // updates numbers in place instead of blanking the page.
   const fetchStats = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await api.get<AdminDashboardStats>('/api/v1/admin/stats', AUTH);
       setStats(data);
     } catch (err) {
@@ -424,6 +427,8 @@ export const adminApi = {
     api.get<Array<{ id: string; name: string; price_monthly: number; credits_monthly: number }>>('/api/v1/admin/plans', AUTH),
   getUser: (userId: string) =>
     api.get<Record<string, unknown>>(`/api/v1/admin/users/${userId}`, AUTH),
+  getUserSegment: (segment: AdminUserSegment) =>
+    api.get<AdminSegmentUser[]>(`/api/v1/admin/stats/users/${segment}`, AUTH),
   setUserPlan: (userId: string, planId: string, validityMonths?: number) =>
     api.put(`/api/v1/admin/users/${userId}/plan`, { planId, validityMonths }, AUTH),
   createBlog: (data: Partial<BlogPost>) =>

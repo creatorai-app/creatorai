@@ -28,7 +28,24 @@ export interface AdminDashboardStats {
   onlineUsers: number
   onlineWindowMinutes: number
   activeUsers24h: number
+  activeUsers30d: number
+  /** Active in the last 30 days and last seen 24h+ after signing up. */
+  returningUsers30d: number
   errors24h: number
+}
+
+export const ADMIN_USER_SEGMENTS = ['online', 'active24h', 'active30d', 'returning', 'new30d', 'subscribed'] as const
+export type AdminUserSegment = (typeof ADMIN_USER_SEGMENTS)[number]
+
+export interface AdminSegmentUser {
+  user_id: string
+  full_name: string | null
+  name: string | null
+  email: string | null
+  avatar_url: string | null
+  created_at: string
+  last_seen_at: string | null
+  plan: string | null
 }
 
 export interface ErrorLogProfile {

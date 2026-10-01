@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAdminStats, useAdminFunnel } from "@/hooks/useAdmin"
 import type { FunnelTierBreakdown } from "@repo/validation"
 import { useSupabase } from "@/components/supabase-provider"
 import { AdminButton } from "@/components/admin/admin-button"
 import { StatCard, type StatConfig } from "@/components/admin/stat-card"
+import { UserSegmentDialog, type UserSegmentSelection } from "@/components/admin/user-segment-dialog"
 import {
   Users,
   CreditCard,
@@ -26,6 +27,8 @@ import {
   MousePointerClick,
   Radio,
   AlertTriangle,
+  CalendarCheck,
+  Repeat,
 } from "lucide-react"
 
 
@@ -119,6 +122,10 @@ export default function AdminDashboardPage() {
 
   const firstName = (profile?.full_name || profile?.email || "Admin").split(" ")[0]
 
+  const [segment, setSegment] = useState<UserSegmentSelection | null>(null)
+  const open = (selection: UserSegmentSelection) => () => setSegment(selection)
+  const onlineHint = `active in the last ${stats?.onlineWindowMinutes ?? 5} min`
+
   const live: StatConfig[] = [
     {
       label: "Online Now",
@@ -126,10 +133,18 @@ export default function AdminDashboardPage() {
       icon: Radio,
       gradient: "from-green-500 to-emerald-500",
       accent: "text-green-400",
-      href: "/dashboard/admin/users",
-      hint: `active in the last ${stats?.onlineWindowMinutes ?? 5} min`,
+      onClick: open({ segment: "online", title: "Online now", description: `Users ${onlineHint}.` }),
+      hint: onlineHint,
     },
-    { label: "Active Today", value: stats?.activeUsers24h ?? 0, icon: Activity, gradient: "from-teal-500 to-cyan-500", accent: "text-teal-400", hint: "last 24 hours" },
+    {
+      label: "Active Today",
+      value: stats?.activeUsers24h ?? 0,
+      icon: Activity,
+      gradient: "from-teal-500 to-cyan-500",
+      accent: "text-teal-400",
+      onClick: open({ segment: "active24h", title: "Active today", description: "Users seen in the last 24 hours." }),
+      hint: "last 24 hours",
+    },
     {
       label: "Errors",
       value: stats?.errors24h ?? 0,
@@ -143,8 +158,45 @@ export default function AdminDashboardPage() {
 
   const growth: StatConfig[] = [
     { label: "Total Users", value: stats?.totalUsers ?? 0, icon: Users, gradient: "from-blue-500 to-cyan-500", accent: "text-blue-400", href: "/dashboard/admin/users" },
-    { label: "New Users", value: stats?.newUsers30d ?? 0, icon: UserPlus, gradient: "from-emerald-500 to-green-500", accent: "text-emerald-400", hint: "last 30 days" },
-    { label: "Active Subs", value: stats?.activeSubscriptions ?? 0, icon: CreditCard, gradient: "from-cyan-500 to-sky-500", accent: "text-cyan-400" },
+    {
+      label: "New Users",
+      value: stats?.newUsers30d ?? 0,
+      icon: UserPlus,
+      gradient: "from-emerald-500 to-green-500",
+      accent: "text-emerald-400",
+      onClick: open({ segment: "new30d", title: "New users", description: "Signed up in the last 30 days." }),
+      hint: "last 30 days",
+    },
+    {
+      label: "Active (30d)",
+      value: stats?.activeUsers30d ?? 0,
+      icon: CalendarCheck,
+      gradient: "from-violet-500 to-purple-500",
+      accent: "text-violet-400",
+      onClick: open({ segment: "active30d", title: "Active in the last 30 days", description: "Users seen in the last 30 days." }),
+      hint: "last 30 days",
+    },
+    {
+      label: "Returning Users",
+      value: stats?.returningUsers30d ?? 0,
+      icon: Repeat,
+      gradient: "from-fuchsia-500 to-pink-500",
+      accent: "text-fuchsia-400",
+      onClick: open({
+        segment: "returning",
+        title: "Returning users",
+        description: "Active in the last 30 days and came back at least a day after signing up.",
+      }),
+      hint: "came back after signup, last 30 days",
+    },
+    {
+      label: "Active Subs",
+      value: stats?.activeSubscriptions ?? 0,
+      icon: CreditCard,
+      gradient: "from-cyan-500 to-sky-500",
+      accent: "text-cyan-400",
+      onClick: open({ segment: "subscribed", title: "Active subscribers", description: "Users with an active subscription, newest first." }),
+    },
   ]
 
   const revenue: StatConfig[] = [
@@ -245,6 +297,8 @@ export default function AdminDashboardPage() {
           {inbox.map((s) => <StatCard key={s.label} {...s} />)}
         </div>
       </section>
+
+      <UserSegmentDialog selection={segment} onOpenChange={(o) => !o && setSegment(null)} />
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Quick actions</h2>

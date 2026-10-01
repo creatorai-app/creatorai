@@ -234,6 +234,7 @@ describe('Swagger / OpenAPI Specification', () => {
 
     it.each([
       ['get', 'stats'],
+      ['get', 'stats/users/{segment}'],
       ['get', 'users'],
       ['get', 'users/{userId}'],
       ['put', 'users/{userId}'],
@@ -624,6 +625,7 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', '/api/v1/admin/plans'],
       ['get', '/api/v1/admin/revenue-by-tier'],
       ['get', '/api/v1/admin/stats'],
+      ['get', '/api/v1/admin/stats/users/{segment}'],
       ['get', '/api/v1/admin/subscriptions'],
       ['get', '/api/v1/admin/users'],
       ['get', '/api/v1/admin/users/{userId}'],
