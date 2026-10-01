@@ -95,6 +95,9 @@ async function bootstrap() {
       // from its own origin pages us for working as intended.
       origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
       credentials: true,
+      // Without it a preflight is cached for 5s, so every polled authenticated GET paid
+      // for a second request. Chromium caps this at 2 hours.
+      maxAge: 7200,
     });
 
     await app.listen(process.env.PORT || 8000, () => {
