@@ -466,7 +466,7 @@ vidIQ writes scripts and generates thumbnails, so the overlap is real. Being fai
 | Story structure with a retention score | No | Yes |
 | Thumbnails | Yes, 22 credits each | Yes, up to 5 variants per run |
 | Subtitle file you can correct and export | No | Yes |
-| Dubbing in your own voice | No | Yes, 29 languages |
+| Dubbing in your own voice | No | Yes, 94 languages |
 
 Use vidIQ for the two rows only it has. Use the script and structure rows where they are the product rather than a credit line item. If you want that comparison drawn properly rather than as a table, we wrote [Creator AI vs vidIQ](/blog/creator-ai-vs-vidiq-for-youtube-creators-2026), and if you are questioning the subscription entirely, [the vidIQ alternatives roundup](/blog/best-vidiq-alternatives-for-youtube-creators-2026).
 
@@ -553,7 +553,7 @@ That single fact reverses the intuition most people bring to a clipping tool. Yo
 | Writing the long form so clips exist | No | Yes, script and story builder |
 | Structuring for retention before filming | No | Yes, with a retention score |
 | Subtitle file for the long form upload | No | Yes, SRT you can correct |
-| Dubbing the finished video or clip | No | Yes, 29 languages |
+| Dubbing the finished video or clip | No | Yes, 94 languages |
 
 Neither column is a replacement for the other. The overlap is genuinely zero, which is rare enough to be worth saying plainly.
 
