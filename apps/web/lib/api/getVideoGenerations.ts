@@ -10,14 +10,6 @@ export interface VideoGenerationAccess {
   plan: string | null
 }
 
-export async function getVideoGenerationAccess(): Promise<VideoGenerationAccess> {
-  try {
-    return await api.get<VideoGenerationAccess>('/api/v1/video-generation/access', { requireAuth: true })
-  } catch {
-    return { success: false, allowed: false, plan: null }
-  }
-}
-
 export async function getVideoGeneration(id: string): Promise<VideoGenerationJob | null> {
   try {
     const res = await api.get<{ success: boolean; job: VideoGenerationJob }>(

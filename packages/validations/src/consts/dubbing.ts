@@ -592,15 +592,40 @@ export function dubOutputPrefix(projectId: string): string {
 }
 
 /**
- * Where one language's dub lands. Shared by the worker (writes it) and the API (deletes
- * it). The dubbed track is always MP3, whichever engine made it; a video dub is that
- * track muxed over the original. Dubs from before per-language outputs sit at
- * dubbed/<projectId>.(mp4|wav|mp3), which delete still cleans up.
+ * What a dub hands back, picked per dub: the video with the dubbed track (MP4), or the
+ * track alone (MP3 or WAV). Only a video source can come back as a video. An audio-only
+ * dub of a video never uploads the video at all: the audio track is all it needs.
  */
-export function dubOutputObjects(projectId: string, language: string) {
+export const DUB_OUTPUT_FORMATS = ['mp4', 'mp3', 'wav'] as const;
+export type DubOutputFormat = (typeof DUB_OUTPUT_FORMATS)[number];
+export type DubAudioFormat = Exclude<DubOutputFormat, 'mp4'>;
+
+export const DUB_OUTPUT_FORMAT_INFO: Record<DubOutputFormat, { label: string; help: string }> = {
+  mp4: { label: 'Video (MP4)', help: 'Your video with the dubbed voices.' },
+  mp3: { label: 'Audio only (MP3)', help: 'The dubbed track alone, compressed. Small and plays anywhere.' },
+  wav: { label: 'Audio only (WAV)', help: 'The dubbed track alone, uncompressed. For editing; several times larger than MP3.' },
+};
+
+/** The format a dub was made in. Dubs from before the choice are MP4 for a video, MP3 otherwise. */
+export function dubOutputFormatOf(dub: { outputFormat?: DubOutputFormat | null; isVideo: boolean }): DubOutputFormat {
+  return dub.outputFormat ?? (dub.isVideo ? 'mp4' : 'mp3');
+}
+
+/** The dubbed track's format. A video dub's track is MP3: it is what gets muxed. */
+export function dubAudioFormat(format?: DubOutputFormat | null): DubAudioFormat {
+  return format === 'wav' ? 'wav' : 'mp3';
+}
+
+/**
+ * Where one language's dub lands. Shared by the worker (writes it) and the API (deletes
+ * it). The dubbed track is MP3 (WAV when the creator asked for it), whichever engine made
+ * it; a video dub is that track muxed over the original. Dubs from before per-language
+ * outputs sit at dubbed/<projectId>.(mp4|wav|mp3), which delete still cleans up.
+ */
+export function dubOutputObjects(projectId: string, language: string, audioFormat: DubAudioFormat = 'mp3') {
   const base = `${dubOutputPrefix(projectId)}${language}`;
   return {
-    audio: { objectName: `${base}.mp3`, contentType: 'audio/mpeg' },
+    audio: { objectName: `${base}.${audioFormat}`, contentType: audioFormat === 'wav' ? 'audio/wav' : 'audio/mpeg' },
     video: { objectName: `${base}.mp4`, contentType: 'video/mp4' },
   };
 }

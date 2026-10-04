@@ -1,4 +1,3 @@
-import type { DubEngine } from './dubbing';
 
 export const TOKENS_PER_CREDIT = 1000;
 
@@ -67,8 +66,9 @@ export const THUMBNAIL_CREDIT_MULTIPLIER = 33; // credits per generated image
 // Video (Omni) billed per SECOND: creditsForCost(0.10) = 84 ⇒ an 8s clip = 680 credits.
 export const VIDEO_GENERATION_CREDIT_MULTIPLIER = 85;
 
-// Dubbing runs on the ElevenLabs Dubbing API (transcribe + translate + clone + mux
-// in one call). ElevenLabs bills ~2,000 of THEIR credits per source minute; at the
+// Dubbing is one price on both engines, so a plan buys the same hours on either; only
+// the languages differ. The rate was set for ElevenLabs (transcribe + translate + clone
+// + mux in one call), which bills ~2,000 of THEIR credits per source minute; at the
 // Pro-tier overage rate that is ~$0.24/min = $0.004/second.
 //
 // 1/6 per second = 10 credits per minute, which makes Creator's fixed 3,000 credits
@@ -91,23 +91,10 @@ export const VIDEO_GENERATION_CREDIT_MULTIPLIER = 85;
 // 80% margin at $24.
 export const DUBBING_CREDIT_MULTIPLIER = 1 / 6;
 
-// Cypher (in-house dubbing: Gemini + Chatterbox on Modal) is priced from its own COGS
-// under the margin policy above, per second of source, per language dubbed:
-//
-//   Speaker analysis: Gemini audio in (~32 tokens/s) + transcript out   ~$0.0078 / min
-//   Translation: text in and out                                        ~$0.0050 / min
-//   Chatterbox on a Modal L4 ($0.000222/s GPU + CPU/memory): measured
-//     ~1.4 GPU-seconds per second of dubbed speech, dubbed speech ~1.2x
-//     the source, plus one cold start and the 120s scale-down window
-//     spread over a ~5 minute dub                                        ~$0.0360 / min
-//   GCS egress: voice samples to Modal, the video to the worker          ~$0.0050 / min
-//   Total                                                                ~$0.054  / min
-//
-// Gemini at gemini-3.6-flash's list price from 2027 ($1.50/M in, $7.50/M out); it is
-// half that until the end of 2026, so this carries headroom until then.
-// creditsForCost($0.0009 per second) = 1 credit per second, 60 per minute: Creator's
-// 3,000 credits buy 50 minutes. Env-overridable via CYPHER_DUBBING_CREDIT_MULTIPLIER.
-export const CYPHER_DUBBING_CREDIT_MULTIPLIER = 1;
+// Cypher (in-house: Gemini + Chatterbox on Modal) costs ~$0.054 per source minute,
+// per language, at 2027 Gemini list prices, against the ~$0.009 the 10 credits cover.
+// Charged at the shared rate by product decision (2026-10-02), so it runs at a loss
+// per minute until its COGS falls or the shared rate rises.
 
 // Starter is a TRIAL, not an allowance, on either engine: at a paid rate its 500 credits
 // would buy up to 50 minutes of dubbing, free and uncapped by signup. That is the
@@ -118,20 +105,14 @@ export const CYPHER_DUBBING_CREDIT_MULTIPLIER = 1;
 export const STARTER_DUBBING_CREDIT_MULTIPLIER = 3;
 
 /**
- * An engine's paid per-second rate, with its env override when one is set and valid.
- * Shared by the API (reserves) and the worker (settles) so the two cannot disagree.
+ * The paid per-second rate, with DUBBING_CREDIT_MULTIPLIER's env override when one is
+ * set and valid. Shared by the API (reserves) and the worker (settles) so the two cannot
+ * disagree.
  */
-export function paidDubbingMultiplier(
-  engine: DubEngine,
-  env: Record<string, string | undefined> = {},
-): number {
-  const [key, fallback] =
-    engine === 'cypher'
-      ? ['CYPHER_DUBBING_CREDIT_MULTIPLIER', CYPHER_DUBBING_CREDIT_MULTIPLIER]
-      : ['DUBBING_CREDIT_MULTIPLIER', DUBBING_CREDIT_MULTIPLIER];
-  const raw = env[key];
+export function paidDubbingMultiplier(env: Record<string, string | undefined> = {}): number {
+  const raw = env.DUBBING_CREDIT_MULTIPLIER;
   const parsed = raw ? Number(raw) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : (fallback as number);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DUBBING_CREDIT_MULTIPLIER;
 }
 
 /**
@@ -169,10 +150,6 @@ export function formatDubbingAllowance(
   return hours < 1 ? `${(hours * 60).toFixed(1)} min` : `${hours.toFixed(1)} hrs`;
 }
 
-/** The same allowance at one engine's published (not env-overridden) rate, for public pages. */
-export function formatDubbingAllowanceFor(credits: number, planName: string | null | undefined, engine: DubEngine): string {
-  return formatDubbingAllowance(credits, planName, paidDubbingMultiplier(engine));
-}
 
 export const FeatureType = {
   SCRIPT_GENERATION: 'script_generation',

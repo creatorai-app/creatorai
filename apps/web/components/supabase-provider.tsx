@@ -65,6 +65,9 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const isLoggingOut = useRef(false)
+  // The current profile for fetchUserProfile, which listeners call with an old closure.
+  const profileRef = useRef(profile)
+  profileRef.current = profile
 
   function generateReferralCode(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -76,7 +79,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   // Profile fetch with suspense support
   const fetchUserProfile = async (userId: string): Promise<void> => {
     if (!supabase) return
-    if (!profile) setProfileLoading(true)
+    if (!profileRef.current) setProfileLoading(true)
     try {
       let profilePromise = profilePromises.get(userId)
       // if (!profilePromise) {
@@ -117,7 +120,8 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       // }
 
       const result = await profilePromise
-      setProfile(result)
+      // A failed read keeps the last good profile rather than blanking credits and setup state.
+      if (result) setProfile(result)
     } finally {
       setProfileLoading(false)
     }
@@ -186,14 +190,18 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
     isLoggingOut.current = false
   }
 
-  // Fetch profile when user changes
+  // Fetch profile when user changes, and again when the tab regains focus, so credits,
+  // setup state and a read that failed catch up without a reload.
   useEffect(() => {
-    if (user) {
-      fetchUserProfile(user.id)
-    } else {
+    if (!user) {
       setProfile(null)
       setProfileLoading(false)
+      return
     }
+    const refresh = () => fetchUserProfile(user.id)
+    refresh()
+    window.addEventListener("focus", refresh)
+    return () => window.removeEventListener("focus", refresh)
   }, [user?.id])
 
   const value: SupabaseContext = {

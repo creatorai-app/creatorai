@@ -14,6 +14,7 @@ import {
   SignUploadSchema,
   FinalizeUploadSchema,
   BurnSubtitleSchema,
+  SubtitleFromDubSchema,
 } from '@repo/validation';
 import type {
   CreateSubtitleInput,
@@ -22,6 +23,7 @@ import type {
   SignUploadInput,
   FinalizeUploadInput,
   BurnSubtitleInput,
+  SubtitleFromDubInput,
 } from '@repo/validation';
 
 @ApiTags('subtitle')
@@ -123,6 +125,31 @@ export class SubtitleController {
       throw new UnauthorizedException('User not found');
     }
     return this.subtitleService.finalizeUpload(body, userId);
+  }
+
+  @Post('from-dub')
+  @UseGuards(OnboardedGuard)
+  @ApiOperation({
+    summary: 'Create a subtitle job on a finished dub\'s video',
+    description: 'Reuses the dubbed video already in storage, so nothing is uploaded. Returns the existing job when one was already made for that video.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['projectId', 'language'],
+      properties: {
+        projectId: { type: 'string', format: 'uuid' },
+        language: { type: 'string', example: 'es', description: 'the dubbed language whose video gets subtitles' },
+      },
+    },
+  })
+  @UsePipes(new ZodValidationPipe(SubtitleFromDubSchema))
+  createFromDub(@Body() body: SubtitleFromDubInput, @Req() req: AuthRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.subtitleService.createFromDub(body, userId);
   }
 
   @Patch()

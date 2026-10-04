@@ -5,13 +5,12 @@ import * as motion from "motion/react-m";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@repo/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card";
 import { Label } from "@repo/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
 import { toast } from "sonner";
 import {
   ArrowLeft, Loader2, Trash2, CheckCircle2, Languages, Video, Music,
-  XCircle, Coins, CalendarDays, Play, Cpu, Users, Mic, Activity, type LucideIcon,
+  XCircle, Coins, CalendarDays, Play, Cpu, Users, Mic, Activity, Plus, type LucideIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -26,7 +25,7 @@ import {
 } from "@repo/ui/alert-dialog";
 import { useSupabase } from "@/components/supabase-provider";
 import { getDubbing, deleteDubbing } from "@/lib/api/getDubbings";
-import { DubResponse, DubStatus, DUB_JOB_STATUSES, dubEngineLabel, dubLanguageLabel } from "@repo/validation";
+import { DubResponse, DubStatus, DUB_JOB_STATUSES, DUB_OUTPUT_FORMAT_INFO, dubEngineLabel, dubLanguageLabel, dubOutputFormatOf } from "@repo/validation";
 import { DubbingMediaPlayer } from "@/components/dashboard/dubbing/DubbingMediaPlayer"
 import { DubOutputsList } from "@/components/dashboard/dubbing/DubOutputsList"
 
@@ -149,7 +148,7 @@ export default function DubbingDetailPage() {
   })
 
   return (
-    <div className="container py-8">
+    <div className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 flex items-center gap-4">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
@@ -168,7 +167,7 @@ export default function DubbingDetailPage() {
         <section aria-label="Details">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">Details</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            <StatCard icon={dubbing.isVideo ? Video : Music} label="Media Type" value={dubbing.isVideo ? "Video" : "Audio"} />
+            <StatCard icon={dubbing.isVideo ? Video : Music} label="Output" value={DUB_OUTPUT_FORMAT_INFO[dubOutputFormatOf(dubbing)].label} />
             {dubbing.engine && <StatCard icon={Cpu} label="Engine" value={dubEngineLabel(dubbing.engine)} />}
             <StatCard icon={Languages} label={dubbing.outputs.length > 1 ? "Languages" : "Target Language"} value={languageLabel} />
             {dubbing.speakerCount ? <StatCard icon={Users} label="Speakers" value={`${dubbing.speakerCount}`} /> : null}
@@ -179,78 +178,82 @@ export default function DubbingDetailPage() {
           </div>
         </section>
 
-        <section aria-label="Status and media">
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 space-y-0">
-              <div className="min-w-0">
-                <CardTitle className="flex items-center gap-2">
-                  <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor} ${isRunning ? "animate-spin" : ""}`} />
-                  <span className="truncate">{dubbing.mediaName || STATUS_LABELS[dubbing.status]}</span>
-                </CardTitle>
-                <CardDescription className="mt-1.5">{description}</CardDescription>
-              </div>
+        <section aria-label="Status and media" className="space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-50">
+                <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor} ${isRunning ? "animate-spin" : ""}`} />
+                <span className="truncate">{dubbing.mediaName || STATUS_LABELS[dubbing.status]}</span>
+              </h2>
+              <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+            </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                {isFailed && (
-                  <Button asChild className="bg-purple-600 hover:bg-purple-700 text-white">
-                    <Link href={`/dashboard/dubbing/new?dub=${projectId}&retry=1`}>
-                      <Play className="mr-2 h-4 w-4" /> Retry
-                    </Link>
-                  </Button>
-                )}
-                {isRunning && (
-                  <Button asChild variant="outline">
-                    <Link href={`/dashboard/dubbing/new?dub=${projectId}`}>
-                      <Activity className="mr-2 h-4 w-4" /> View progress
-                    </Link>
-                  </Button>
-                )}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {isFailed && (
+                <Button asChild className="bg-purple-600 hover:bg-purple-700 text-white">
+                  <Link href={`/dashboard/dubbing/new?dub=${projectId}&retry=1`}>
+                    <Play className="mr-2 h-4 w-4" /> Retry
+                  </Link>
+                </Button>
+              )}
+              {isRunning && (
+                <Button asChild variant="outline">
+                  <Link href={`/dashboard/dubbing/new?dub=${projectId}`}>
+                    <Activity className="mr-2 h-4 w-4" /> View progress
+                  </Link>
+                </Button>
+              )}
 
-                {/* A dub with a job running can't be deleted (the API refuses it too). */}
-                {!DUB_JOB_STATUSES.includes(dubbing.status) && (
-                  <AlertDialog>
-                    <TooltipProvider delayDuration={0}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="icon" disabled={isDeleting} className="text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30 hover:border-red-500/50" aria-label="Delete dubbing">
-                              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                            </Button>
-                          </AlertDialogTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete dubbing</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete this dubbed media.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </div>
-            </CardHeader>
+              <Button asChild variant="outline">
+                <Link href="/dashboard/dubbing/new">
+                  <Plus className="mr-2 h-4 w-4" /> Dub another file
+                </Link>
+              </Button>
 
-            {/* The API hands out media only for finished languages; the rest show their state. */}
-            {dubbing.status !== "uploading" && (
-              <CardContent className="space-y-8">
-                {dubbing.originalMediaUrl && finished.length > 0 && (
-                  <div className="space-y-3">
-                    <Label>Original Media</Label>
-                    <DubbingMediaPlayer url={dubbing.originalMediaUrl} isVideo={dubbing.isVideo} title="Original media" />
-                  </div>
-                )}
-                <DubOutputsList outputs={dubbing.outputs} isVideo={dubbing.isVideo} mediaName={dubbing.mediaName} />
-              </CardContent>
-            )}
-          </Card>
+              {/* A dub with a job running can't be deleted (the API refuses it too). */}
+              {!DUB_JOB_STATUSES.includes(dubbing.status) && (
+                <AlertDialog>
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="icon" disabled={isDeleting} className="text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30 hover:border-red-500/50" aria-label="Delete dubbing">
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </Button>
+                        </AlertDialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete dubbing</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete this dubbed media.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </div>
+
+          {/* The API hands out media only for finished languages; the rest show their state. */}
+          {dubbing.status !== "uploading" && (
+            <>
+              {dubbing.originalMediaUrl && finished.length > 0 && (
+                <div className="space-y-3">
+                  <Label>Original Media</Label>
+                  <DubbingMediaPlayer url={dubbing.originalMediaUrl} isVideo={dubbing.isVideo} title="Original media" />
+                </div>
+              )}
+              <DubOutputsList projectId={projectId} outputs={dubbing.outputs} isVideo={dubbing.isVideo} mediaName={dubbing.mediaName} />
+            </>
+          )}
         </section>
       </motion.div>
     </div>

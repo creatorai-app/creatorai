@@ -1,34 +1,39 @@
 "use client"
 
 import { cn } from "@repo/ui/lib/utils"
-import { DUB_VOICE_MODES, DUB_VOICE_MODE_INFO, type DubEngine, type DubVoiceMode } from "@repo/validation"
+import { DUB_OUTPUT_FORMATS, DUB_OUTPUT_FORMAT_INFO, type DubOutputFormat } from "@repo/validation"
 
-/** How close each dubbed voice stays to the original speaker. Hovering an option says what it does on this engine. */
-export function DubVoiceModePicker({
-  engine,
+/** What the dub comes back as: the video, or the dubbed track alone. Only a video can come back as a video. */
+export function DubOutputFormatPicker({
   value,
   onChange,
+  allowVideo,
   disabled,
 }: {
-  engine: DubEngine
-  value: DubVoiceMode
-  onChange: (mode: DubVoiceMode) => void
+  value: DubOutputFormat
+  onChange: (format: DubOutputFormat) => void
+  allowVideo: boolean
   disabled?: boolean
 }) {
+  const formats = DUB_OUTPUT_FORMATS.filter((f) => allowVideo || f !== "mp4")
   return (
-    <div role="radiogroup" aria-label="Voice" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-      {DUB_VOICE_MODES.map((mode) => {
-        const { label, help } = DUB_VOICE_MODE_INFO[mode]
-        const active = value === mode
+    <div
+      role="radiogroup"
+      aria-label="Output"
+      className={cn("grid grid-cols-1 gap-2", formats.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}
+    >
+      {formats.map((format) => {
+        const { label, help } = DUB_OUTPUT_FORMAT_INFO[format]
+        const active = value === format
         return (
           <button
-            key={mode}
+            key={format}
             type="button"
             role="radio"
             aria-checked={active}
-            onClick={() => onChange(mode)}
+            onClick={() => onChange(format)}
             disabled={disabled}
-            title={help[engine]}
+            title={help}
             className={cn(
               "rounded-xl border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
               active

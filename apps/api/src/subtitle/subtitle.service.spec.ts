@@ -24,8 +24,9 @@ jest.mock('../utils', () => ({
   configureFFmpeg: jest.fn(),
   streamVideoToFile: jest.fn(),
   getSignedUploadUrl: jest.fn().mockResolvedValue('https://signed-upload-url'),
-  gcsPublicUrl: jest.fn(() => 'https://storage.googleapis.com/sub-bucket/obj'),
-  gcsUri: jest.fn(() => 'gs://sub-bucket/obj'),
+  gcsPublicUrl: jest.fn((_c, o: string, b?: string) => `https://storage.googleapis.com/${b ?? 'sub-bucket'}/${o}`),
+  gcsUri: jest.fn((_c, o: string, b?: string) => `gs://${b ?? 'sub-bucket'}/${o}`),
+  getDubbingBucketName: jest.fn(() => 'dub-bucket'),
   gcsObjectMetadata: jest.fn().mockResolvedValue({ size: 1_000 }),
   deleteGcsObject: jest.fn().mockResolvedValue(undefined),
 }));
@@ -266,10 +267,62 @@ describe('SubtitleService', () => {
       expect(deleteGcsObject).toHaveBeenCalledWith(expect.anything(), 'user-1/123_clip.mp4');
     });
 
+    it("leaves a dub's video alone when its subtitle job is deleted", async () => {
+      await build({
+        subtitle_jobs: chain({ data: { video_gs_uri: 'gs://dub-bucket/dubbed/p-1/es.mp4' }, error: null }),
+      });
+      await expect(service.remove('sub-1', USER)).resolves.toMatchObject({ success: true });
+      expect(deleteGcsObject).not.toHaveBeenCalled();
+    });
+
     it('still succeeds when the row carried no stored video', async () => {
       await build({ subtitle_jobs: chain({ data: { video_gs_uri: null }, error: null }) });
       await expect(service.remove('sub-1', USER)).resolves.toMatchObject({ success: true });
       expect(deleteGcsObject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createFromDub', () => {
+    const DUB = '11111111-1111-4111-8111-111111111111';
+    const dubUrl = 'https://storage.googleapis.com/dub-bucket/dubbed/p-1/es.mp4';
+    const project = (over = {}) => chain({ data: { is_video: true, duration_seconds: 120, media_name: 'Talk', ...over } });
+    const output = (over = {}) => chain({ data: { status: 'completed', dubbed_url: dubUrl, ...over } });
+    const input = { projectId: DUB, language: 'es' };
+
+    it("creates a job on the dub's own object, with nothing uploaded", async () => {
+      const jobs = chain({ data: null });
+      jobs.single = jest.fn(() => Promise.resolve({ data: { id: 'sub-9' }, error: null }));
+      await build({ dubbing_projects: project(), dubbing_outputs: output(), subtitle_jobs: jobs });
+      await expect(service.createFromDub(input, USER)).resolves.toEqual({ success: true, subtitleId: 'sub-9' });
+      expect(gcsObjectMetadata).toHaveBeenCalledWith(expect.anything(), 'dubbed/p-1/es.mp4', 'dub-bucket');
+      expect(jobs.insert).toHaveBeenCalledWith(expect.objectContaining({
+        video_url: dubUrl,
+        video_gs_uri: 'gs://dub-bucket/dubbed/p-1/es.mp4',
+        duration: 120,
+      }));
+    });
+
+    it('returns the job already made for that video instead of a second one', async () => {
+      await build({ dubbing_projects: project(), dubbing_outputs: output(), subtitle_jobs: chain({ data: { id: 'sub-1' } }) });
+      await expect(service.createFromDub(input, USER)).resolves.toEqual({ success: true, subtitleId: 'sub-1' });
+      expect(tables.subtitle_jobs.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses an audio-only dub and an unfinished language', async () => {
+      await build({ dubbing_projects: project({ is_video: false }), dubbing_outputs: output() });
+      await expect(service.createFromDub(input, USER)).rejects.toThrow(BadRequestException);
+      await build({ dubbing_projects: project(), dubbing_outputs: output({ status: 'failed', dubbed_url: null }) });
+      await expect(service.createFromDub(input, USER)).rejects.toThrow(BadRequestException);
+    });
+
+    it("404s on someone else's dub", async () => {
+      await build({ dubbing_projects: chain({ data: null }), dubbing_outputs: chain({ data: null }) });
+      await expect(service.createFromDub(input, USER)).rejects.toThrow(NotFoundException);
+    });
+
+    it("holds a dub to the subtitle plan's caps", async () => {
+      await build({ dubbing_projects: project({ duration_seconds: 60 * 60 }), dubbing_outputs: output(), subtitle_jobs: chain({ data: null }) });
+      await expect(service.createFromDub(input, USER)).rejects.toThrow(BadRequestException);
     });
   });
 });

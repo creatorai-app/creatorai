@@ -1,9 +1,8 @@
 "use client"
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/select"
 import { supportedLanguages } from "@repo/validation"
+import { DubLanguagePicker } from "@/components/dashboard/dubbing/DubLanguagePicker"
 
-// Radix Select items cannot have an empty value, so "detect" has a name of its own.
 const DETECT = "auto"
 
 /**
@@ -23,18 +22,15 @@ export function DubSourceLanguage({
   disabled?: boolean
 }) {
   return (
-    <Select value={value ?? DETECT} onValueChange={(v) => onChange(v === DETECT ? null : v)} disabled={disabled}>
-      <SelectTrigger aria-label="Source language">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={DETECT}>Detect automatically</SelectItem>
-        {supportedLanguages.map((lang) => (
-          <SelectItem key={lang.value} value={lang.value} disabled={targets.includes(lang.value)}>
-            {lang.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <DubLanguagePicker
+      value={value ?? DETECT}
+      onChange={(v) => onChange(v === DETECT ? null : v)}
+      options={[
+        { value: DETECT, label: "Detect automatically" },
+        ...supportedLanguages.map((lang) => ({ ...lang, disabled: targets.includes(lang.value) })),
+      ]}
+      ariaLabel="Source language"
+      disabled={disabled}
+    />
   )
 }

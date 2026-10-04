@@ -11,6 +11,7 @@ import {
   maxDubSecondsForPlan,
   formatDubDuration,
   supportedLanguages,
+  dubAudioFormat,
   dubOutputObjects,
   dubProjectPrefix,
   cloningStrengthFor,
@@ -18,7 +19,9 @@ import {
   elevenLabsTargetTag,
   DUB_VIDEO_WAIT_HOURS,
   DUB_JOB_STATUSES,
+  type DubAudioFormat,
   type DubEngine,
+  type DubOutputFormat,
   type DubTimelineSegment,
   type DubVoiceMode,
   type DubWarning,
@@ -47,7 +50,7 @@ import {
   rawChannels,
   stemToFlac,
   toDubPcm,
-  toMp3,
+  toTrack,
   truncatePcm,
 } from './utils/ffmpeg';
 import {
@@ -122,8 +125,8 @@ import {
 //   one language target per language under it. ElevenLabs detects and clones the
 //   speakers, and its transcripts become the dub's timeline.
 //
-// Either way each language ends as an MP3 track (dubbed_audio_url), and a video dub has
-// that track muxed over the original once the browser has finished uploading it. Every
+// Either way each language ends as an MP3 or WAV track (dubbed_audio_url), and a video
+// dub has that (MP3) track muxed over the original once the browser has finished uploading it. Every
 // stage leaves its result behind, so a failed or cancelled run resumes where it stopped.
 //
 // The Modal app is frozen: this workspace cannot deploy GPU functions any more (Modal
@@ -200,6 +203,7 @@ interface ProjectRow {
   voice_mode: DubVoiceMode;
   keyterms: string[];
   vendor_projects: VendorProjects | null;
+  output_format: DubOutputFormat | null;
 }
 
 /** Everything one run needs, resolved once. */
@@ -214,6 +218,8 @@ interface RunContext {
   inputObject: string;
   dir: string;
   isVideo: boolean;
+  /** The dubbed track's format: WAV only when asked for; a video's track is MP3. */
+  audioFormat: DubAudioFormat;
   durationSeconds: number;
   engine: DubEngine;
   /** What the user said the source is in; null means detect it. */
@@ -320,6 +326,7 @@ export class DubbingProcessor extends WorkerHost {
       dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dub-'));
       const ctx: RunContext = {
         job, userId, projectId, bucket, prefix: dubProjectPrefix(userId, projectId), inputUrl, inputObject, dir, isVideo, durationSeconds, engine,
+        audioFormat: dubAudioFormat(project.output_format),
         sourceLanguage: project.source_language,
         voiceMode: project.voice_mode,
         keyterms: project.keyterms,
@@ -545,11 +552,11 @@ export class DubbingProcessor extends WorkerHost {
 
       const downloaded = path.join(ctx.dir, `elevenlabs-${o.language}`);
       await downloadDub(opts, dub, o.language, downloaded);
-      const mp3 = path.join(ctx.dir, `${o.language}.mp3`);
-      await toMp3(downloaded, mp3);
+      const track = path.join(ctx.dir, `${o.language}.${ctx.audioFormat}`);
+      await toTrack(downloaded, track);
 
       const { timeline, warnings } = await this.elevenLabsTimeline(ctx, opts, o, dub, outcome.warnings);
-      await this.storeDubbedAudio(ctx, o, mp3, { timeline, warnings: warnings.length ? warnings : null });
+      await this.storeDubbedAudio(ctx, o, track, { timeline, warnings: warnings.length ? warnings : null });
       for (const w of warnings.filter((w) => w.type === 'voices_not_permitted')) {
         await ctx.job.log(`${o.language}: ${w.speakerIds?.length ?? 'some'} speaker(s) got a replacement voice, since their own voice could not be cloned.`);
       }
@@ -1011,9 +1018,9 @@ export class DubbingProcessor extends WorkerHost {
     // Lay every turn on the source's timeline, keep it inside the source, match its
     // loudness, mix it over the music, and encode the finished track.
     await this.throwIfCancelled(ctx.job.id!);
-    const { mp3, placed } = await this.assembleTurns(ctx, o.language, turns, sourceSeconds, maxTempo, referenceLufs, analysis);
+    const { track, placed } = await this.assembleTurns(ctx, o.language, turns, sourceSeconds, maxTempo, referenceLufs, analysis);
     const timeline = cypherTimeline(analysis.utterances, translation, turns, placed);
-    await this.storeDubbedAudio(ctx, o, mp3, { timeline });
+    await this.storeDubbedAudio(ctx, o, track, { timeline });
   }
 
   private turnObject(prefix: string, language: string, index: number): string {
@@ -1117,7 +1124,7 @@ export class DubbingProcessor extends WorkerHost {
     maxTempo: number,
     referenceLufs: number | null,
     analysis: SourceAnalysis,
-  ): Promise<{ mp3: string; placed: { start: number; end: number }[] }> {
+  ): Promise<{ track: string; placed: { start: number; end: number }[] }> {
     const pieces: string[] = [];
     const tempos: number[] = [];
     for (let i = 0; i < turns.length; i++) {
@@ -1170,11 +1177,11 @@ export class DubbingProcessor extends WorkerHost {
     const speechLufs = await measureLoudness(rawPath, true).catch(() => null);
     const gainDb = referenceLufs !== null && speechLufs !== null ? referenceLufs - speechLufs : 0;
     const background = analysis.stems?.status === 'done' && analysis.stems.background ? this.objectUrl(ctx, analysis.stems.background) : null;
-    const mp3 = path.join(ctx.dir, `${language}.mp3`);
-    await mixDub({ speech: rawPath, background, gainDb, totalSeconds: sourceSeconds, output: mp3 });
+    const track = path.join(ctx.dir, `${language}.${ctx.audioFormat}`);
+    await mixDub({ speech: rawPath, background, gainDb, totalSeconds: sourceSeconds, output: track });
 
     const placed = offsets.map((at, i) => ({ start: at, end: Math.min(sourceSeconds, at + durations[i]) }));
-    return { mp3, placed };
+    return { track, placed };
   }
 
   // ──────────────────────────── Shared stages ───────────────────────────
@@ -1186,11 +1193,11 @@ export class DubbingProcessor extends WorkerHost {
   private async storeDubbedAudio(
     ctx: RunContext,
     o: OutputRow,
-    mp3Path: string,
+    trackPath: string,
     extra: { timeline?: DubTimelineSegment[] | null; warnings?: DubWarning[] | null } = {},
   ): Promise<void> {
-    const { audio } = dubOutputObjects(ctx.projectId, o.language);
-    await uploadGcsFile(ctx.bucket, audio.objectName, mp3Path, audio.contentType);
+    const { audio } = dubOutputObjects(ctx.projectId, o.language, ctx.audioFormat);
+    await uploadGcsFile(ctx.bucket, audio.objectName, trackPath, audio.contentType);
     const url = gcsPublicUrl(ctx.bucket, audio.objectName);
     await this.updateOutputs([o.id], {
       dubbed_audio_url: url,
@@ -1383,7 +1390,7 @@ export class DubbingProcessor extends WorkerHost {
       return;
     }
     const charged = outputs.reduce((sum, o) => sum + Number(o.credits_consumed ?? 0), 0);
-    const owedTotal = await this.settleCredits(ctx.userId, charged, probedSec, ctx.job, outputs.length, ctx.engine);
+    const owedTotal = await this.settleCredits(ctx.userId, charged, probedSec, ctx.job, outputs.length);
     const perLanguage = owedTotal / outputs.length;
     for (const o of outputs) o.credits_consumed = perLanguage;
     await this.updateOutputs(outputs.map((o) => o.id), { credits_consumed: perLanguage });
@@ -1405,11 +1412,10 @@ export class DubbingProcessor extends WorkerHost {
     actualDurationSeconds: number,
     job: Job<DubJobData>,
     languages: number,
-    engine: DubEngine,
   ): Promise<number> {
-    // Same plan- and engine-aware rate the API reserved at. Resolving it differently here
-    // would settle a Starter dub at the paid rate and silently refund most of the charge.
-    const multiplier = dubbingMultiplierForPlan(job.data.planName, paidDubbingMultiplier(engine, process.env));
+    // Same plan-aware rate the API reserved at. Resolving it differently here would
+    // settle a Starter dub at the paid rate and silently refund most of the charge.
+    const multiplier = dubbingMultiplierForPlan(job.data.planName, paidDubbingMultiplier(process.env));
     const owed = calculateDubbingCreditsByDuration(actualDurationSeconds, multiplier) * languages;
     const delta = owed - charged;
     if (delta === 0) return owed;
@@ -1464,7 +1470,7 @@ export class DubbingProcessor extends WorkerHost {
   private async loadProject(projectId: string): Promise<ProjectRow> {
     const { data, error } = await this.supabase
       .from('dubbing_projects')
-      .select('engine, video_object, analysis, source_language, voice_mode, keyterms, vendor_projects')
+      .select('engine, video_object, analysis, source_language, voice_mode, keyterms, vendor_projects, output_format')
       .eq('project_id', projectId)
       .single();
     if (error || !data) throw new Error(`dubbing_projects read failed: ${error?.message ?? 'row not found'}`);

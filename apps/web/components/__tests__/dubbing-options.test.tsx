@@ -1,48 +1,14 @@
-import { useState } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { DubKeyterms } from "@/components/dashboard/dubbing/DubKeyterms"
 import { DubTimeline } from "@/components/dashboard/dubbing/DubTimeline"
 import { DubVoiceModePicker } from "@/components/dashboard/dubbing/DubVoiceMode"
+import { DubOutputFormatPicker } from "@/components/dashboard/dubbing/DubOutputFormat"
 import { speakerName } from "@/components/dashboard/dubbing/DubOutputsList"
 
 /**
- * The new-dub options that carry rules (keyterms follow ElevenLabs' limits, voice mode
- * explains itself per engine) and the timeline, whose rows are the way into the player.
+ * The voice mode picker (it explains itself per engine on hover) and the timeline, whose
+ * rows are the way into the player.
  */
-
-function Keyterms({ initial = [] as string[] }) {
-  const [terms, setTerms] = useState(initial)
-  return <DubKeyterms value={terms} onChange={setTerms} />
-}
-
-describe("DubKeyterms", () => {
-  it("adds a term on Enter and several from a comma-separated paste, without duplicates", async () => {
-    render(<Keyterms />)
-    const input = screen.getByRole("textbox", { name: "Add a name or term" })
-    await userEvent.type(input, "Creator AI{Enter}")
-    await userEvent.type(input, "Cypher, creator ai, Modal{Enter}")
-    const chips = screen.getAllByRole("listitem").map((li) => li.textContent)
-    expect(chips).toEqual(["Creator AI", "Cypher", "Modal"])
-  })
-
-  it("explains a term ElevenLabs would refuse, and keeps it out", async () => {
-    render(<Keyterms />)
-    const input = screen.getByRole("textbox", { name: "Add a name or term" })
-    await userEvent.type(input, "one two three four five six{Enter}")
-    expect(screen.getByText("Keep each term to 5 words")).toBeInTheDocument()
-    await userEvent.clear(input)
-    await userEvent.type(input, "a<b>{Enter}")
-    expect(screen.getByText(/Terms cannot contain/)).toBeInTheDocument()
-    expect(screen.queryAllByRole("listitem")).toHaveLength(0)
-  })
-
-  it("removes a term with its button", async () => {
-    render(<Keyterms initial={["Creator AI", "Cypher"]} />)
-    await userEvent.click(screen.getByRole("button", { name: "Remove Cypher" }))
-    expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Creator AI"])
-  })
-})
 
 describe("DubVoiceModePicker", () => {
   it("says what each mode does on the chosen engine, with no em dashes", async () => {
@@ -50,9 +16,22 @@ describe("DubVoiceModePicker", () => {
     render(<DubVoiceModePicker engine="elevenlabs" value="balanced" onChange={onChange} />)
     const radios = screen.getAllByRole("radio")
     expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual(["false", "true", "false"])
-    expect(radios.every((r) => !r.textContent?.includes("—"))).toBe(true)
+    expect(radios.every((r) => r.title && !r.title.includes("—"))).toBe(true)
     await userEvent.click(screen.getByRole("radio", { name: /Sound native/ }))
     expect(onChange).toHaveBeenCalledWith("native")
+  })
+})
+
+describe("DubOutputFormatPicker", () => {
+  it("offers video, MP3 and WAV for a video, and only audio for an audio file", async () => {
+    const onChange = jest.fn()
+    const { rerender } = render(<DubOutputFormatPicker value="mp4" onChange={onChange} allowVideo />)
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual(["Video (MP4)", "Audio only (MP3)", "Audio only (WAV)"])
+    await userEvent.click(screen.getByRole("radio", { name: "Audio only (WAV)" }))
+    expect(onChange).toHaveBeenCalledWith("wav")
+    rerender(<DubOutputFormatPicker value="mp3" onChange={onChange} allowVideo={false} />)
+    expect(screen.queryByRole("radio", { name: "Video (MP4)" })).toBeNull()
+    expect(screen.getByRole("radio", { name: "Audio only (MP3)" })).toHaveAttribute("aria-checked", "true")
   })
 })
 

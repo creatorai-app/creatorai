@@ -23,7 +23,7 @@ of the whole file and the single-language, single-voice pipeline described in
 | Video upload | One request, before dubbing | Parallel parts, **while** dubbing runs |
 | Dropped connection / closed tab | Start over | Continue from what GCS already has |
 | Dub fails halfway | Start over, pay again | Retry resumes at the first unfinished step, per language |
-| Dubbed track format | WAV (Cypher) | MP3, whichever engine made it; MP4 for video |
+| Output | WAV (Cypher), MP4 for video | Picked per dub: **video (MP4)**, or **audio only, MP3 or WAV**, whichever engine made it |
 
 ## The two engines
 
@@ -41,26 +41,36 @@ Constants live in `packages/validations/src/consts/dubbing.ts` (`DUB_ENGINES`,
 | Price (paid plans) | 1 credit per second, per language | 1/6 credit per second, per language |
 | Our cost | ~$0.054 per minute (breakdown below) | ~$0.24 per minute at list price, per language |
 
-## Pricing: per second, per engine, per language
+## Pricing: per second, per language, the same on both engines
 
-Both engines bill the same way: credits per second of source, per language dubbed, on
-every plan. Each has its own rate (`packages/validations/src/consts/credits.ts`):
+Credits per second of source, per language dubbed, on every plan, at one rate whichever
+engine runs the dub (`packages/validations/src/consts/credits.ts`). A plan buys the same
+hours on Cypher and ElevenLabs; only the languages differ.
 
-| | Cypher | ElevenLabs |
+| | Rate |
+|---|---|
+| Paid plans | `DUBBING_CREDIT_MULTIPLIER` = **1/6**/s (10/min) |
+| Starter | 3/s (the trial rate) |
+| Env override (no deploy) | `DUBBING_CREDIT_MULTIPLIER` |
+
+`paidDubbingMultiplier(env)` resolves the rate with its override, and the API (reserve),
+the worker (settle) and the new-dub form (estimate, via `/dubbing/access`) all go through
+it, so the three cannot disagree. What a month buys:
+
+| Plan | Credits | Dubbing |
 |---|---|---|
-| Paid plans | `CYPHER_DUBBING_CREDIT_MULTIPLIER` = **1**/s (60/min) | `DUBBING_CREDIT_MULTIPLIER` = **1/6**/s (10/min) |
-| Starter | 3/s (the trial rate, same on both) | 3/s |
-| Env override (no deploy) | `CYPHER_DUBBING_CREDIT_MULTIPLIER` | `DUBBING_CREDIT_MULTIPLIER` |
+| Starter | 500 | 2.8 min |
+| Creator | 3,000 | 5.0 hrs |
+| Pro | 8,000 | 13.3 hrs |
+| Business | 50,000 | 83.3 hrs |
+| Scale | 100,000 | 166.7 hrs |
 
-`paidDubbingMultiplier(engine, env)` resolves an engine's rate with its override, and the
-API (reserve), the worker (settle) and the new-dub form (estimate, via `/dubbing/access`)
-all go through it, so the three cannot disagree. An override only moves the engine it names.
+Plan caps on clip length and size are the same on both engines too. The one exception is
+ElevenLabs' own limit on its dubbing_v1 model (Bengali): 1GB and 45 minutes.
 
-### How Cypher's rate was worked out
+### What Cypher costs us
 
-The codebase's margin rule: every feature clears 80% gross margin at the lowest price a
-credit sells for (Pro annual, $0.004875), so a credit may carry at most $0.000975 of
-vendor cost (`creditsForCost`). Cypher's cost per source minute, per language:
+Per source minute, per language:
 
 | Component | Basis | ~$/min |
 |---|---|---|
@@ -68,28 +78,15 @@ vendor cost (`creditsForCost`). Cypher's cost per source minute, per language:
 | Translation | text in and out, same model | 0.0050 |
 | Chatterbox on a Modal L4 | $0.000222/s GPU plus CPU and memory; measured ~1.4 GPU-seconds per second of dubbed speech; dubbed speech ~1.2x the source; one cold start and the 120 s scale-down window spread over a ~5 minute dub | 0.0360 |
 | GCS egress | voice samples to Modal, the video to the worker, ~$0.12/GB | 0.0050 |
-| **Total** | | **~0.054** ($0.0009/s) |
+| **Total** | | **~0.054** |
 
-Not in this table yet: since the stems and word-timing stages, a Cypher dub with
-`ELEVENLABS_API_KEY` set also calls ElevenLabs stem separation and forced alignment once
-per minute of source (not per language). Check their per-minute price against this rate
-before relying on it; without the key those stages are skipped and the table stands.
+With `ELEVENLABS_API_KEY` set, a Cypher dub also calls ElevenLabs stem separation and
+forced alignment once per minute of source (not per language), on top of this.
 
-`creditsForCost(0.0009)` = **1 credit per second**. What a month buys:
-
-| Plan | Credits | ElevenLabs | Cypher |
-|---|---|---|---|
-| Starter | 500 | 2.8 min | 2.8 min |
-| Creator | 3,000 | 5.0 hrs | 50.0 min |
-| Pro | 8,000 | 13.3 hrs | 2.2 hrs |
-| Business | 50,000 | 83.3 hrs | 13.9 hrs |
-| Scale | 100,000 | 166.7 hrs | 27.8 hrs |
-
-ElevenLabs looks more generous only because its rate is the grant-funded promo that
-`credits.ts` documents: at list price it runs well below the margin target, and its
-comment there explains how to raise it when the grant ends. At list prices Cypher costs
-us about a quarter of what ElevenLabs does. If Cypher should be the cheaper option for
-users, lower `CYPHER_DUBBING_CREDIT_MULTIPLIER`; the public pages follow the constants.
+At the shared rate the 10 credits a paid minute costs cover about $0.009, so Cypher runs
+at a loss per minute, as ElevenLabs does at list price outside its grant. That was a
+product decision (2026-10-02): one price, so the choice of engine is about languages.
+Raising `DUBBING_CREDIT_MULTIPLIER` raises both.
 
 ## ElevenLabs: the dubbing project API
 
@@ -211,6 +208,27 @@ voice mode on ElevenLabs always, and on Cypher only when `/dubbing/access` repor
 deduplicated) are stored on the project. ElevenLabs gets them as `source_language` and
 `keyterms`; Cypher gives Gemini the source language and keeps the terms untranslated.
 
+## Output format
+
+Picked on the new-dub page (`DubOutputFormatPicker`), sent as `outputFormat`, stored on
+`dubbing_projects.output_format` (`DUB_OUTPUT_FORMATS` in `packages/validations`).
+
+| | What comes back | Video uploaded |
+|---|---|---|
+| `mp4` (default for a video) | The video with the dubbed track muxed in (the MP3 track is kept for the mux) | Yes, alongside the dub |
+| `mp3` (default for audio) | The dubbed track, MP3 (`libmp3lame -q:a 2`) | No |
+| `wav` | The dubbed track, 16-bit PCM WAV | No |
+
+Only a video can come back as a video; the schema refuses `mp4` for an audio file. An
+audio-only dub of a video uploads just its extracted audio track and is an audio dub from
+then on: `is_video` is false (no mux, no subtitles), so `is_video` means "the dub is a
+video", not "the source was". `video_size` still holds the original's size, which caps a
+re-extracted track on resume. The format sets the extension the worker encodes to
+(`trackCodecArgs`): Cypher's mix and ElevenLabs' download are written straight to WAV,
+never transcoded from MP3. Dubs from before the choice have a null `output_format`:
+`dubOutputFormatOf` reads them as MP4 for a video, MP3 otherwise. A WAV track runs about
+10 MB per minute at 44.1 kHz stereo, so a 3-hour dub is close to 2 GB.
+
 ## Several languages in one dub
 
 One project (the upload), one row in `dubbing_outputs` per language. Each language:
@@ -218,7 +236,7 @@ One project (the upload), one row in `dubbing_outputs` per language. Each langua
 - is priced as its own dub: `cost × languages`, checked at init and reserved at start;
 - is dubbed, delivered and failed on its own. One language failing refunds only that
   language; the others finish normally;
-- gets its own files: `dubbed/<projectId>/<language>.mp3` and `.mp4`.
+- gets its own files: `dubbed/<projectId>/<language>.mp3` (or `.wav`), and `.mp4` for a video dub.
 
 The per-plan limit is `maxDubLanguagesForPlan`: Starter 1, Creator 2, Pro 2, Business 3,
 Scale 3 (unknown plans get 1). The API enforces it; the page shows it
@@ -458,8 +476,9 @@ Output (per language): `pending → dubbing → (awaiting_video) → completed |
 
 ## Database
 
-Migrations `packages/supabase/migrations/20260926000000_dubbing_resumable_uploads.sql`
-and `20260928000000_dubbing_voice_mode_and_timelines.sql`.
+Migrations `packages/supabase/migrations/20260926000000_dubbing_resumable_uploads.sql`,
+`20260928000000_dubbing_voice_mode_and_timelines.sql` and
+`20261004000000_dubbing_output_format.sql`.
 
 `dubbing_projects` gains:
 
@@ -472,7 +491,7 @@ and `20260928000000_dubbing_voice_mode_and_timelines.sql`.
 | `analysis` | Cypher: speech map, windows, speakers, placed lines; since version 2 also `stems`, `alignment`, `loudness` |
 | `source_language` | What the source is spoken in; null means detect it |
 | `voice_mode` | `like_me`, `balanced` (default) or `native` |
-| `keyterms` | Names and terms kept as they are (`text[]`, default empty) |
+| `keyterms` | Names and terms kept as they are (`text[]`, default empty). The web app no longer asks for them; the API still accepts them |
 | `vendor_projects` | ElevenLabs project per model: `{ dubbing_v2, dubbing_v1 }`, plus `generation` on dubs from the removed regenerate |
 
 New table `dubbing_outputs`: `language`, `accent`, `status`, `translation` (Cypher),
@@ -492,7 +511,7 @@ Removed: `POST /dubbing/sign-upload`, `POST /dubbing`.
 | Route | Does |
 |---|---|
 | `GET /dubbing/access` | Now also returns `maxLanguages`, and `creditsPerSecond` per engine (`{ cypher, elevenlabs }`) |
-| `POST /dubbing/uploads` | Takes `engine` and `targets: [{ language, accent? }]`; checks plan, languages, size, balance; creates the project and its outputs; opens both uploads |
+| `POST /dubbing/uploads` | Takes `engine`, `targets: [{ language, accent? }]` and `outputFormat`; checks plan, languages, size, balance; creates the project and its outputs; opens both uploads |
 | `GET /dubbing/:id/upload` | Upload progress from GCS |
 | `POST /dubbing/:id/upload/audio-session` | Fresh audio session |
 | `POST /dubbing/:id/start` | Verifies the audio, reserves every language, queues the job (idempotent) |
@@ -520,7 +539,7 @@ the outputs and `dubbed/<projectId>/`).
   work/voices/v2/S1.wav ...         Cypher: one voice sample per speaker (best line first, 24 kHz)
   work/<language>/turn-0000.pcm     Cypher: dubbed turns, fitted
   work/<language>/turn-0000.json    Cypher: each turn's record (text, tempo, shortened)
-dubbed/<projectId>/<language>.mp3   dubbed track (every dub)
+dubbed/<projectId>/<language>.mp3   dubbed track (every dub; .wav when picked)
 dubbed/<projectId>/<language>.mp4   dubbed video
 ```
 
@@ -570,9 +589,8 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
 
 - `ELEVENLABS_API_KEY` must be set for the **worker** (`packages/workers/.env` in
   production). It is set locally; the worker only needs it once someone picks ElevenLabs.
-- `CYPHER_DUBBING_CREDIT_MULTIPLIER` (optional, API **and** worker): overrides Cypher's
-  per-second rate. Leave unset to use the default of 1. Set it in both places or the
-  reserve and the settle will disagree.
+- `DUBBING_CREDIT_MULTIPLIER` (optional, API **and** worker): overrides the per-second
+  rate on both engines. Set it in both places or the reserve and the settle will disagree.
 - `MODAL_API_URL`, `GOOGLE_*` and `GCS_DUBBING_BUCKET`: unchanged.
 - `ELEVENLABS_API_KEY` on the **worker** now also turns on Cypher's stem separation and
   forced alignment. A scoped key needs dubbing, speech to text / forced alignment, and
@@ -609,13 +627,13 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
 Every public number about dubbing is read from the constants, not typed in, so a price
 or language change updates the pages with it:
 
-- **Pricing page and landing pricing cards**: one "Dubbing with ..." row per engine,
-  hours or minutes per plan (`dubbingAllowanceFor(plan, engine)`).
-- **Settings, usage panel**: the user's own plan, both engines.
+- **Pricing page and landing pricing cards**: one "Dubbing" row, hours or minutes per
+  plan (`dubbingAllowanceFor(plan)`), the same on either engine.
+- **Settings, usage panel**: the user's own plan's dubbing hours.
 - **`/features/dubbing`**: language counts per engine, both engines, multiple speakers,
-  per-engine hours, and FAQs on languages and speakers.
-- **Signup page, new-dub page, engine cards**: language counts (engine cards also show
-  credits per minute for the user's plan).
+  the shared hours, and FAQs on languages and speakers.
+- **Signup page, new-dub page, engine cards**: language counts. The new-dub page shows
+  the credits a file will cost once it is picked.
 - **`llms.txt` / `llms-full.txt`**: the generator's header now quotes the counts and the
   every-plan pricing, and no longer claims a 60-second Starter cap.
 - **Blog**: migrations move "29 languages" to 33, then to 94, in the two comparison tables
@@ -661,8 +679,8 @@ Automated (`pnpm test`, plus the two self-checks):
 - `apps/api/src/dubbing/dubbing.service.spec.ts`: the new fields stored, resume keeping the
   project and re-charging what failed, refunds on cancel and on a job that died unsettled,
   only finished media in `getDub`, timelines, voice mode engines in `/access`.
-- `apps/web/components/__tests__/dubbing-options.test.tsx`: keyterm chips and their rules,
-  the voice mode picker, the timeline and its seek.
+- `apps/web/components/__tests__/dubbing-options.test.tsx`: the voice mode picker, the
+  timeline and its seek.
 - `services/cypher-tts/test_server.py`: request validation with the model replaced
   (`python -m pytest -q` in that folder).
 
@@ -683,7 +701,8 @@ Manual, after the migrations and bucket changes:
 3. ElevenLabs with Bengali and Spanish: two ElevenLabs projects (worker log), both dubbed.
 4. Hebrew on ElevenLabs with a 60-minute clip on a paid plan: accepted (v2 cap, not 45 min).
 5. A spoken language that equals a target: the form greys it out; the API refuses it.
-6. Names and terms: add "Creator AI"; the dub keeps it untranslated on both engines.
+6. A clip that says a brand name: the dub keeps it untranslated (Cypher's prompts keep
+   names of people, brands, products and places by default).
 7. On Starter, a second language cannot be added; on Creator, a third cannot.
 8. The language menu shows each engine's count and greys out the other engine's languages.
 9. Mid video upload, close the tab; on the dub's page press **View progress**, pick the same

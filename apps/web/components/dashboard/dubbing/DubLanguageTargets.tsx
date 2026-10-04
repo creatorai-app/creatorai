@@ -2,15 +2,15 @@
 
 import { Plus, X } from "lucide-react"
 import { Button } from "@repo/ui/button"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@repo/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/select"
 import { accentsFor, DUB_ENGINE_INFO, DUB_ENGINES, dubbableLanguagesFor, type DubEngine, type DubTarget } from "@repo/validation"
+import { DubLanguagePicker } from "@/components/dashboard/dubbing/DubLanguagePicker"
 
 /**
  * The languages to dub into, one output each, up to the plan's `max`. Each row picks a
  * language and, where the engine honours one, a dialect (ElevenLabs Dubbing v2). The
- * menu also lists, greyed out, the languages only the other engine speaks, so it is clear
- * why a language is missing and where to find it. The source language, when one is
- * picked, cannot be a target.
+ * languages only the other engine speaks are listed greyed out, so a search for one says
+ * where to find it. The source language, when one is picked, cannot be a target.
  */
 export function DubLanguageTargets({
   engine,
@@ -42,37 +42,22 @@ export function DubLanguageTargets({
         const taken = new Set([...rows.filter((_, i) => i !== index).map((r) => r.language), ...(sourceLanguage ? [sourceLanguage] : [])])
         return (
           <div key={index} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select
+            <DubLanguagePicker
               value={row.language}
               // A new language clears the dialect: it belonged to the old one.
-              onValueChange={(language) => setRow(index, { language })}
+              onChange={(language) => setRow(index, { language })}
+              options={[
+                ...languages.map((lang) => ({
+                  ...lang,
+                  disabled: taken.has(lang.value),
+                  note: lang.value === sourceLanguage ? "The source" : undefined,
+                })),
+                ...otherOnly.map((lang) => ({ ...lang, disabled: true, note: `Only on ${DUB_ENGINE_INFO[other].name}` })),
+              ]}
+              ariaLabel={`Language ${index + 1}`}
               disabled={disabled}
-            >
-              <SelectTrigger aria-label={`Language ${index + 1}`} className="sm:flex-1">
-                <SelectValue placeholder="Select a language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>{`${languages.length} languages on ${DUB_ENGINE_INFO[engine].name}`}</SelectLabel>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value} disabled={taken.has(lang.value)}>
-                      {lang.label}
-                      {lang.value === sourceLanguage ? " (the source)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                {otherOnly.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel>{`Only on ${DUB_ENGINE_INFO[other].name}`}</SelectLabel>
-                    {otherOnly.map((lang) => (
-                      <SelectItem key={lang.value} value={`other:${lang.value}`} disabled>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                )}
-              </SelectContent>
-            </Select>
+              className="sm:flex-1"
+            />
 
             {accents.length > 0 && (
               <Select
@@ -80,7 +65,7 @@ export function DubLanguageTargets({
                 onValueChange={(accent) => setRow(index, { language: row.language, accent })}
                 disabled={disabled}
               >
-                <SelectTrigger aria-label={`Dialect for language ${index + 1}`} className="sm:w-52">
+                <SelectTrigger aria-label={`Dialect for language ${index + 1}`} className="sm:w-52 focus:ring-0 focus:ring-offset-0 focus:border-purple-400">
                   <SelectValue placeholder="Default dialect" />
                 </SelectTrigger>
                 <SelectContent>
@@ -108,22 +93,17 @@ export function DubLanguageTargets({
         )
       })}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {max > 1 ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onChange([...targets, { language: "" }])}
-            disabled={disabled || rows.length >= max || !rows[rows.length - 1]?.language}
-          >
-            <Plus className="mr-1.5 h-4 w-4" /> Add language
-          </Button>
-        ) : <span />}
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          Your plan dubs into up to {max} language{max === 1 ? "" : "s"} at once. Each language is charged as its own dub.
-        </span>
-      </div>
+      {max > 1 && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...targets, { language: "" }])}
+          disabled={disabled || rows.length >= max || !rows[rows.length - 1]?.language}
+        >
+          <Plus className="mr-1.5 h-4 w-4" /> Add language ({rows.length}/{max})
+        </Button>
+      )}
     </div>
   )
 }

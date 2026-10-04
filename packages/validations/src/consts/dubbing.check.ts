@@ -5,6 +5,9 @@
 import assert from 'node:assert';
 import {
   canDub,
+  dubAudioFormat,
+  dubOutputFormatOf,
+  dubOutputObjects,
   DUBBING_PLANS,
   DUBBING_CANCEL_PREFIX,
   STARTER_MAX_DUB_SECONDS,
@@ -50,10 +53,7 @@ import {
   STARTER_DUBBING_CREDIT_MULTIPLIER,
   dubbingMultiplierForPlan,
   formatDubbingAllowance,
-  formatDubbingAllowanceFor,
   paidDubbingMultiplier,
-  CYPHER_DUBBING_CREDIT_MULTIPLIER,
-  creditsForCost,
 } from './credits';
 import { InitDubUploadSchema, DubVideoPartSchema, DubOutputSchema } from '../schema/dubbing.schema';
 
@@ -215,6 +215,21 @@ assert.equal(parsedDefault.voiceMode, 'balanced');
 assert.equal(parsedDefault.keyterms, undefined);
 assert.equal(init({ voiceMode: 'native' }).success, true);
 assert.equal(init({ voiceMode: 'robot' }).success, false);
+// Output format: optional, and only a video can come back as a video.
+assert.equal(parsedDefault.outputFormat, undefined);
+assert.equal(init({ outputFormat: 'wav' }).success, true);
+assert.equal(init({ outputFormat: 'mp4' }).success, true);
+assert.equal(init({ outputFormat: 'mp4', isVideo: false }).success, false);
+assert.equal(init({ outputFormat: 'mp3', isVideo: false }).success, true);
+assert.equal(init({ outputFormat: 'flac' }).success, false);
+assert.equal(dubOutputFormatOf({ outputFormat: null, isVideo: true }), 'mp4');
+assert.equal(dubOutputFormatOf({ isVideo: false }), 'mp3');
+assert.equal(dubOutputFormatOf({ outputFormat: 'wav', isVideo: false }), 'wav');
+assert.equal(dubAudioFormat('mp4'), 'mp3'); // a video's track is what gets muxed
+assert.equal(dubAudioFormat(null), 'mp3');
+assert.equal(dubAudioFormat('wav'), 'wav');
+assert.deepEqual(dubOutputObjects('p', 'es', 'wav').audio, { objectName: 'dubbed/p/es.wav', contentType: 'audio/wav' });
+assert.deepEqual(dubOutputObjects('p', 'es').audio, { objectName: 'dubbed/p/es.mp3', contentType: 'audio/mpeg' });
 // Keyterms: validated one by one, trimmed and deduplicated, at most 50.
 const withTerms = init({ keyterms: ['  Creator AI ', 'creator ai', 'Cypher', ''] });
 assert.equal(withTerms.success, true);
@@ -419,18 +434,9 @@ for (const bad of ['<b>', 'a{b}', 'x[1]', 'back\\slash', 'a>b']) {
 assert.notEqual(keytermProblem('   '), null);
 assert.deepEqual(normalizeKeyterms([' Creator AI ', 'creator  ai', 'Cypher', '', 'Cypher']), ['Creator AI', 'Cypher']);
 
-// Per-engine rates: Cypher is priced from its own COGS, ElevenLabs keeps the promo rate,
-// and an env override only moves the engine it names.
-assert.equal(CYPHER_DUBBING_CREDIT_MULTIPLIER, creditsForCost(0.0009));
-assert.equal(paidDubbingMultiplier('cypher'), CYPHER_DUBBING_CREDIT_MULTIPLIER);
-assert.equal(paidDubbingMultiplier('elevenlabs'), DUBBING_CREDIT_MULTIPLIER);
-assert.equal(paidDubbingMultiplier('cypher', { CYPHER_DUBBING_CREDIT_MULTIPLIER: '2' }), 2);
-assert.equal(paidDubbingMultiplier('elevenlabs', { CYPHER_DUBBING_CREDIT_MULTIPLIER: '2' }), DUBBING_CREDIT_MULTIPLIER);
-assert.equal(paidDubbingMultiplier('cypher', { CYPHER_DUBBING_CREDIT_MULTIPLIER: 'nope' }), CYPHER_DUBBING_CREDIT_MULTIPLIER);
-assert.equal(formatDubbingAllowanceFor(3000, 'Creator', 'elevenlabs'), '5.0 hrs');
-assert.equal(formatDubbingAllowanceFor(3000, 'Creator', 'cypher'), '50.0 min');
-assert.equal(formatDubbingAllowanceFor(100000, 'Scale', 'cypher'), '27.8 hrs');
-// Starter's trial rate is the same on both engines.
-assert.equal(formatDubbingAllowanceFor(500, 'Starter', 'cypher'), formatDubbingAllowanceFor(500, 'Starter', 'elevenlabs'));
+// One rate on both engines; an env override moves it, a bad one is ignored.
+assert.equal(paidDubbingMultiplier(), DUBBING_CREDIT_MULTIPLIER);
+assert.equal(paidDubbingMultiplier({ DUBBING_CREDIT_MULTIPLIER: '2' }), 2);
+assert.equal(paidDubbingMultiplier({ DUBBING_CREDIT_MULTIPLIER: 'nope' }), DUBBING_CREDIT_MULTIPLIER);
 
 console.log('dubbing self-check OK');

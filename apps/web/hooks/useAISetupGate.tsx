@@ -24,9 +24,10 @@ export function useAISetupGate() {
 
   const connected = profile?.youtube_connected === true;
   const trained = profile?.ai_trained === true;
-  const locked = !(connected && trained);
-
-  const step: SetupStep | null = !connected ? "connect" : !trained ? "train" : null;
+  // An unread profile is unknown, not "not set up": the API's OnboardedGuard still gates
+  // every action, so a slow or failed read must not lock the page.
+  const step: SetupStep | null = !profile ? null : !connected ? "connect" : !trained ? "train" : null;
+  const locked = step !== null;
 
   return {
     locked,

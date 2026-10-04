@@ -24,6 +24,7 @@ import {
   maxDubBytesForPlan,
   formatDubDuration,
   formatUploadLimit,
+  dubOutputFormatOf,
   dubOutputPrefix,
   dubProjectPrefix,
   isSupportedDubLanguage,
@@ -118,9 +119,8 @@ export class DubbingService {
 
   /**
    * Lightweight gate check for the UI: form vs. upgrade card, the upload limits, and
-   * the plan's credits-per-second on each engine so the form can price a file the same
-   * way this service will. The rates are resolved here because only the API sees the
-   * env overrides.
+   * the plan's credits-per-second so the form can price a file the same way this service
+   * will. The rate is resolved here because only the API sees the env override.
    */
   async getAccess(userId: string) {
     const planName = await this.getActivePlanName(userId);
@@ -135,15 +135,13 @@ export class DubbingService {
       maxDurationSeconds: maxDubSecondsForPlan(planName),
       maxUploadBytes: maxDubBytesForPlan(planName),
       maxLanguages: maxDubLanguagesForPlan(planName),
-      creditsPerSecond: Object.fromEntries(
-        DUB_ENGINES.map((engine) => [engine, this.rate(planName, engine)]),
-      ) as Record<DubEngine, number>,
+      creditsPerSecond: this.rate(planName),
     };
   }
 
-  /** Credits per second of source, per language, for a plan on an engine. */
-  private rate(planName: string | null | undefined, engine: DubEngine): number {
-    return dubbingMultiplierForPlan(planName, paidDubbingMultiplier(engine, process.env));
+  /** Credits per second of source, per language, for a plan. The same on both engines. */
+  private rate(planName: string | null | undefined): number {
+    return dubbingMultiplierForPlan(planName, paidDubbingMultiplier(process.env));
   }
 
   /** Dubs from before the engine choice ran on whichever engine speaks their language. */
@@ -180,13 +178,12 @@ export class DubbingService {
   }
 
   /**
-   * Credits one language of this dub costs on an engine: the single place the price is
-   * computed. Starter pays its own (higher) trial rate on either engine; the worker
-   * resolves the same rate from the plan it carries and the project's engine, so the
-   * settle can't disagree with what was reserved.
+   * Credits one language of this dub costs: the single place the price is computed.
+   * Starter pays its own (higher) trial rate; the worker resolves the same rate from the
+   * plan it carries, so the settle can't disagree with what was reserved.
    */
-  private dubCost(durationSeconds: number, planName: string | null | undefined, engine: DubEngine): number {
-    return calculateDubbingCreditsByDuration(durationSeconds, this.rate(planName, engine));
+  private dubCost(durationSeconds: number, planName: string | null | undefined): number {
+    return calculateDubbingCreditsByDuration(durationSeconds, this.rate(planName));
   }
 
   /**
@@ -226,10 +223,9 @@ export class DubbingService {
     durationSeconds: number,
     planName: string | null | undefined,
     languages: number,
-    engine: DubEngine,
   ): Promise<void> {
     // Each language is its own dub, so the price scales with how many were picked.
-    const required = this.dubCost(durationSeconds, planName, engine) * languages;
+    const required = this.dubCost(durationSeconds, planName) * languages;
 
     const { data: profile, error } = await this.supabase
       .from('profiles')
@@ -318,14 +314,18 @@ export class DubbingService {
     if (input.audio.size > input.fileSize) {
       throw new BadRequestException('The audio track cannot be larger than the file it came from.');
     }
-    await this.assertCanAffordDub(userId, input.durationSeconds, planName, languages.length, input.engine);
+    await this.assertCanAffordDub(userId, input.durationSeconds, planName, languages.length);
 
     const projectId = crypto.randomUUID();
     const prefix = dubProjectPrefix(userId, projectId);
     const sourceObject = `${prefix}${this.sanitizeFileName(input.filename)}`;
+    const outputFormat = dubOutputFormatOf(input);
+    // is_video means the dub comes back as a video. An audio-only dub of a video is an
+    // audio dub from here on: no video upload, no mux, no subtitles.
+    const deliversVideo = outputFormat === 'mp4';
     // Without an extracted track the whole file is the audio: one upload, and the worker
     // pulls the sound out of it (and muxes back over it) the way it always has.
-    const splitVideo = input.isVideo && input.audio.extracted;
+    const splitVideo = deliversVideo && input.audio.extracted;
     const audioObject = input.audio.extracted
       ? `${prefix}audio.${extractedAudioExtension(input.audio.contentType)}`
       : sourceObject;
@@ -349,7 +349,8 @@ export class DubbingService {
       // The first language, kept on the project for older readers of the row.
       target_language: languages[0],
       target_accent: input.targets[0].accent ?? null,
-      is_video: input.isVideo,
+      is_video: deliversVideo,
+      output_format: outputFormat,
       media_name: input.mediaName,
       duration_seconds: input.durationSeconds,
       credits_consumed: 0,
@@ -366,7 +367,8 @@ export class DubbingService {
       video_object: splitVideo ? sourceObject : null,
       video_upload_id: video?.uploadId ?? null,
       video_part_size: video?.partSize ?? null,
-      video_size: splitVideo ? input.fileSize : null,
+      // The original's size, which caps a re-extracted audio track (restartAudioSession).
+      video_size: input.isVideo ? input.fileSize : null,
       video_content_type: splitVideo ? input.contentType : null,
       video_status: splitVideo ? 'uploading' : null,
       source_language: input.sourceLanguage ?? null,
@@ -519,8 +521,8 @@ export class DubbingService {
     // Only an unsplit file is the original itself; its real size is what the plan caps.
     if (!row.audio_extracted) this.assertSizeAllowed(planName, size, languages, engine);
 
-    await this.assertCanAffordDub(userId, durationSeconds, planName, outputs.length, engine);
-    const perLanguage = this.dubCost(durationSeconds, planName, engine);
+    await this.assertCanAffordDub(userId, durationSeconds, planName, outputs.length);
+    const perLanguage = this.dubCost(durationSeconds, planName);
     const reservedCredits = perLanguage * outputs.length;
     await this.reserveCredits(userId, reservedCredits);
 
@@ -643,8 +645,8 @@ export class DubbingService {
     // the back door.
     const engine = this.engineOf(row);
     this.assertDurationAllowed(planName, durationSeconds, toRun.map((o) => o.language), engine);
-    await this.assertCanAffordDub(userId, durationSeconds, planName, toRun.length, engine);
-    const perLanguage = this.dubCost(durationSeconds, planName, engine);
+    await this.assertCanAffordDub(userId, durationSeconds, planName, toRun.length);
+    const perLanguage = this.dubCost(durationSeconds, planName);
     const reservedCredits = perLanguage * toRun.length;
     await this.reserveCredits(userId, reservedCredits);
 
@@ -847,7 +849,7 @@ export class DubbingService {
     const read = () =>
       this.supabase
         .from('dubbing_projects')
-        .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, created_at, media_name, source_language, voice_mode, keyterms, speakers:analysis->speakers')
+        .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, output_format, created_at, media_name, source_language, voice_mode, keyterms, speakers:analysis->speakers')
         .eq('user_id', userId)
         .eq('project_id', projectId)
         .single();
@@ -916,6 +918,7 @@ export class DubbingService {
       mediaName: data.media_name,
       sourceLanguage: data.source_language ?? null,
       voiceMode: data.voice_mode ?? null,
+      outputFormat: data.output_format ?? null,
       keyterms: data.keyterms ?? [],
       outputs,
     };

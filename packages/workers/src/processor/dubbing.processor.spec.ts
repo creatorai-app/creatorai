@@ -1,6 +1,7 @@
 import { calculateDubbingCreditsByDuration, paidDubbingMultiplier, DUB_VIDEO_WAIT_HOURS } from '@repo/validation';
 import { DubbingProcessor } from './dubbing.processor';
 import * as elevenlabs from './utils/elevenlabs-dubbing';
+import * as ffmpeg from './utils/ffmpeg';
 
 // The processor against an in-memory database and mocked vendors: what is created on
 // ElevenLabs, what is stored before what, and what is charged or refunded, on fresh runs
@@ -26,7 +27,7 @@ jest.mock('./utils/gcs', () => ({
 jest.mock('./utils/ffmpeg', () => ({
   ...jest.requireActual('./utils/ffmpeg'),
   probeDurationSeconds: jest.fn(async () => 30),
-  toMp3: jest.fn(async () => undefined),
+  toTrack: jest.fn(async () => undefined),
   muxDubbedAudio: jest.fn(async () => undefined),
 }));
 jest.mock('./utils/elevenlabs-dubbing', () => {
@@ -94,7 +95,7 @@ fakeDb.client = {
   },
 };
 
-const RATE = paidDubbingMultiplier('elevenlabs', {});
+const RATE = paidDubbingMultiplier();
 const PER_LANGUAGE = calculateDubbingCreditsByDuration(30, RATE);
 
 function seed({
@@ -300,6 +301,13 @@ describe('DubbingProcessor on ElevenLabs', () => {
     expect(output('es').timeline).toBeNull();
     expect(output('es').dubbed_audio_url).toContain('dubbed/p1/es.mp3');
     expect(refunds()).toEqual([]);
+  });
+
+  it('delivers a WAV track when the dub asked for one', async () => {
+    seed({ project: { output_format: 'wav' }, outputs: [{ language: 'es' }] });
+    await makeProcessor().process(makeJob());
+    expect(output('es')).toMatchObject({ status: 'completed', dubbed_url: expect.stringContaining('dubbed/p1/es.wav') });
+    expect(ffmpeg.toTrack).toHaveBeenCalledWith(expect.any(String), expect.stringMatching(/es\.wav$/));
   });
 
   it('stores voices_not_permitted warnings on the output', async () => {

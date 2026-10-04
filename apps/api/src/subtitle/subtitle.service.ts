@@ -8,6 +8,7 @@ import {
   type SignUploadInput,
   type FinalizeUploadInput,
   type BurnSubtitleInput,
+  type SubtitleFromDubInput,
   calculateSubtitleCredits,
   hasEnoughCredits,
   getMinimumCreditsForSubtitleRequest,
@@ -17,6 +18,7 @@ import {
   subtitleUploadLimitBytes,
   subtitleMaxDurationSeconds,
   formatUploadLimit,
+  dubLanguageLabel,
 } from '@repo/validation';
 import {
   createGoogleAI,
@@ -29,6 +31,7 @@ import {
   gcsUri,
   gcsObjectMetadata,
   deleteGcsObject,
+  getDubbingBucketName,
 } from '../utils';
 import * as path from 'path';
 import * as os from 'os';
@@ -336,14 +339,14 @@ Your task is to transcribe the provided audio file and generate precise, time-st
         throw new NotFoundException('Subtitle lookup error');
       }
 
-      if (subtitleData?.video_gs_uri) {
-        // gs://bucket/<objectName> → <objectName>
-        const objectName = subtitleData.video_gs_uri.split('/').slice(3).join('/');
-        if (objectName) {
-          await deleteGcsObject(this.configService, objectName).catch((e) =>
-            this.logger.error(`Failed to delete GCS object ${objectName}`, e),
-          );
-        }
+      // Only a video this user uploaded for subtitles is deleted; one made from a dub
+      // still belongs to the dub.
+      const ownPrefix = gcsUri(this.configService, `${userId}/`);
+      if (subtitleData?.video_gs_uri?.startsWith(ownPrefix)) {
+        const objectName = subtitleData.video_gs_uri.slice(gcsUri(this.configService, '').length);
+        await deleteGcsObject(this.configService, objectName).catch((e) =>
+          this.logger.error(`Failed to delete GCS object ${objectName}`, e),
+        );
       }
 
       return {
@@ -520,6 +523,65 @@ Your task is to transcribe the provided audio file and generate precise, time-st
       throw new InternalServerErrorException('Failed to create subtitle job');
     }
 
+    return { success: true, subtitleId: data.id };
+  }
+
+  /**
+   * A subtitle job on a finished dub's video, read from the dub's own object in GCS: no
+   * upload, no copy. Asking twice for the same video returns the same job.
+   */
+  async createFromDub(input: SubtitleFromDubInput, userId: string) {
+    const { projectId, language } = input;
+    const client = this.supabaseService.getClient();
+
+    const [{ data: project }, { data: output }] = await Promise.all([
+      client.from('dubbing_projects').select('is_video, duration_seconds, media_name')
+        .eq('user_id', userId).eq('project_id', projectId).maybeSingle(),
+      client.from('dubbing_outputs').select('status, dubbed_url')
+        .eq('user_id', userId).eq('project_id', projectId).eq('language', language).maybeSingle(),
+    ]);
+    if (!project || !output) throw new NotFoundException('Dub not found');
+    if (!project.is_video) throw new BadRequestException('Subtitles need a video. This dub is audio only.');
+
+    const bucket = getDubbingBucketName(this.configService);
+    const bucketUrl = gcsPublicUrl(this.configService, '', bucket);
+    if (output.status !== 'completed' || !output.dubbed_url?.startsWith(bucketUrl)) {
+      throw new BadRequestException('This language has not finished dubbing yet.');
+    }
+    const objectName = output.dubbed_url.slice(bucketUrl.length);
+    const gsUri = gcsUri(this.configService, objectName, bucket);
+
+    const { data: existing } = await client.from('subtitle_jobs').select('id')
+      .eq('user_id', userId).eq('video_gs_uri', gsUri).limit(1).maybeSingle();
+    if (existing) return { success: true, subtitleId: existing.id };
+
+    // The same plan caps as an upload: the dub's plan allows longer and larger clips.
+    const { maxBytes, maxDurationSeconds, isPaid } = await this.getUploadLimits(userId);
+    const duration = this.parseDuration(String(project.duration_seconds), maxDurationSeconds, !isPaid);
+    let size: number;
+    try {
+      ({ size } = await gcsObjectMetadata(this.configService, objectName, bucket));
+    } catch {
+      throw new NotFoundException('The dubbed video is no longer available.');
+    }
+    if (size > maxBytes) throw this.uploadSizeError(maxBytes, !isPaid);
+
+    const { data, error } = await client
+      .from('subtitle_jobs')
+      .insert({
+        user_id: userId,
+        video_path: output.dubbed_url,
+        video_url: output.dubbed_url,
+        video_gs_uri: gsUri,
+        duration,
+        filename: `${project.media_name || 'Dub'} (${dubLanguageLabel(language)}).mp4`,
+      })
+      .select('id')
+      .single();
+    if (error) {
+      this.logger.error(`Subtitle job from dub failed: userId=${userId}, projectId=${projectId}, message=${error.message}`);
+      throw new InternalServerErrorException('Failed to create subtitle job');
+    }
     return { success: true, subtitleId: data.id };
   }
 

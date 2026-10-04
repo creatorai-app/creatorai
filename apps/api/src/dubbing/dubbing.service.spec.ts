@@ -12,7 +12,6 @@ import { SupabaseService } from '../supabase/supabase.service';
 import {
   DUBBING_CANCEL_PREFIX,
   DUBBING_CREDIT_MULTIPLIER,
-  CYPHER_DUBBING_CREDIT_MULTIPLIER,
   calculateDubbingCreditsByDuration,
   getMinimumCreditsForDubbing,
 } from '@repo/validation';
@@ -66,13 +65,12 @@ const MiB = 1024 * 1024;
 // Every fixture dub here is the same length, and its price is whatever the current
 // rate makes it, derived, not written down, so a repricing moves the expectations with
 // it instead of leaving them asserting last quarter's price. The suite runs on
-// 'Creator', a paid plan, so the paid rates apply. Fixtures dub on Cypher unless they
-// say otherwise; each language is its own dub at this price.
+// 'Creator', a paid plan, so the paid rate applies, the same on both engines. Fixtures
+// dub on Cypher unless they say otherwise; each language is its own dub at this price.
 const DUB_SECONDS = 30 * 60;
-const DUB_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, CYPHER_DUBBING_CREDIT_MULTIPLIER);
-const ELEVENLABS_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, DUBBING_CREDIT_MULTIPLIER);
+const DUB_COST = calculateDubbingCreditsByDuration(DUB_SECONDS, DUBBING_CREDIT_MULTIPLIER);
 // One second's worth: the most a balance can hold and still not cover the clip.
-const DUB_FLOOR = getMinimumCreditsForDubbing(CYPHER_DUBBING_CREDIT_MULTIPLIER);
+const DUB_FLOOR = getMinimumCreditsForDubbing(DUBBING_CREDIT_MULTIPLIER);
 
 describe('DubbingService', () => {
   let service: DubbingService;
@@ -125,8 +123,7 @@ describe('DubbingService', () => {
         maxDurationSeconds: 45 * 60,
         maxUploadBytes: 500 * 1024 * 1024,
         maxLanguages: 1,
-        // Starter's trial rate is the same on both engines.
-        creditsPerSecond: { cypher: 3, elevenlabs: 3 },
+        creditsPerSecond: 3,
       });
     });
 
@@ -139,22 +136,14 @@ describe('DubbingService', () => {
       delete process.env.CYPHER_TTS_V2_URL;
     });
 
-    it('prices each engine at its own rate on a paid plan', async () => {
+    it('prices a paid plan at the shared rate, which an env override moves', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
-      await expect(service.getAccess(USER)).resolves.toMatchObject({
-        creditsPerSecond: { cypher: CYPHER_DUBBING_CREDIT_MULTIPLIER, elevenlabs: DUBBING_CREDIT_MULTIPLIER },
-      });
-    });
-
-    it('lets an env override move only the engine it names', async () => {
-      process.env.CYPHER_DUBBING_CREDIT_MULTIPLIER = '2';
+      await expect(service.getAccess(USER)).resolves.toMatchObject({ creditsPerSecond: DUBBING_CREDIT_MULTIPLIER });
+      process.env.DUBBING_CREDIT_MULTIPLIER = '2';
       try {
-        await build({ subscriptions: chain(planResult('Pro')) });
-        await expect(service.getAccess(USER)).resolves.toMatchObject({
-          creditsPerSecond: { cypher: 2, elevenlabs: DUBBING_CREDIT_MULTIPLIER },
-        });
+        await expect(service.getAccess(USER)).resolves.toMatchObject({ creditsPerSecond: 2 });
       } finally {
-        delete process.env.CYPHER_DUBBING_CREDIT_MULTIPLIER;
+        delete process.env.DUBBING_CREDIT_MULTIPLIER;
       }
     });
 
@@ -361,6 +350,36 @@ describe('DubbingService', () => {
       );
     });
 
+    it('dubs a video to MP4 by default and an audio file to MP3', async () => {
+      await build();
+      await service.initUpload(input, USER);
+      expect(tables.dubbing_projects.insert).toHaveBeenLastCalledWith(
+        expect.objectContaining({ is_video: true, output_format: 'mp4' }),
+      );
+      await service.initUpload(audioOnly, USER);
+      expect(tables.dubbing_projects.insert).toHaveBeenLastCalledWith(
+        expect.objectContaining({ is_video: false, output_format: 'mp3', video_size: null }),
+      );
+    });
+
+    it('opens no video upload for an audio-only dub of a video', async () => {
+      await build();
+      const res = await service.initUpload({ ...input, outputFormat: 'wav' }, USER);
+      expect(res.video).toBeNull();
+      expect(initiateMultipartUpload).not.toHaveBeenCalled();
+      expect(tables.dubbing_projects.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          is_video: false,
+          output_format: 'wav',
+          audio_object: `${USER}/dubbing/${res.projectId}/audio.m4a`,
+          video_object: null,
+          video_status: null,
+          // Still caps a re-extracted track.
+          video_size: 1000,
+        }),
+      );
+    });
+
     it('keeps every upload under 1000 parts', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
       const res = await service.initUpload({ ...input, fileSize: 3 * 1024 * MiB }, USER);
@@ -451,10 +470,10 @@ describe('DubbingService', () => {
       );
     });
 
-    it('reserves an ElevenLabs dub at the ElevenLabs rate', async () => {
+    it('reserves an ElevenLabs dub at the same rate as Cypher', async () => {
       await build({ dubbing_projects: project({ engine: 'elevenlabs' }), dubbing_outputs: outputsTable(outputs) });
       await service.startDub(USER, 'p-1');
-      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -ELEVENLABS_COST });
+      expect(rpc).toHaveBeenCalledWith('update_user_credits', { user_uuid: USER, credit_change: -DUB_COST });
     });
 
     it('rejects the second of two concurrent dubs at the reservation', async () => {
