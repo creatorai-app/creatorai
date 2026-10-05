@@ -12,7 +12,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
-import type { InitDubUploadInput, DubOutput, DubResponse, DubUploadState, DubUploadTargets } from '@repo/validation';
+import type { InitDubUploadInput, RegenerateDubInput, DubOutput, DubResponse, DubUploadState, DubUploadTargets } from '@repo/validation';
 import {
   canDub,
   hasEnoughCredits,
@@ -82,7 +82,34 @@ const PROJECT_COLUMNS = [
   'audio_object', 'audio_session_uri', 'audio_size', 'audio_content_type', 'audio_extracted',
   'video_object', 'video_upload_id', 'video_part_size', 'video_size', 'video_content_type', 'video_status',
   'source_fingerprint', 'source_language', 'voice_mode', 'keyterms', 'vendor_projects',
+  'source_project_id', 'media_name', 'original_media_url',
 ].join(', ');
+
+// What a dub response is built from (getDub, getDubGroup).
+const DUB_COLUMNS = [
+  'project_id', 'source_project_id', 'engine', 'dubbed_url', 'original_media_url', 'target_language', 'target_accent',
+  'status', 'video_status', 'job_id', 'error_message', 'credits_consumed', 'is_video', 'output_format', 'created_at',
+  'media_name', 'source_language', 'voice_mode', 'keyterms', 'duration_seconds', 'audio_object', 'audio_extracted',
+  'video_object', 'video_size', 'speakers:analysis->speakers',
+].join(', ');
+const DUB_OUTPUT_COLUMNS =
+  'project_id, language, accent, status, dubbed_url, dubbed_audio_url, segments_done, segment_count, credits_consumed, error_message, timeline, warnings, created_at';
+
+/**
+ * Whether the media is a video, and whether that video is in storage to dub back to MP4.
+ * An audio-only dub of a video uploads just the extracted audio; one whose audio could
+ * not be extracted uploads the whole file, which is the video. Older dubs were one file.
+ */
+function sourceVideo(row: DubRow): { isVideo: boolean; stored: boolean } {
+  const isVideo = row.video_size != null || (!row.audio_object && !!row.is_video);
+  const stored = isVideo && (row.video_object ? row.video_status === 'uploaded' : !row.audio_extracted);
+  return { isVideo, stored };
+}
+
+/** gs://bucket/<objectName> to <objectName>. */
+function objectOf(gsUri: string): string {
+  return gsUri.split('/').slice(3).join('/');
+}
 
 @Injectable()
 export class DubbingService {
@@ -251,6 +278,15 @@ export class DubbingService {
     return planName;
   }
 
+  private assertLanguageCount(planName: string | null, languages: string[]): void {
+    const maxLanguages = maxDubLanguagesForPlan(planName);
+    if (languages.length > maxLanguages) {
+      throw new ForbiddenException(
+        `The ${planName ?? 'Starter'} plan dubs into up to ${maxLanguages} language${maxLanguages === 1 ? '' : 's'} at once.`,
+      );
+    }
+  }
+
   private sanitizeFileName(value: string): string {
     return value.replace(/[^\w.\-]/g, '_');
   }
@@ -303,12 +339,7 @@ export class DubbingService {
   async initUpload(input: InitDubUploadInput, userId: string, origin?: string): Promise<DubUploadTargets> {
     const planName = await this.assertCanDub(userId);
     const languages = input.targets.map((t) => t.language);
-    const maxLanguages = maxDubLanguagesForPlan(planName);
-    if (languages.length > maxLanguages) {
-      throw new ForbiddenException(
-        `The ${planName ?? 'Starter'} plan dubs into up to ${maxLanguages} language${maxLanguages === 1 ? '' : 's'} at once.`,
-      );
-    }
+    this.assertLanguageCount(planName, languages);
     this.assertDurationAllowed(planName, input.durationSeconds, languages, input.engine);
     this.assertSizeAllowed(planName, input.fileSize, languages, input.engine);
     if (input.audio.size > input.fileSize) {
@@ -397,6 +428,122 @@ export class DubbingService {
       audio: { sessionUri },
       video: video ? { partSize: video.partSize, partCount: video.partCount } : null,
     };
+  }
+
+  /**
+   * Dub media already in storage again, with other settings. The new dub points at the
+   * original's source objects instead of copying them: deleting it leaves them alone, and
+   * they go only when the original is deleted (deleteDub). Regenerating a regenerated dub
+   * goes back to the original, so every dub of one media hangs off the same one. It is a
+   * new dub: charged, and checked against the plan, the same as an upload.
+   */
+  async regenerateDub(userId: string, fromId: string, input: RegenerateDubInput): Promise<{ projectId: string; jobId: string }> {
+    const picked = await this.getOwnedRow(userId, fromId);
+    const source = picked.source_project_id ? await this.getOwnedRow(userId, picked.source_project_id) : picked;
+    if (source.status === 'uploading') {
+      throw new BadRequestException('This media has not finished uploading. Finish or cancel that dub first.');
+    }
+    if (!source.input_gs_uri || !source.duration_seconds) {
+      throw new BadRequestException('This dub is missing its source media and cannot be dubbed again.');
+    }
+    const video = sourceVideo(source);
+    if (input.outputFormat === 'mp4' && !video.stored) {
+      throw new BadRequestException('Only the audio of this media was uploaded, so it can be dubbed to audio only.');
+    }
+
+    const planName = await this.assertCanDub(userId);
+    const languages = input.targets.map((t) => t.language);
+    this.assertLanguageCount(planName, languages);
+    // Dubs from before split uploads were one file, named by input_gs_uri.
+    const audioObject: string = source.audio_object ?? objectOf(source.input_gs_uri);
+    let audioSize = Number(source.audio_size);
+    if (!audioSize) {
+      try {
+        ({ size: audioSize } = await gcsObjectMetadata(this.configService, audioObject, this.bucket));
+      } catch {
+        throw new BadRequestException('The original media is no longer available. Please create a new dub.');
+      }
+    }
+    this.assertSizeAllowed(planName, Number(source.video_size ?? audioSize), languages, input.engine);
+
+    const outputFormat = input.outputFormat ?? (video.stored ? 'mp4' : 'mp3');
+    const projectId = crypto.randomUUID();
+    const { error } = await this.supabase.from('dubbing_projects').insert({
+      project_id: projectId,
+      user_id: userId,
+      source_project_id: source.project_id,
+      status: 'uploading',
+      engine: input.engine,
+      target_language: languages[0],
+      target_accent: input.targets[0].accent ?? null,
+      is_video: outputFormat === 'mp4',
+      output_format: outputFormat,
+      media_name: source.media_name,
+      duration_seconds: source.duration_seconds,
+      credits_consumed: 0,
+      source_fingerprint: source.source_fingerprint,
+      audio_object: audioObject,
+      audio_size: audioSize,
+      audio_content_type: source.audio_content_type,
+      audio_extracted: !!source.audio_extracted,
+      input_gs_uri: source.input_gs_uri,
+      input_url: source.input_url,
+      original_media_url: source.original_media_url,
+      video_object: source.video_object,
+      video_size: source.video_size,
+      video_content_type: source.video_content_type,
+      video_status: source.video_object ? source.video_status : null,
+      source_language: input.sourceLanguage ?? null,
+      voice_mode: input.voiceMode ?? DEFAULT_DUB_VOICE_MODE,
+      keyterms: input.keyterms ?? [],
+      analysis: input.engine === 'cypher' ? await this.reusableAnalysis(userId, source, input.sourceLanguage ?? null) : null,
+    });
+    const { error: outputsError } = error
+      ? { error }
+      : await this.supabase.from('dubbing_outputs').insert(
+          input.targets.map((t) => ({ project_id: projectId, user_id: userId, language: t.language, accent: t.accent ?? null })),
+        );
+    if (outputsError) {
+      if (!error) await this.supabase.from('dubbing_projects').delete().eq('project_id', projectId);
+      this.logger.error(`Failed to regenerate dub ${source.project_id} for user ${userId}: ${outputsError.message}`);
+      throw new InternalServerErrorException('Failed to create dubbing project');
+    }
+
+    // The source is already in, so the dub starts now. One that cannot (balance, plan
+    // caps) is removed again: nothing was charged and nothing points at it.
+    try {
+      const { jobId } = await this.startDub(userId, projectId);
+      return { projectId, jobId };
+    } catch (startError) {
+      const { data: row } = await this.supabase
+        .from('dubbing_projects')
+        .select('status')
+        .eq('project_id', projectId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (row?.status === 'uploading') {
+        await this.supabase.from('dubbing_outputs').delete().eq('project_id', projectId).eq('user_id', userId);
+        await this.supabase.from('dubbing_projects').delete().eq('project_id', projectId).eq('user_id', userId);
+      }
+      throw startError;
+    }
+  }
+
+  /**
+   * The original's finished Cypher speaker analysis, when it heard the source in the same
+   * language this dub is told it is in: the same audio, so Gemini need not listen again.
+   * Only the original's: its stems and voice samples live under its own prefix, which
+   * outlives every dub regenerated from it.
+   */
+  private async reusableAnalysis(userId: string, source: DubRow, sourceLanguage: string | null): Promise<unknown> {
+    if ((source.source_language ?? null) !== sourceLanguage) return null;
+    const { data } = await this.supabase
+      .from('dubbing_projects')
+      .select('analysis')
+      .eq('project_id', source.project_id)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.analysis?.complete ? data.analysis : null;
   }
 
   /** How far each upload got, read from GCS itself, so a resume sends only what is missing. */
@@ -801,29 +948,54 @@ export class DubbingService {
     return { message: 'Dubbing cancelled. Nothing was charged.' };
   }
 
+  /**
+   * One row per media: each original, with the dubs regenerated from it folded in. The
+   * row shows the newest dub's status, so a regeneration in progress is what it reports,
+   * and every language any of them was dubbed into.
+   */
   async listDubs(userId: string, pageSize = 100) {
     // Explicit columns: select('*') would ship every row's speaker analysis to the list.
     const { data, error } = await this.supabase
       .from('dubbing_projects')
       .select('id, project_id, user_id, engine, original_media_url, target_language, status, video_status, is_video, dubbed_url, credits_consumed, created_at, media_name')
       .eq('user_id', userId)
+      .is('source_project_id', null)
       .order('created_at', { ascending: false })
       .limit(pageSize);
     if (error) throw new InternalServerErrorException('Failed to fetch dubs');
 
-    // One query for every listed project's languages, not one per card.
+    // One query each for the listed media's regenerated dubs and languages, not one per card.
     const ids = (data ?? []).map((p) => p.project_id);
-    const { data: outputs } = ids.length
-      ? await this.supabase.from('dubbing_outputs').select('project_id, language').eq('user_id', userId).in('project_id', ids)
+    const { data: regenerated } = ids.length
+      ? await this.supabase
+          .from('dubbing_projects')
+          .select('project_id, source_project_id, status, video_status, created_at')
+          .eq('user_id', userId)
+          .in('source_project_id', ids)
+          .order('created_at', { ascending: true })
+      : { data: [] as { project_id: string; source_project_id: string; status: string; video_status: string | null; created_at: string }[] };
+    const dubIds = [...ids, ...(regenerated ?? []).map((r) => r.project_id)];
+    const { data: outputs } = dubIds.length
+      ? await this.supabase.from('dubbing_outputs').select('project_id, language').eq('user_id', userId).in('project_id', dubIds)
       : { data: [] as { project_id: string; language: string }[] };
-    const languagesByProject = new Map<string, string[]>();
+
+    const rootOf = new Map((regenerated ?? []).map((r) => [r.project_id, r.source_project_id]));
+    const languagesByMedia = new Map<string, Set<string>>();
     for (const o of outputs ?? []) {
-      languagesByProject.set(o.project_id, [...(languagesByProject.get(o.project_id) ?? []), o.language]);
+      const media = rootOf.get(o.project_id) ?? o.project_id;
+      languagesByMedia.set(media, (languagesByMedia.get(media) ?? new Set()).add(o.language));
     }
-    return (data ?? []).map((p) => ({
-      ...p,
-      languages: languagesByProject.get(p.project_id) ?? (p.target_language ? [p.target_language] : []),
-    }));
+    return (data ?? []).map((p) => {
+      const dubs = (regenerated ?? []).filter((r) => r.source_project_id === p.project_id);
+      const newest = dubs[dubs.length - 1];
+      const languages = languagesByMedia.get(p.project_id);
+      return {
+        ...p,
+        ...(newest ? { status: newest.status, video_status: newest.video_status } : {}),
+        dub_count: dubs.length + 1,
+        languages: languages ? [...languages] : p.target_language ? [p.target_language] : [],
+      };
+    });
   }
 
   /**
@@ -833,7 +1005,7 @@ export class DubbingService {
    * finish. A job only reaches 'failed' once the worker is done with it, so this never
    * races a run in progress. Returns whether it settled anything.
    */
-  private async settleIfJobEnded(userId: string, row: { project_id: string; status: string; job_id: string | null }): Promise<boolean> {
+  private async settleIfJobEnded(userId: string, row: DubRow): Promise<boolean> {
     if (!DUB_JOB_STATUSES.includes(row.status) || !row.job_id) return false;
     const job = await this.queue.getJob(row.job_id);
     if (job && (await job.getState()) !== 'failed') return false;
@@ -849,30 +1021,72 @@ export class DubbingService {
     const read = () =>
       this.supabase
         .from('dubbing_projects')
-        .select('project_id, engine, dubbed_url, original_media_url, target_language, target_accent, status, video_status, job_id, error_message, credits_consumed, is_video, output_format, created_at, media_name, source_language, voice_mode, keyterms, speakers:analysis->speakers')
+        .select(DUB_COLUMNS)
         .eq('user_id', userId)
         .eq('project_id', projectId)
-        .single();
+        .maybeSingle();
     let { data, error } = await read();
-
-    if (error || !data) {
-      throw new BadRequestException('Dub not found or access denied');
+    if (!error && data && (await this.settleIfJobEnded(userId, data))) ({ data, error } = await read());
+    if (error) {
+      this.logger.error(`Failed to read dub ${projectId}: ${error.message}`);
+      throw new InternalServerErrorException('Failed to read the dub');
     }
-    if (await this.settleIfJobEnded(userId, data)) {
-      ({ data, error } = await read());
-      if (error || !data) throw new BadRequestException('Dub not found or access denied');
-    }
+    if (!data) throw new NotFoundException('Dub not found');
 
     const { data: rows } = await this.supabase
       .from('dubbing_outputs')
-      .select('language, accent, status, dubbed_url, dubbed_audio_url, segments_done, segment_count, credits_consumed, error_message, timeline, warnings, created_at')
+      .select(DUB_OUTPUT_COLUMNS)
       .eq('project_id', projectId)
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
+    return this.toDubResponse(data, rows ?? []);
+  }
 
+  /**
+   * Every dub of one media, from any of them: the original first, then each dub
+   * regenerated from it, oldest first. What the details page shows.
+   */
+  async getDubGroup(userId: string, projectId: string): Promise<DubResponse[]> {
+    const { data: picked } = await this.supabase
+      .from('dubbing_projects')
+      .select('project_id, source_project_id')
+      .eq('user_id', userId)
+      .eq('project_id', projectId)
+      .maybeSingle();
+    if (!picked) throw new NotFoundException('Dub not found');
+    const rootId: string = picked.source_project_id ?? picked.project_id;
+
+    const read = async () => {
+      const [root, regenerated] = await Promise.all([
+        this.supabase.from('dubbing_projects').select(DUB_COLUMNS).eq('user_id', userId).eq('project_id', rootId).maybeSingle(),
+        this.supabase.from('dubbing_projects').select(DUB_COLUMNS).eq('user_id', userId).eq('source_project_id', rootId)
+          .order('created_at', { ascending: true }),
+      ]);
+      const error = root.error ?? regenerated.error;
+      if (error) {
+        this.logger.error(`Failed to read the dubs of ${rootId}: ${error.message}`);
+        throw new InternalServerErrorException('Failed to read the dub');
+      }
+      if (!root.data) throw new NotFoundException('Dub not found');
+      return [root.data, ...(regenerated.data ?? [])] as DubRow[];
+    };
+    let dubs = await read();
+    const settled = await Promise.all(dubs.map((row) => this.settleIfJobEnded(userId, row)));
+    if (settled.some(Boolean)) dubs = await read();
+
+    const { data: rows } = await this.supabase
+      .from('dubbing_outputs')
+      .select(DUB_OUTPUT_COLUMNS)
+      .eq('user_id', userId)
+      .in('project_id', dubs.map((d) => d.project_id))
+      .order('created_at', { ascending: true });
+    return dubs.map((d) => this.toDubResponse(d, (rows ?? []).filter((o) => o.project_id === d.project_id)));
+  }
+
+  private toDubResponse(data: DubRow, rows: OutputRow[]): DubResponse {
     // Only a finished language is paid for, so only a finished one hands out its media. An
     // unfinished one keeps its dubbed audio in storage for a retry to reuse.
-    const outputs: DubOutput[] = rows?.length
+    const outputs: DubOutput[] = rows.length
       ? rows.map((o) => {
           const done = o.status === 'completed';
           return {
@@ -903,8 +1117,10 @@ export class DubbingService {
         }];
 
     const speakers = (data as { speakers?: { voiceOf?: string | null }[] | null }).speakers;
+    const video = sourceVideo(data);
     return {
       projectId: data.project_id,
+      sourceProjectId: data.source_project_id ?? null,
       engine: data.engine,
       status: data.status,
       videoStatus: data.video_status,
@@ -916,6 +1132,9 @@ export class DubbingService {
       isVideo: data.is_video,
       createdAt: data.created_at,
       mediaName: data.media_name,
+      durationSeconds: data.duration_seconds != null ? Number(data.duration_seconds) : null,
+      sourceIsVideo: video.isVideo,
+      sourceHasVideo: video.stored,
       sourceLanguage: data.source_language ?? null,
       voiceMode: data.voice_mode ?? null,
       outputFormat: data.output_format ?? null,
@@ -924,19 +1143,37 @@ export class DubbingService {
     };
   }
 
+  /**
+   * Delete a dub. A regenerated dub takes only its own outputs and scratch files: the
+   * source belongs to the original. Deleting the original deletes the whole media, every
+   * dub regenerated from it first, then the source.
+   */
   async deleteDub(userId: string, projectId: string): Promise<void> {
     // Deleting the row out from under a running worker makes its status writes fail and
     // strands the reservation — make the user cancel first.
     const { data: existing } = await this.supabase
       .from('dubbing_projects')
-      .select('status')
+      .select('status, source_project_id')
       .eq('user_id', userId)
       .eq('project_id', projectId)
       .maybeSingle();
-    if (existing && DUB_JOB_STATUSES.includes(existing.status)) {
+    const regenerated: { project_id: string; status: string }[] = existing && !existing.source_project_id
+      ? ((await this.supabase
+          .from('dubbing_projects')
+          .select('project_id, status')
+          .eq('user_id', userId)
+          .eq('source_project_id', projectId)).data ?? [])
+      : [];
+    if ([existing, ...regenerated].some((d) => d && DUB_JOB_STATUSES.includes(d.status))) {
       throw new BadRequestException('This dub is still running. Cancel it before deleting.');
     }
 
+    for (const dub of regenerated) await this.deleteOne(userId, dub.project_id, false);
+    await this.deleteOne(userId, projectId, !existing?.source_project_id);
+  }
+
+  /** One dub's row, outputs and files; `ownsSource` only for an original, whose source it is. */
+  private async deleteOne(userId: string, projectId: string, ownsSource: boolean): Promise<void> {
     const { data, error } = await this.supabase
       .from('dubbing_projects')
       .delete()
@@ -959,13 +1196,14 @@ export class DubbingService {
         this.logger.error(`Failed to delete GCS prefix ${prefix}`, e),
       );
     }
+    if (!ownsSource) return;
 
     // Before per-language outputs a dub was one file: .mp4 for video, .wav (Modal) or
     // .mp3 (ElevenLabs) for audio. Deleting is best-effort, so trying each is cheaper
     // than leaking the old ones.
     const isVideo = Boolean(data?.is_video);
     const objectNames = [
-      data?.input_gs_uri ? String(data.input_gs_uri).split('/').slice(3).join('/') : null,
+      data?.input_gs_uri ? objectOf(String(data.input_gs_uri)) : null,
       ...(isVideo ? [`dubbed/${projectId}.mp4`] : [`dubbed/${projectId}.wav`, `dubbed/${projectId}.mp3`]),
     ].filter((n): n is string => Boolean(n));
 

@@ -97,7 +97,7 @@ export function DubOutputsList({
   }
 
   return (
-    <div className={outputs.length > 1 ? "grid grid-cols-1 gap-6 lg:grid-cols-2" : "space-y-6"}>
+    <div className="space-y-6">
       {outputs.map((output) => {
         // Only a finished language has media (the API holds back the rest until it is paid for).
         const finalUrl = output.dubbedUrl

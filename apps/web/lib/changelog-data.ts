@@ -28,6 +28,36 @@ export interface ChangelogRelease {
  */
 export const releases: ChangelogRelease[] = [
   {
+    version: "1.6.0",
+    date: "2026-10-05",
+    tag: "minor",
+    title: "Dubbing, rebuilt",
+    summary:
+      "Dubbing now runs on two engines, dubs into several languages at once and keeps every speaker in their own voice. Uploads survive a closed tab, a failed dub is never charged, and you pick whether you get the video or just the audio. Free generators need no account, and the dashboard works on phones.",
+    changes: [
+      { type: "added", description: "Two dubbing engines: Cypher, our own, in 23 languages, or ElevenLabs in 94. Both cost the same, so a plan buys the same hours on either." },
+      { type: "added", description: "Dub into several languages in one go: up to 2 at once on Creator and Pro, 3 on Business and Scale." },
+      { type: "added", description: "Every speaker in a video is dubbed in their own cloned voice." },
+      { type: "added", description: "Choose what a dub hands back: the video with the new voices (MP4), or the dubbed track alone as MP3 or WAV." },
+      { type: "added", description: "Uploads resume where they stopped. Close the tab or lose the connection and the dub picks up without sending the file again." },
+      { type: "added", description: "Voice mode, the spoken language, names and terms to keep as they are, and regional dialects for the languages that have them." },
+      { type: "added", description: "A timeline of every dubbed line, and subtitles made straight from a finished dub with no second upload." },
+      { type: "added", description: "Regenerate a dub: dub the same media again with another engine, languages or format, without uploading it again. Every dub of a media sits on one page, next to the original." },
+      { type: "added", description: "Free script, video ideas and story structure generators that work without an account." },
+      { type: "added", description: "A How It Works page, and a page of its own for every open role on Careers." },
+      { type: "changed", description: "The dashboard works on phones and tablets, and the how-it-works guides fold away on smaller screens." },
+      { type: "changed", description: "Login, signup and contact pages are redesigned." },
+      { type: "changed", description: "Dubbing is priced at 10 credits a minute, which gives Creator 5 hours a month. Larger source files are accepted on every plan." },
+      { type: "changed", description: "A dub's details page shows its status, languages and finished media, with retry for anything that stopped." },
+      { type: "fixed", description: "A dub that fails is never charged. If only some languages finish, only those are paid for." },
+      { type: "fixed", description: "Pages could show a feature as locked when a plan or setup check was slow or failed. They now wait for a real answer." },
+      { type: "fixed", description: "Subtitle lines showed raw HTML entities such as &amp; instead of the character." },
+      { type: "fixed", description: "A referral bonus was promised before the code was checked." },
+      { type: "security", description: "Profiles are no longer publicly readable, and every critical and high severity dependency advisory is cleared." },
+      { type: "removed", description: "The made-up testimonials on the landing page." },
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-08-23",
     tag: "minor",

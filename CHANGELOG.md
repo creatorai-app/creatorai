@@ -32,6 +32,47 @@ How to cut a release:
 
 ---
 
+## [1.6.0] – 2026-10-05
+
+Dubbing is rebuilt end to end: two engines, several languages per dub, every speaker in their own voice, resumable uploads, a choice of output format, and no charge for a dub that fails. Free generators work without an account, the dashboard is responsive, and the web app moves to Next.js 16.
+
+### Added
+- **Two dubbing engines.** Cypher (Gemini for speaker analysis and translation, Chatterbox on Modal for the voices) speaks 23 languages; ElevenLabs on its dubbing project API speaks 94, with Bengali on `dubbing_v1`. Picked per dub and stored on `dubbing_projects.engine`.
+- **Per-language outputs.** `dubbing_outputs` holds one row per language, each settled, retried and refunded on its own. Creator and Pro dub into 2 languages at once, Business and Scale into 3.
+- **Multi-speaker Cypher.** Speakers found window by window, each voice cut from their own clean lines, background kept through ElevenLabs stem separation, word timing from forced alignment, and turns shortened or sped up (`CYPHER_MAX_TEMPO`) to fit their slot.
+- **Output format** per dub (`output_format`: mp4, mp3 or wav). An audio-only dub of a video uploads only the audio track; the worker encodes WAV as 16-bit PCM.
+- **Resumable uploads.** The browser extracts the audio and sends it through a GCS resumable session first, then the original video in multipart parts. Both are recorded on the row, so a closed tab resumes with only the missing bytes.
+- **Voice mode, source language, keyterms and dialects** on the new-dub page, stored on the project and passed to both engines.
+- **Timelines** of every dubbed line, and `POST /subtitle/from-dub`, which makes a subtitle job from a finished dub's video in storage without a new upload.
+- **Regenerate.** `POST /dubbing/:id/regenerate` dubs stored media again with new settings. The new dub points at the original's source objects (`source_project_id`) instead of copying them; regenerating a regenerated dub goes back to the original. The details page shows the original beside the selected dub and every dub of the media; the list shows one row per media. Deleting a regenerated dub leaves the source; deleting the original deletes every dub of it. MP4 is disabled when only the audio was uploaded. Cypher reuses the original's finished speaker analysis when the spoken language matches.
+- **Free tools.** Script, video ideas and story structure generators on public, unauthenticated API endpoints; every free run is kept.
+- How It Works page; per-post Careers pages (`job_posts.slug`, `content`); admin 30-day active and returning users with the people behind each count; applicant replies and last-contacted tracking in admin email; a shared connection lost screen.
+
+### Changed
+- **One dubbing price on both engines**: 10 credits per minute per language (`DUBBING_CREDIT_MULTIPLIER` 1/6 per second), so Creator's 3,000 credits buy 5 hours. `CYPHER_DUBBING_CREDIT_MULTIPLIER` is removed. Every public figure is computed from the constants.
+- Source file caps raised to the vendor ceilings, per plan and per upload route.
+- **Responsive dashboard**: shell, header, sidebar, page headers and list pages; how-it-works guides collapse below `lg`.
+- Login, signup and contact rebuilt on the Studio Floor design; the brand mark is an SVG.
+- **Next.js 15.2.8 to 16.3.7** with React 19.2. Node 20.9 is the floor; CI runs 20.x and 22.x, builds everything except web (Vercel builds it), and runs api e2e only.
+- The dub details page is read-only status and finished media; running and resuming happen on the generation page.
+- CORS preflights cached for two hours.
+
+### Fixed
+- **A failed dub is never charged.** Credits are reserved up front and settled per finished language; a job that dies without settling is failed and refunded on the next read.
+- **Unknown access read as locked.** `useAccess` retries and re-reads on focus, and the setup gate and profile provider no longer lock a page while a read is pending or after it fails.
+- A Supabase outage made the API answer 401 instead of 503 when it could not verify a token.
+- ElevenLabs could be paid twice when a create's response was lost; failure reasons are read in both published shapes; video with no audio fails with a clear message.
+- Subtitle lines kept HTML entities; the referral bonus was promised before the code was checked; old-domain canonicals and `robots.txt`; the YouTube callback redirect host.
+
+### Security
+- Dropped the public read policy on `profiles`.
+- Cleared every critical and high severity dependency advisory. The CI audit check, whose condition was inverted, is fixed and advisory.
+
+### Removed
+- Invented testimonials on the landing page; the admin audit trail; the footer globe.
+
+---
+
 ## [1.5.0] – 2026-08-23
 
 The blog stops being a TypeScript file and becomes a real CMS: posts live in the database, are written in the admin dashboard against a live SEO audit, and can be scheduled. The product also moves to its own domain, trycreatorai.com.

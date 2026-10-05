@@ -27,7 +27,7 @@ import { api, getApiErrorMessage } from "@/lib/api-client";
 import { useSupabase } from "@/components/supabase-provider";
 import { useAccess } from "@/hooks/useAccess";
 import { BACKEND_URL } from "@/lib/constants";
-import { cancelDubbing, getDubbing, resumeDubbing } from "@/lib/api/getDubbings";
+import { cancelDubbing, getDubbing, regenerateDubbing, resumeDubbing } from "@/lib/api/getDubbings";
 import {
   extractAudioTrack,
   fileFingerprint,
@@ -86,6 +86,18 @@ function getMediaDuration(file: File): Promise<number> {
 
 export type VideoUploadState = { state: "idle" | "uploading" | "done" | "failed"; percent: number };
 
+/** Media already in storage, dubbed again with other settings (see `loadSource`). */
+export interface DubSource {
+  /** The original dub, which every regeneration belongs to. */
+  projectId: string;
+  mediaName: string;
+  durationSeconds: number;
+  /** The media is a video... */
+  isVideo: boolean;
+  /** ...and that video is in storage. An audio-only dub of a video uploaded only its audio. */
+  hasVideo: boolean;
+}
+
 export function useDubbing() {
   const { session } = useSupabase();
 
@@ -129,6 +141,7 @@ export function useDubbing() {
   const [videoUpload, setVideoUpload] = useState<VideoUploadState>({ state: "idle", percent: 0 });
   // An existing dub this page picked up (see `attach`), as it was last read.
   const [attached, setAttached] = useState<DubResponse | null>(null);
+  const [source, setSource] = useState<DubSource | null>(null);
   const attachingRef = useRef<string | null>(null);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -410,6 +423,79 @@ export function useDubbing() {
     }
   }, [mediaFile, mediaDuration, targets, engine, sourceLanguage, voiceMode, outputFormat, maxLanguages, isVideo, mediaName, session, updateProgress, access, followJob, runVideoUpload]);
 
+  /**
+   * Regenerate from a dub: load its media and its settings as the starting point. A
+   * regenerated dub goes back to its original, which owns the media. Returns false when
+   * the dub could not be read or has no media to dub again.
+   */
+  const loadSource = useCallback(async (id: string): Promise<boolean> => {
+    const picked = await getDubbing(id, session?.access_token);
+    const original = picked?.sourceProjectId ? await getDubbing(picked.sourceProjectId, session?.access_token) : picked;
+    if (!picked || !original || original.status === "uploading" || !original.durationSeconds) return false;
+
+    setSource({
+      projectId: original.projectId,
+      mediaName: original.mediaName ?? "",
+      durationSeconds: original.durationSeconds,
+      isVideo: original.sourceIsVideo,
+      hasVideo: original.sourceHasVideo,
+    });
+    setMediaName(original.mediaName ?? "");
+    setMediaDuration(original.durationSeconds);
+    // Only a video in storage can come back as a video; outputFormat falls back to MP3 otherwise.
+    setIsVideo(original.sourceHasVideo);
+    setEngineState(picked.engine ?? DEFAULT_DUB_ENGINE);
+    setTargetsState(picked.outputs.map((o) => (o.accent ? { language: o.language, accent: o.accent } : { language: o.language })));
+    setSourceLanguageState(picked.sourceLanguage ?? null);
+    setVoiceMode(picked.voiceMode ?? DEFAULT_DUB_VOICE_MODE);
+    setOutputFormat(dubOutputFormatOf(picked));
+    return true;
+  }, [session]);
+
+  /** Dub the loaded source again. Nothing is uploaded, so it starts straight away. */
+  const handleRegenerate = useCallback(async () => {
+    if (!source) return;
+    const picked = targets.filter((t) => t.language);
+    const languages = picked.map((t) => t.language);
+    if (!languages.length) {
+      toast.error("No target language selected");
+      return;
+    }
+    if (languages.length > maxLanguages) {
+      toast.error("Too many languages", { description: `Your plan dubs into up to ${maxLanguages} at once.` });
+      return;
+    }
+
+    try {
+      if (access) {
+        const durationCap = maxDubSecondsForPlan(access.plan, languages, engine);
+        if (source.durationSeconds > durationCap) {
+          throw new Error(
+            `Your plan can dub ${languageList(languages)} clips up to ${formatDubDuration(durationCap)}. This one is ${formatDubDuration(Math.round(source.durationSeconds))}. Upgrade for a longer limit.`,
+          );
+        }
+      }
+      updateProgress("processing", 1, "Starting dubbing...");
+      const started = await regenerateDubbing(
+        source.projectId,
+        {
+          engine,
+          targets: picked.map((t) => (t.accent ? { language: t.language, accent: t.accent } : { language: t.language })),
+          ...(sourceLanguage ? { sourceLanguage } : {}),
+          voiceMode,
+          outputFormat,
+        },
+        session?.access_token,
+      );
+      setProjectId(started.projectId);
+      followJob(started.jobId, started.projectId);
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Dubbing failed.");
+      updateProgress("failed", 0, message);
+      toast.error("Error dubbing media", { description: message });
+    }
+  }, [source, targets, maxLanguages, access, engine, sourceLanguage, voiceMode, outputFormat, session, updateProgress, followJob]);
+
   /** Pick the video upload back up after it paused, sending only the missing parts. */
   const resumeVideoUpload = useCallback(async () => {
     if (!projectId || !mediaFile) return;
@@ -541,6 +627,9 @@ export function useDubbing() {
     estimatedCredits,
     attached,
     attach,
+    source,
+    loadSource,
+    handleRegenerate,
     videoUpload,
     resumeVideoUpload,
     cancelDub,

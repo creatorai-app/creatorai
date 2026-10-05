@@ -17,6 +17,65 @@ const mediaContentType = z
   .string()
   .refine((t) => /^(audio|video)\//.test(t), { message: 'Only audio or video files are supported' });
 
+// What a dub is made with, whatever the source: a new upload or media already in storage.
+const dubSettings = {
+  engine: z.enum(DUB_ENGINES),
+  // One output per language. The per-plan count (1 to 3) is enforced by the API, which
+  // knows the plan; 3 here is the ceiling on any plan.
+  targets: z
+    .array(z.object({ language: z.string().min(1), accent: z.string().max(40).optional() }))
+    .min(1, { message: 'Pick at least one language' })
+    .max(3, { message: 'Pick at most three languages' }),
+  // The language spoken in the source. Omitted means "detect it": ElevenLabs and
+  // Gemini both do, and ElevenLabs reports what it found on the source transcript.
+  sourceLanguage: z
+    .string()
+    .min(1)
+    .refine(isKnownDubLanguage, { message: 'Unsupported source language' })
+    .optional(),
+  voiceMode: z.enum(DUB_VOICE_MODES).default(DEFAULT_DUB_VOICE_MODE),
+  // Omitted: MP4 for a video, MP3 for audio (what every dub was before the choice).
+  outputFormat: z.enum(DUB_OUTPUT_FORMATS).optional(),
+  // Names and terms to keep as they are. Checked one by one against ElevenLabs' rules,
+  // then trimmed and deduplicated, so what is stored is exactly what is sent.
+  keyterms: z
+    .array(z.string().max(200))
+    .max(DUB_KEYTERMS_MAX * 2, { message: `Add at most ${DUB_KEYTERMS_MAX} names and terms` })
+    .superRefine((terms, ctx) => {
+      terms.forEach((term, i) => {
+        const problem = term.trim() ? keytermProblem(term) : null;
+        if (problem) ctx.addIssue({ code: 'custom', path: [i], message: problem });
+      });
+    })
+    .transform(normalizeKeyterms)
+    .refine((terms) => terms.length <= DUB_KEYTERMS_MAX, { message: `Add at most ${DUB_KEYTERMS_MAX} names and terms` })
+    .optional(),
+};
+
+type DubSettings = z.infer<z.ZodObject<typeof dubSettings>>;
+
+function checkTargets(input: DubSettings, ctx: z.RefinementCtx) {
+  const seen = new Set<string>();
+  input.targets.forEach(({ language, accent }, i) => {
+    // Checked against the chosen engine: Cypher speaks fewer languages than ElevenLabs.
+    if (!isSupportedDubLanguage(language, input.engine)) {
+      ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Unsupported target language' });
+    }
+    if (seen.has(language)) {
+      ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Each language can be picked once' });
+    }
+    seen.add(language);
+    if (accent && !accentsFor(language, input.engine).some((a) => a.value === accent)) {
+      ctx.addIssue({ code: 'custom', path: ['targets', i, 'accent'], message: 'Unsupported accent' });
+    }
+    // Dubbing a language into itself is not a dub. Compared on what would actually be
+    // asked for, so Chinese with the Cantonese dialect counts as Cantonese.
+    if (input.sourceLanguage && [language, elevenLabsTargetTag(language, accent)].includes(input.sourceLanguage)) {
+      ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Pick a target other than the source language' });
+    }
+  });
+}
+
 // Step 1: register the dub and open its uploads. The API plan-gates, prices and size-checks
 // the ORIGINAL file here, before a byte is uploaded, then returns a resumable session for
 // the audio track and (for a video) a multipart upload for the original.
@@ -30,13 +89,6 @@ export const InitDubUploadSchema = z
     // .finite(): a browser that can't read a header reports Infinity for the duration,
     // which JSON.stringify turns into null. Reject it rather than price off it.
     durationSeconds: z.coerce.number().positive({ message: 'Duration is required' }).finite(),
-    engine: z.enum(DUB_ENGINES),
-    // One output per language. The per-plan count (1 to 3) is enforced by the API, which
-    // knows the plan; 3 here is the ceiling on any plan.
-    targets: z
-      .array(z.object({ language: z.string().min(1), accent: z.string().max(40).optional() }))
-      .min(1, { message: 'Pick at least one language' })
-      .max(3, { message: 'Pick at most three languages' }),
     mediaName: z.string().min(1, { message: 'Media name is required' }).max(100),
     // name|size|lastModified of the picked file, so a resume can refuse a different file.
     fingerprint: z.string().min(1).max(400),
@@ -46,55 +98,18 @@ export const InitDubUploadSchema = z
       // false: the browser could not pull the audio out, so the whole file is the "audio".
       extracted: z.boolean(),
     }),
-    // The language spoken in the source. Omitted means "detect it": ElevenLabs and
-    // Gemini both do, and ElevenLabs reports what it found on the source transcript.
-    sourceLanguage: z
-      .string()
-      .min(1)
-      .refine(isKnownDubLanguage, { message: 'Unsupported source language' })
-      .optional(),
-    voiceMode: z.enum(DUB_VOICE_MODES).default(DEFAULT_DUB_VOICE_MODE),
-    // Omitted: MP4 for a video, MP3 for audio (what every dub was before the choice).
-    outputFormat: z.enum(DUB_OUTPUT_FORMATS).optional(),
-    // Names and terms to keep as they are. Checked one by one against ElevenLabs' rules,
-    // then trimmed and deduplicated, so what is stored is exactly what is sent.
-    keyterms: z
-      .array(z.string().max(200))
-      .max(DUB_KEYTERMS_MAX * 2, { message: `Add at most ${DUB_KEYTERMS_MAX} names and terms` })
-      .superRefine((terms, ctx) => {
-        terms.forEach((term, i) => {
-          const problem = term.trim() ? keytermProblem(term) : null;
-          if (problem) ctx.addIssue({ code: 'custom', path: [i], message: problem });
-        });
-      })
-      .transform(normalizeKeyterms)
-      .refine((terms) => terms.length <= DUB_KEYTERMS_MAX, { message: `Add at most ${DUB_KEYTERMS_MAX} names and terms` })
-      .optional(),
+    ...dubSettings,
   })
   .superRefine((input, ctx) => {
     if (input.outputFormat === 'mp4' && !input.isVideo) {
       ctx.addIssue({ code: 'custom', path: ['outputFormat'], message: 'An audio file can only be dubbed to audio' });
     }
-    const seen = new Set<string>();
-    input.targets.forEach(({ language, accent }, i) => {
-      // Checked against the chosen engine: Cypher speaks fewer languages than ElevenLabs.
-      if (!isSupportedDubLanguage(language, input.engine)) {
-        ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Unsupported target language' });
-      }
-      if (seen.has(language)) {
-        ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Each language can be picked once' });
-      }
-      seen.add(language);
-      if (accent && !accentsFor(language, input.engine).some((a) => a.value === accent)) {
-        ctx.addIssue({ code: 'custom', path: ['targets', i, 'accent'], message: 'Unsupported accent' });
-      }
-      // Dubbing a language into itself is not a dub. Compared on what would actually be
-      // asked for, so Chinese with the Cantonese dialect counts as Cantonese.
-      if (input.sourceLanguage && [language, elevenLabsTargetTag(language, accent)].includes(input.sourceLanguage)) {
-        ctx.addIssue({ code: 'custom', path: ['targets', i, 'language'], message: 'Pick a target other than the source language' });
-      }
-    });
+    checkTargets(input, ctx);
   });
+
+// Dub media already in storage again with other settings. The API decides whether MP4 is
+// possible, since only it knows whether the video was ever uploaded.
+export const RegenerateDubSchema = z.object(dubSettings).superRefine(checkTargets);
 
 export const DubVideoPartSchema = z.object({
   partNumber: z.coerce.number().int().min(1).max(1000),
@@ -174,10 +189,18 @@ export const DubResponseSchema = z.object({
   // Null on dubs from before the choice; dubOutputFormatOf resolves it.
   outputFormat: z.enum(DUB_OUTPUT_FORMATS).nullish(),
   keyterms: z.array(z.string()).nullish(),
+  // The original dub this one was regenerated from; null on an original.
+  sourceProjectId: z.string().nullish(),
+  durationSeconds: z.number().nullish(),
+  // Whether the media is a video, and whether that video is in storage to dub back to MP4.
+  // An audio-only dub of a video uploads only its audio.
+  sourceIsVideo: z.boolean(),
+  sourceHasVideo: z.boolean(),
   outputs: z.array(DubOutputSchema),
 });
 
 export type InitDubUploadInput = z.infer<typeof InitDubUploadSchema>;
+export type RegenerateDubInput = z.infer<typeof RegenerateDubSchema>;
 export type DubVideoPartInput = z.infer<typeof DubVideoPartSchema>;
 export type DubAudioSessionInput = z.infer<typeof DubAudioSessionSchema>;
 export type DubOutput = z.infer<typeof DubOutputSchema>;

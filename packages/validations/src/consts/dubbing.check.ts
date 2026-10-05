@@ -55,7 +55,7 @@ import {
   formatDubbingAllowance,
   paidDubbingMultiplier,
 } from './credits';
-import { InitDubUploadSchema, DubVideoPartSchema, DubOutputSchema } from '../schema/dubbing.schema';
+import { InitDubUploadSchema, RegenerateDubSchema, DubVideoPartSchema, DubOutputSchema } from '../schema/dubbing.schema';
 
 // Plan gating: EVERY plan can dub now (Starter included) — the limit is duration,
 // not access. Case-insensitive, null-safe.
@@ -230,6 +230,14 @@ assert.equal(dubAudioFormat(null), 'mp3');
 assert.equal(dubAudioFormat('wav'), 'wav');
 assert.deepEqual(dubOutputObjects('p', 'es', 'wav').audio, { objectName: 'dubbed/p/es.wav', contentType: 'audio/wav' });
 assert.deepEqual(dubOutputObjects('p', 'es').audio, { objectName: 'dubbed/p/es.mp3', contentType: 'audio/mpeg' });
+// Regenerate: the same settings and target rules, no file. MP4 is left to the API, which
+// knows whether the video is in storage.
+const regen = (extra: object = {}) => RegenerateDubSchema.safeParse({ engine: 'cypher', targets: [{ language: 'es' }], ...extra });
+assert.equal(regen().success, true);
+assert.equal(regen({ outputFormat: 'mp4' }).success, true);
+assert.equal(regen({ targets: [{ language: 'es' }, { language: 'es' }] }).success, false);
+assert.equal(regen({ sourceLanguage: 'es' }).success, false);
+assert.equal(regen({ targets: [] }).success, false);
 // Keyterms: validated one by one, trimmed and deduplicated, at most 50.
 const withTerms = init({ keyterms: ['  Creator AI ', 'creator ai', 'Cypher', ''] });
 assert.equal(withTerms.success, true);

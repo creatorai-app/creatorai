@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client"
 import { toast } from "sonner"
-import { DubEngine, DubResponse, DubStatus } from "@repo/validation"
+import { DubEngine, DubResponse, DubStatus, RegenerateDubInput } from "@repo/validation"
 
 export interface DubbingProject {
   id: string
@@ -11,8 +11,10 @@ export interface DubbingProject {
   status: DubStatus
   video_status?: "uploading" | "uploaded" | null
   engine?: DubEngine | null
-  /** Every language of the dub (older dubs: just their one). */
+  /** Every language the media was dubbed into, across its regenerated dubs too. */
   languages: string[]
+  /** The original and every dub regenerated from it. */
+  dub_count: number
   is_video: boolean
   dubbedUrl?: string
   credits_consumed?: number
@@ -45,6 +47,35 @@ export async function getDubbing(
     toast.error("Failed to load dubbing details")
     return null
   }
+}
+
+/** Every dub of one media, from any of them: the original first, then each regeneration. */
+export async function getDubbingGroup(
+  projectId: string,
+  accessToken?: string
+): Promise<DubResponse[] | null> {
+  try {
+    return await api.get<DubResponse[]>(`/api/v1/dubbing/${projectId}/group`, {
+      requireAuth: true,
+      accessToken,
+    })
+  } catch {
+    toast.error("Failed to load dubbing details")
+    return null
+  }
+}
+
+/** Dub the same media again with other settings. Nothing is uploaded; the dub starts right away. */
+export async function regenerateDubbing(
+  projectId: string,
+  input: RegenerateDubInput,
+  accessToken?: string
+): Promise<{ projectId: string; jobId: string }> {
+  return api.post<{ projectId: string; jobId: string }>(
+    `/api/v1/dubbing/${projectId}/regenerate`,
+    input,
+    { requireAuth: true, accessToken },
+  )
 }
 
 export async function deleteDubbing(
