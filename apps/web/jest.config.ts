@@ -21,4 +21,7 @@ const config: Config = {
   coverageDirectory: 'coverage',
 };
 
-export default createJestConfig(config);
+// Annotated: the base tsconfig emits declarations, and Next 16's inferred type names a
+// private ConfigGlobals that a declaration cannot reference (TS4082).
+const jestConfig: () => Promise<Config> = createJestConfig(config);
+export default jestConfig;

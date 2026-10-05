@@ -10,7 +10,9 @@ import {
   Req,
   UseGuards,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
+import { ADMIN_USER_SEGMENTS, type AdminUserSegment } from '@repo/validation';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { SupabaseAuthGuard } from '../guards/auth.guard';
@@ -37,6 +39,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Admin dashboard aggregate stats' })
   getDashboardStats() {
     return this.adminService.getDashboardStats();
+  }
+
+  @Get('stats/users/:segment')
+  @ApiOperation({ summary: 'Users behind a dashboard stat card' })
+  @ApiParam({ name: 'segment', enum: ADMIN_USER_SEGMENTS })
+  getUserSegment(@Param('segment') segment: string) {
+    if (!(ADMIN_USER_SEGMENTS as readonly string[]).includes(segment)) {
+      throw new BadRequestException(`Unknown segment: ${segment}`);
+    }
+    return this.adminService.getUserSegment(segment as AdminUserSegment);
   }
 
   @Get('revenue-by-tier')

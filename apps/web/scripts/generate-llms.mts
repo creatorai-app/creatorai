@@ -19,6 +19,7 @@ import { config } from "dotenv";
 import { loadPublishedPosts } from "../lib/blog-source.ts";
 import type { BlogPost } from "../lib/blog-types.ts";
 import { FREE_TOOLS } from "../lib/free-tools.ts";
+import { dubbableLanguagesFor, supportedLanguages } from "@repo/validation";
 
 const SITE = "https://trycreatorai.com";
 const LF = String.fromCharCode(10);
@@ -58,7 +59,7 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 - Voice-matched script generation trained on your channel
 - AI thumbnail generator (1280×720, CTR-optimized)
 - Subtitle generation with SRT/VTT export
-- Video dubbing into 30 languages, in your own cloned voice
+- Video dubbing into ${supportedLanguages.length} languages, every speaker in their own cloned voice: Cypher (in-house, ${dubbableLanguagesFor("cypher").length} languages) or ElevenLabs (${dubbableLanguagesFor("elevenlabs").length})
 - AI video generation: short clips with audio from a text prompt or a start image
 - Topic and trend research for your niche
 - Story blueprint planning for video structure
@@ -69,7 +70,7 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 - Learns creator voice from actual YouTube videos, not text prompts
 - Voice-cloning dubbing preserves the creator's real voice across languages
 - Free Starter plan: 500 credits a month, no credit card
-- Dubbing is available on every plan, with clips capped at 60 seconds on Starter
+- Dubbing is available on every plan, priced per minute per language; Creator and Pro dub into 2 languages at once, Business and Scale into 3
 - Video generation requires a Pro plan or above
 - Supports niches: tech, finance, gaming, education, beauty, productivity, entertainment
 

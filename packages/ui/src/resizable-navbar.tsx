@@ -1,10 +1,10 @@
 "use client";
 import { cn } from "./lib/utils";
 import { IconMenu2, IconX } from "@tabler/icons-react";
-import { AnimatePresence, useScroll, useMotionValueEvent } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import * as motion from "motion/react-m";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 
 
 interface NavbarProps {
@@ -15,7 +15,6 @@ interface NavbarProps {
 interface NavBodyProps {
     children: React.ReactNode;
     className?: string;
-    visible?: boolean;
 }
 
 interface NavItemsProps {
@@ -30,7 +29,6 @@ interface NavItemsProps {
 interface MobileNavProps {
     children: React.ReactNode;
     className?: string;
-    visible?: boolean;
 }
 
 interface MobileNavHeaderProps {
@@ -46,49 +44,19 @@ interface MobileNavMenuProps {
 }
 
 export const Navbar = ({ children, className }: NavbarProps) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const { scrollY } = useScroll({
-        target: ref,
-        offset: ["start start", "end start"],
-    });
-    const [visible, setVisible] = useState<boolean>(false);
-
-    useMotionValueEvent(scrollY, "change", (latest) => {
-        if (latest > 100) {
-            setVisible(true);
-        } else {
-            setVisible(false);
-        }
-    });
-
     return (
-        <motion.div
-            ref={ref}
+        <div
             className={cn(
-                "fixed inset-x-0 top-0 z-50 w-full",
-                "transition-[background-color,backdrop-filter] duration-300 ease-out",
-                // Transparent at rest: no background, no border, no shadow, so
-                // the header sits on whatever the page ground is. Once the page
-                // scrolls, content would otherwise run under a fixed bar, so a
-                // backdrop comes back purely for legibility.
-                visible
-                    ? "border-b border-black/[0.06] bg-white/85 backdrop-blur-[12px] backdrop-saturate-[180%] dark:border-white/10 dark:bg-neutral-950/85"
-                    : "bg-transparent",
+                // Solid at every scroll position. The old bar was transparent at
+                // rest and 85% white with a blur once scrolled, so page content
+                // showed through behind the links, and a hairline border marked
+                // its edge. Opaque needs neither the blur nor the border.
+                "fixed inset-x-0 top-0 z-50 w-full bg-white dark:bg-neutral-950",
                 className,
             )}
-            style={visible ? { WebkitBackdropFilter: "blur(12px) saturate(180%)" } : undefined}
         >
-            <div className="relative w-full">
-                {React.Children.map(children, (child) =>
-                    React.isValidElement(child)
-                        ? React.cloneElement(
-                            child as React.ReactElement<{ visible?: boolean }>,
-                            { visible },
-                        )
-                        : child,
-                )}
-            </div>
-        </motion.div>
+            <div className="relative w-full">{children}</div>
+        </div>
     );
 };
 
@@ -196,10 +164,9 @@ export const MobileNavMenu = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className={cn(
-                        "absolute inset-x-0 top-16 z-50 flex w-full flex-col items-start justify-start gap-4 border-t border-black/[0.06] bg-white/85 px-6 py-8 backdrop-blur-[12px] backdrop-saturate-[180%] dark:border-white/10 dark:bg-neutral-950/85",
+                        "absolute inset-x-0 top-full z-50 flex w-full flex-col items-start justify-start gap-4 bg-white px-6 py-8 dark:bg-neutral-950",
                         className,
                     )}
-                    style={{ WebkitBackdropFilter: "blur(12px) saturate(180%)" }}
                 >
                     {children}
                 </motion.div>

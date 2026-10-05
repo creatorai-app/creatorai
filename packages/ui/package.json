@@ -58,8 +58,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.0.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "~19.2.8",
+    "react-dom": "~19.2.8",
     "typescript": "5.5.4"
   }
 }

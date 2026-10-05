@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
-import { BLOG_POST_WRITABLE_FIELDS } from '@repo/validation';
+import { BLOG_POST_WRITABLE_FIELDS, type AdminSegmentUser, type AdminUserSegment } from '@repo/validation';
 import { SupabaseService } from '../supabase/supabase.service';
 
 const SUPPORT_EMAIL = 'support@trycreatorai.com';
@@ -63,6 +63,7 @@ export class AdminService {
       onlineRes,
       active24hRes,
       errors24hRes,
+      active30dRes,
     ] = await Promise.all([
       this.db.from('profiles').select('id', { count: 'exact', head: true }),
       this.db.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 30 * 86400000).toISOString()),
@@ -88,6 +89,13 @@ export class AdminService {
         .from('error_logs')
         .select('id', { count: 'exact', head: true })
         .gte('created_at', new Date(Date.now() - 86400000).toISOString()),
+      // PostgREST can't compare two columns, so "returning" is filtered in JS.
+      // ponytail: rows cap at the PostgREST max-rows (1000 on Supabase); move
+      // to an RPC once 30-day actives get near that.
+      this.db
+        .from('profiles')
+        .select('created_at, last_seen_at', { count: 'exact' })
+        .gte('last_seen_at', new Date(Date.now() - 30 * 86400000).toISOString()),
     ]);
 
     // Lemon Squeezy reports money in cents.
@@ -107,8 +115,82 @@ export class AdminService {
       onlineUsers: onlineRes.count ?? 0,
       onlineWindowMinutes: AdminService.ONLINE_WINDOW_MINUTES,
       activeUsers24h: active24hRes.count ?? 0,
+      activeUsers30d: active30dRes.count ?? 0,
+      returningUsers30d: (active30dRes.data ?? []).filter(AdminService.isReturning).length,
       errors24h: errors24hRes.count ?? 0,
     };
+  }
+
+  /**
+   * last_seen_at is the only presence signal we keep, so "returning" means
+   * last seen at least a day after signing up: they came back on a later day.
+   */
+  private static isReturning(u: { created_at: string; last_seen_at?: string | null }) {
+    return !!u.last_seen_at && Date.parse(u.last_seen_at) - Date.parse(u.created_at) >= 86400000;
+  }
+
+  // ponytail: modal lists are capped, not paginated. Add paging if a segment
+  // regularly outgrows this.
+  private static readonly USER_SEGMENT_CAP = 500;
+
+  /** The users behind a dashboard stat card, newest activity first. */
+  async getUserSegment(segment: AdminUserSegment) {
+    const cap = AdminService.USER_SEGMENT_CAP;
+    const day = 86400000;
+    const windows: Record<Exclude<AdminUserSegment, 'subscribed'>, ['last_seen_at' | 'created_at', number]> = {
+      online: ['last_seen_at', AdminService.ONLINE_WINDOW_MINUTES * 60000],
+      active24h: ['last_seen_at', day],
+      active30d: ['last_seen_at', 30 * day],
+      returning: ['last_seen_at', 30 * day],
+      new30d: ['created_at', 30 * day],
+    };
+
+    // subscriptions.user_id has no FK to profiles, so plans are joined in JS.
+    // Newest first, so a user with several active rows shows their latest plan.
+    const { data: subs, error: subErr } = await this.db
+      .from('subscriptions')
+      .select('user_id, created_at, plans(name)')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+    if (subErr) throw new BadRequestException(subErr.message);
+    const planByUser = new Map<string, string | null>();
+    for (const s of subs ?? []) {
+      if (!planByUser.has(s.user_id)) {
+        planByUser.set(s.user_id, (s.plans as { name?: string } | null)?.name ?? null);
+      }
+    }
+
+    const cols = 'user_id, full_name, name, email, avatar_url, created_at, last_seen_at';
+    let rows: Omit<AdminSegmentUser, 'plan'>[];
+
+    if (segment === 'subscribed') {
+      // Chunked so the user_id IN (...) list never blows the request URL limit.
+      const ids = [...planByUser.keys()].slice(0, cap);
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
+      const results = await Promise.all(
+        chunks.map((c) => this.db.from('profiles').select(cols).in('user_id', c)),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw new BadRequestException(failed.error.message);
+      const order = new Map(ids.map((id, i) => [id, i]));
+      rows = results
+        .flatMap((r) => r.data ?? [])
+        .sort((a, b) => order.get(a.user_id)! - order.get(b.user_id)!);
+    } else {
+      const [col, ms] = windows[segment];
+      const { data, error } = await this.db
+        .from('profiles')
+        .select(cols)
+        .gte(col, new Date(Date.now() - ms).toISOString())
+        .order(col, { ascending: false })
+        .limit(cap);
+      if (error) throw new BadRequestException(error.message);
+      rows = data ?? [];
+      if (segment === 'returning') rows = rows.filter(AdminService.isReturning);
+    }
+
+    return rows.map((u): AdminSegmentUser => ({ ...u, plan: planByUser.get(u.user_id) ?? null }));
   }
 
   // ==================== REVENUE & FUNNEL ====================
@@ -1054,7 +1136,7 @@ export class AdminService {
   }
 
   private static readonly ALLOWED_JOB_FIELDS = new Set([
-    'title', 'team', 'location', 'type', 'category', 'description', 'requirements', 'status',
+    'title', 'team', 'location', 'type', 'category', 'description', 'requirements', 'content', 'status',
   ]);
 
   private filterJobFields(input: Record<string, unknown>) {

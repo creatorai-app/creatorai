@@ -3,10 +3,10 @@ import * as motion from "motion/react-m";
 import { UploadCloud, Languages, Mic, Clapperboard } from "lucide-react";
 
 const steps = [
-  { step: 1, title: "Upload media", desc: "Drop in an audio or video file. Starter covers 500MB and 45 minutes; paid plans go up to 3GB and 3 hours.", icon: UploadCloud },
-  { step: 2, title: "Transcribe & translate", desc: "We transcribe the speech and translate it into your target language.", icon: Languages },
-  { step: 3, title: "Clone the voice", desc: "The original voice is cloned and speaks the translation naturally.", icon: Mic },
-  { step: 4, title: "Merge & preview", desc: "For video, the dubbed audio is merged back over your footage.", icon: Clapperboard },
+  { step: 1, title: "Upload media", desc: "Drop in an audio or video file. Starter covers 500MB and 45 minutes in one language; paid plans go up to 3GB and 3 hours, in two or three languages at once.", icon: UploadCloud },
+  { step: 2, title: "Find the speakers & translate", desc: "Pick Cypher (in-house dubbing) or ElevenLabs. Both work out who speaks when and translate every line.", icon: Languages },
+  { step: 3, title: "Clone every voice", desc: "Each speaker gets their own cloned voice, so every person in the original speaks the translation.", icon: Mic },
+  { step: 4, title: "Merge & preview", desc: "For video, the dubbed audio is merged back over your footage, one file per language.", icon: Clapperboard },
 ];
 
 // Same walkthrough embedded on the dubbing blog posts. nocookie + lazy so opening the

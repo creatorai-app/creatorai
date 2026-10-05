@@ -8,7 +8,7 @@ Before you begin, make sure you have the following installed:
 
 ### Required Software
 
-- **Node.js** 18.x or higher
+- **Node.js** 20.9 or higher (Next 16's floor; the Docker images run node:20-alpine)
   - Download from [nodejs.org](https://nodejs.org/)
   - Verify installation: `node --version`
 

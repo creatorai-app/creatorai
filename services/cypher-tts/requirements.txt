@@ -1,0 +1,8 @@
+# Chatterbox Multilingual V3 (t3_model="v3") is on the repository's master branch but in
+# no PyPI release yet (chatterbox-tts 0.1.7 has no t3_model argument), so it is pinned to
+# the V3 release commit. It brings torch 2.6.0, whose default Linux wheels are CUDA 12.4.
+chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox@65b18437192794391a0308a8f705b1e33e633948
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+requests==2.32.3
+huggingface_hub>=0.23

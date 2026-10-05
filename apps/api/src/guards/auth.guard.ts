@@ -1,4 +1,5 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -18,6 +19,11 @@ export class SupabaseAuthGuard implements CanActivate {
 
     // Validate Supabase JWT
     const { data, error } = await this.supabaseService.getClient().auth.getUser(token);
+    // Supabase unreachable says nothing about the token: a 401 here would tell the user
+    // their session expired and send them to sign in for a network blip.
+    if (isAuthRetryableFetchError(error)) {
+      throw new ServiceUnavailableException('Could not verify your session right now. Please try again.');
+    }
     if (error || !data.user) {
       throw new UnauthorizedException('Invalid or expired token');
     }

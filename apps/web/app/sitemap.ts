@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/blog-source";
+import { getOpenRoles } from "@/lib/careers-source";
 import { FREE_TOOLS } from "@/lib/free-tools";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://trycreatorai.com";
@@ -148,5 +149,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...toolPages, ...blogPages];
+  // One URL per open role, so Google Jobs and search can reach each posting.
+  const jobPages: MetadataRoute.Sitemap = (await getOpenRoles()).map((job) => ({
+    url: `${BASE_URL}/careers/${job.slug}`,
+    lastModified: new Date(job.updated_at),
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
+
+  return [...staticPages, ...toolPages, ...blogPages, ...jobPages];
 }

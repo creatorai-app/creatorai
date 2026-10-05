@@ -1,7 +1,9 @@
+import type { DubOutput } from '../schema/dubbing.schema';
+
+/** A finished dub as the new-dub page shows it: one entry per language. */
 export interface DubbedResult {
   projectId: string;
-  dubbedUrl?: string;
-  targetLanguage?: string;
+  outputs: DubOutput[];
 }
 
 export interface DubbingProgress {

@@ -237,3 +237,40 @@ describe('AdminService.getActivityFeed', () => {
     expect(reads.find((r) => r.table === 'youtube_channels')!.cols).not.toContain('credits_consumed');
   });
 });
+
+/** Every builder method chains; awaiting resolves to the table's rows. */
+function makeChainDb(rows: Record<string, Record<string, unknown>[]>) {
+  return {
+    from: (table: string) => {
+      const chain: Record<string, unknown> = {
+        then: (resolve: (v: unknown) => unknown) => resolve({ data: rows[table] ?? [], error: null }),
+      };
+      for (const m of ['select', 'eq', 'gte', 'in', 'order', 'limit']) chain[m] = () => chain;
+      return chain;
+    },
+  };
+}
+
+describe('AdminService.getUserSegment', () => {
+  it('keeps only users who came back a day or more after signing up', async () => {
+    const client = makeChainDb({
+      subscriptions: [{ user_id: 'back', plans: { name: 'Pro' } }],
+      profiles: [
+        { user_id: 'back', created_at: '2026-09-01T00:00:00.000Z', last_seen_at: '2026-09-03T00:00:00.000Z' },
+        { user_id: 'same-day', created_at: '2026-09-20T08:00:00.000Z', last_seen_at: '2026-09-20T20:00:00.000Z' },
+      ],
+    });
+    const module = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SupabaseService, useValue: { getAdminClient: () => client } },
+      ],
+    }).compile();
+
+    const users = await module.get(AdminService).getUserSegment('returning');
+
+    expect(users.map((u) => u.user_id)).toEqual(['back']);
+    expect(users[0].plan).toBe('Pro');
+  });
+});

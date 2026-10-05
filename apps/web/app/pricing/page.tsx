@@ -12,6 +12,7 @@ import { MButton } from "@repo/ui/moving-border";
 import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react";
 import { useSupabase } from "@/components/supabase-provider";
 import { MARKETING_PLANS, ALL_FEATURES, dubbingAllowanceFor } from "@/lib/pricing-plans";
+import { DUB_ENGINES, dubEngineLabel } from "@repo/validation";
 import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import { trackFunnel } from "@/lib/funnel";
 
@@ -159,14 +160,16 @@ export default function PricingPage() {
                       </td>
                     ))}
                   </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="py-3.5 px-4 text-sm text-slate-700">Dubbing included</td>
-                    {MARKETING_PLANS.map((p) => (
-                      <td key={p.id} className="text-center py-3.5 px-4 text-sm font-medium text-slate-800">
-                        {dubbingAllowanceFor(p)}
-                      </td>
-                    ))}
-                  </tr>
+                  {DUB_ENGINES.map((engine) => (
+                    <tr key={engine} className="border-b border-slate-100">
+                      <td className="py-3.5 px-4 text-sm text-slate-700">Dubbing with {dubEngineLabel(engine)}</td>
+                      {MARKETING_PLANS.map((p) => (
+                        <td key={p.id} className="text-center py-3.5 px-4 text-sm font-medium text-slate-800">
+                          {dubbingAllowanceFor(p, engine)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                   <tr className="border-b border-slate-100 bg-slate-50/40">
                     <td className="py-3.5 px-4 text-sm text-slate-700">Best for</td>
                     {MARKETING_PLANS.map((p) => (

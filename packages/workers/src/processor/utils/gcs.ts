@@ -50,3 +50,48 @@ export async function uploadVideoBuffer(
     publicUrl: `https://storage.googleapis.com/${bucket}/${objectName}`,
   };
 }
+
+/** gs://bucket/a/b → { bucket, objectName: 'a/b' } */
+export function parseGsUri(gsUri: string): { bucket: string; objectName: string } {
+  const match = /^gs:\/\/([^/]+)\/(.+)$/.exec(gsUri);
+  if (!match) throw new Error(`Not a gs:// URI: ${gsUri}`);
+  return { bucket: match[1], objectName: match[2] };
+}
+
+export function gcsPublicUrl(bucket: string, objectName: string): string {
+  return `https://storage.googleapis.com/${bucket}/${objectName}`;
+}
+
+export async function gcsObjectExists(bucket: string, objectName: string): Promise<boolean> {
+  const storage = await getStorage();
+  const [exists] = await storage.bucket(bucket).file(objectName).exists();
+  return exists;
+}
+
+export async function saveGcsBuffer(bucket: string, objectName: string, buffer: Buffer, contentType: string): Promise<void> {
+  const storage = await getStorage();
+  await storage.bucket(bucket).file(objectName).save(buffer, { contentType, resumable: false });
+}
+
+/** Streams a local file up (resumable, so a multi-GB mux output never sits in memory). */
+export async function uploadGcsFile(bucket: string, objectName: string, localPath: string, contentType: string): Promise<void> {
+  const storage = await getStorage();
+  await storage.bucket(bucket).upload(localPath, { destination: objectName, contentType, resumable: true });
+}
+
+export async function downloadGcsFile(bucket: string, objectName: string, destination: string): Promise<void> {
+  const storage = await getStorage();
+  await storage.bucket(bucket).file(objectName).download({ destination });
+}
+
+/** An object's bytes, or null when it does not exist (a turn not stored yet). */
+export async function readGcsBuffer(bucket: string, objectName: string): Promise<Buffer | null> {
+  const storage = await getStorage();
+  try {
+    const [data] = await storage.bucket(bucket).file(objectName).download();
+    return data;
+  } catch (error: any) {
+    if (error?.code === 404) return null;
+    throw error;
+  }
+}
