@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as motion from "motion/react-m";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { AnimatePresence } from "motion/react";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
@@ -94,6 +95,8 @@ function NewDubbing() {
   const { session } = useSupabase();
   // ?dub=<id> picks up an existing dub; &retry=1 resumes it if it failed.
   const dubId = searchParams.get("dub");
+  // ?from=<id> dubs that dub's media again with new settings, without uploading it.
+  const fromId = dubId ? null : searchParams.get("from");
   const retryRef = useRef(searchParams.get("retry") === "1");
   const {
     fileInputRef,
@@ -125,6 +128,9 @@ function NewDubbing() {
     cancelDub,
     attached,
     attach,
+    source,
+    loadSource,
+    handleRegenerate,
     videoUpload,
     resumeVideoUpload,
     handleFileChange,
@@ -144,6 +150,17 @@ function NewDubbing() {
     reattach();
     // Once per dub and sign-in: reattach is re-run by the upload and the poll, not by this.
   }, [dubId, session?.access_token]);
+
+  useEffect(() => {
+    if (!fromId || !session?.access_token) return;
+    void loadSource(fromId).then((ok) => {
+      if (ok) return;
+      toast.error("Could not dub this media again", { description: "Its upload never finished, or it is no longer available." });
+      router.replace("/dashboard/dubbing");
+    });
+    // Once per source and sign-in.
+  }, [fromId, session?.access_token]);
+  const sourceLoading = !!fromId && !source;
 
   // A dub waiting on a video uploading elsewhere moves on once that upload lands.
   const waitingElsewhere = !!dubId && attached?.status === "awaiting_video" && !upload.status;
@@ -214,11 +231,12 @@ function NewDubbing() {
       setShowUpgrade(true);
       return;
     }
-    handleDubMedia();
+    if (source) void handleRegenerate();
+    else void handleDubMedia();
   };
 
   const pickedLanguages = targets.filter((t) => t.language).map((t) => t.language);
-  const showForm = !dubId && !accessLoading && !isLoading;
+  const showForm = !dubId && !accessLoading && !isLoading && !sourceLoading;
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -241,7 +259,7 @@ function NewDubbing() {
 
       <motion.div variants={itemVariants} className="mb-8 flex items-center gap-4">
         <h1 className="min-w-0 flex-1 truncate text-2xl sm:text-3xl font-bold tracking-tight">
-          {dubId ? mediaName || "Dubbing" : "New Dubbing"}
+          {dubId ? mediaName || "Dubbing" : fromId ? `Dub again${mediaName ? `: ${mediaName}` : ""}` : "New Dubbing"}
         </h1>
         <div className="flex shrink-0 items-center gap-2">
           {showForm && (
@@ -260,7 +278,7 @@ function NewDubbing() {
             <Button
               onClick={handleGenerate}
               className="bg-purple-600 hover:bg-purple-700 text-white"
-              disabled={!locked && (!mediaFile || !pickedLanguages.length || !mediaName.trim())}
+              disabled={!locked && (!(mediaFile || source) || !pickedLanguages.length || (!source && !mediaName.trim()))}
             >
               {locked ? <Lock className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
               {locked ? "Unlock dubbing" : "Dub media"}
@@ -271,7 +289,7 @@ function NewDubbing() {
 
       {gate.banner && <div className="mb-8">{gate.banner}</div>}
 
-      {accessLoading || (dubId && !attached) || progress.state === "completed" ? (
+      {accessLoading || (dubId && !attached) || sourceLoading || progress.state === "completed" ? (
         <motion.div variants={itemVariants} className="flex justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
         </motion.div>
@@ -322,59 +340,83 @@ function NewDubbing() {
             ) : (
               <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
                 <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="media-name">Name</Label>
-                    <Input
-                      id="media-name"
-                      placeholder="My video"
-                      value={mediaName}
-                      onChange={(e) => setMediaName(e.target.value)}
-                      maxLength={100}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-purple-400"
-                    />
-                  </div>
+                  {source ? (
+                    <div className="space-y-2">
+                      <Label>Media</Label>
+                      <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-purple-50/60 px-4 py-4 dark:border-purple-900/50 dark:bg-purple-900/20">
+                        {source.isVideo ? <FileVideo className="h-8 w-8 shrink-0 text-purple-600" /> : <FileAudio className="h-8 w-8 shrink-0 text-purple-600" />}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{source.mediaName || "Original media"}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {formatClock(source.durationSeconds)} · {estimatedCredits !== null ? `~${estimatedCredits.toLocaleString()} credits` : "Pricing…"} · Already uploaded
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="media-name">Name</Label>
+                        <Input
+                          id="media-name"
+                          placeholder="My video"
+                          value={mediaName}
+                          onChange={(e) => setMediaName(e.target.value)}
+                          maxLength={100}
+                          className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-purple-400"
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="media-upload">File</Label>
-                    <Label
-                      htmlFor="media-upload"
-                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={handleDrop}
-                      className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center font-normal transition-colors ${isDragging || mediaFile
-                        ? "border-purple-400 bg-purple-50/60 dark:bg-purple-900/20"
-                        : "border-slate-200 bg-white/60 hover:border-purple-300 dark:border-slate-800 dark:bg-slate-900/40"
-                        }`}
-                    >
-                      {mediaFile ? (
-                        isVideo ? <FileVideo className="h-8 w-8 text-purple-600" /> : <FileAudio className="h-8 w-8 text-purple-600" />
-                      ) : (
-                        <UploadCloud className="h-8 w-8 text-slate-400" />
-                      )}
-                      <span className="break-all text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {mediaFile ? mediaFile.name : "Drop a file or click to browse"}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {mediaFile && mediaDuration !== null
-                          ? `${formatClock(mediaDuration)} · ${estimatedCredits !== null ? `~${estimatedCredits.toLocaleString()} credits` : "Pricing…"}`
-                          : maxUploadBytes !== null && maxDurationSeconds !== null
-                            ? `Audio or video, up to ${formatUploadLimit(maxUploadBytes)} and ${formatDubDuration(maxDurationSeconds)}`
-                            : "Audio or video"}
-                      </span>
-                    </Label>
-                    <Input
-                      ref={fileInputRef}
-                      id="media-upload"
-                      type="file"
-                      accept="audio/*,video/*"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="media-upload">File</Label>
+                        <Label
+                          htmlFor="media-upload"
+                          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                          onDragLeave={() => setIsDragging(false)}
+                          onDrop={handleDrop}
+                          className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center font-normal transition-colors ${isDragging || mediaFile
+                            ? "border-purple-400 bg-purple-50/60 dark:bg-purple-900/20"
+                            : "border-slate-200 bg-white/60 hover:border-purple-300 dark:border-slate-800 dark:bg-slate-900/40"
+                            }`}
+                        >
+                          {mediaFile ? (
+                            isVideo ? <FileVideo className="h-8 w-8 text-purple-600" /> : <FileAudio className="h-8 w-8 text-purple-600" />
+                          ) : (
+                            <UploadCloud className="h-8 w-8 text-slate-400" />
+                          )}
+                          <span className="break-all text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {mediaFile ? mediaFile.name : "Drop a file or click to browse"}
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {mediaFile && mediaDuration !== null
+                              ? `${formatClock(mediaDuration)} · ${estimatedCredits !== null ? `~${estimatedCredits.toLocaleString()} credits` : "Pricing…"}`
+                              : maxUploadBytes !== null && maxDurationSeconds !== null
+                                ? `Audio or video, up to ${formatUploadLimit(maxUploadBytes)} and ${formatDubDuration(maxDurationSeconds)}`
+                                : "Audio or video"}
+                          </span>
+                        </Label>
+                        <Input
+                          ref={fileInputRef}
+                          id="media-upload"
+                          type="file"
+                          accept="audio/*,video/*"
+                          className="hidden"
+                          onChange={handleFileChange}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="space-y-2">
                     <Label>Output</Label>
-                    <DubOutputFormatPicker value={outputFormat} onChange={setOutputFormat} allowVideo={!mediaFile || isVideo} />
+                    <DubOutputFormatPicker
+                      value={outputFormat}
+                      onChange={setOutputFormat}
+                      allowVideo={source ? source.isVideo : !mediaFile || isVideo}
+                      videoUnavailable={source?.isVideo && !source.hasVideo
+                        ? "Only the audio of this video was uploaded, so it can be dubbed to audio only."
+                        : undefined}
+                    />
                   </div>
                 </div>
 

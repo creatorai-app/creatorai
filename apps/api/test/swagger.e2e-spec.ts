@@ -679,6 +679,8 @@ describe('Swagger / OpenAPI Specification', () => {
       ['delete', '/api/v1/dubbing/{id}'],
       ['post', '/api/v1/dubbing/{id}/resume'],
       ['post', '/api/v1/dubbing/{id}/cancel'],
+      ['get', '/api/v1/dubbing/{id}/group'],
+      ['post', '/api/v1/dubbing/{id}/regenerate'],
       ['post', '/api/v1/dubbing/{id}/start'],
       ['get', '/api/v1/dubbing/{id}/upload'],
       ['post', '/api/v1/dubbing/{id}/upload/audio-session'],

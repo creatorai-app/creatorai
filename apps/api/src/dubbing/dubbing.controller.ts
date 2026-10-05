@@ -8,7 +8,9 @@ import {
   InitDubUploadSchema,
   DubVideoPartSchema,
   DubAudioSessionSchema,
+  RegenerateDubSchema,
   type InitDubUploadInput,
+  type RegenerateDubInput,
   type DubVideoPartInput,
   type DubAudioSessionInput,
 } from '@repo/validation';
@@ -169,6 +171,40 @@ export class DubbingController {
     return this.service.resumeDub(req.user!.id, id);
   }
 
+  @Post(':id/regenerate')
+  @UseGuards(SupabaseAuthGuard, OnboardedGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Dub the same media again with other settings',
+    description: 'Reuses the media already in storage, so nothing is uploaded, and starts the new dub right away. It belongs to the original dub (regenerating a regenerated dub goes back to the original) and is charged like any dub. mp4 needs the video in storage: an audio-only dub of a video uploaded only its audio.',
+  })
+  @ApiParam({ name: 'id', description: 'project_id of the original dub or of any dub regenerated from it' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['engine', 'targets'],
+      properties: {
+        engine: { type: 'string', enum: ['cypher', 'elevenlabs'] },
+        targets: {
+          type: 'array',
+          items: { type: 'object', properties: { language: { type: 'string', example: 'es' }, accent: { type: 'string' } } },
+        },
+        sourceLanguage: { type: 'string', example: 'en' },
+        voiceMode: { type: 'string', enum: ['like_me', 'balanced', 'native'], default: 'balanced' },
+        outputFormat: { type: 'string', enum: ['mp4', 'mp3', 'wav'] },
+        keyterms: { type: 'array', maxItems: 50, items: { type: 'string', maxLength: 50 } },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: '{ projectId, jobId }' })
+  async regenerate(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(RegenerateDubSchema)) body: RegenerateDubInput,
+  ) {
+    return this.service.regenerateDub(req.user!.id, id, body);
+  }
+
   @Post('stop/:jobId')
   @UseGuards(SupabaseAuthGuard)
   @ApiBearerAuth()
@@ -227,6 +263,18 @@ export class DubbingController {
     return this.service.listDubs(req.user!.id, pageSize);
   }
 
+  @Get(':id/group')
+  @UseGuards(SupabaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Every dub of one media',
+    description: 'From any of its dubs: the original first, then each dub regenerated from it, oldest first.',
+  })
+  @ApiParam({ name: 'id' })
+  async group(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.service.getDubGroup(req.user!.id, id);
+  }
+
   @Get(':id')
   @UseGuards(SupabaseAuthGuard)
   @ApiBearerAuth()
@@ -239,7 +287,10 @@ export class DubbingController {
   @Delete(':id')
   @UseGuards(SupabaseAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete dubbing project' })
+  @ApiOperation({
+    summary: 'Delete dubbing project',
+    description: 'A regenerated dub is deleted alone. The original takes every dub regenerated from it and the source media with it.',
+  })
   @ApiParam({ name: 'id' })
   async delete(@Req() req: AuthRequest, @Param('id') id: string) {
     await this.service.deleteDub(req.user!.id, id);

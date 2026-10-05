@@ -156,13 +156,18 @@ export default function DubbingList() {
                   setToDelete={setDubbingToDelete}
                   type="dubbing"
                   statusBadge={
-                    dubbing.status === "uploading" || (dubbing.status !== "completed" && dubbing.video_status === "uploading") ? (
-                      <Badge variant="outline" className="text-xs">Upload unfinished</Badge>
-                    ) : dubbing.status === "awaiting_video" ? (
-                      <Badge variant="outline" className="text-xs">Waiting for video</Badge>
-                    ) : dubbing.status === "failed" ? (
-                      <Badge variant="outline" className="text-xs text-red-600 dark:text-red-400">Failed</Badge>
-                    ) : undefined
+                    <>
+                      {dubbing.dub_count > 1 && (
+                        <Badge variant="outline" className="text-xs">{dubbing.dub_count} dubs</Badge>
+                      )}
+                      {dubbing.status === "uploading" || (dubbing.status !== "completed" && dubbing.video_status === "uploading") ? (
+                        <Badge variant="outline" className="text-xs">Upload unfinished</Badge>
+                      ) : dubbing.status === "awaiting_video" ? (
+                        <Badge variant="outline" className="text-xs">Waiting for video</Badge>
+                      ) : dubbing.status === "failed" ? (
+                        <Badge variant="outline" className="text-xs text-red-600 dark:text-red-400">Failed</Badge>
+                      ) : null}
+                    </>
                   }
                 />
               ))}

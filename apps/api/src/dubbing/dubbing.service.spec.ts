@@ -58,6 +58,8 @@ function chain(result: unknown, awaited: unknown = result) {
 
 /** The dubbing_outputs table, returning these rows to every read. */
 const outputsTable = (rows: object[]) => chain({ data: rows, error: null }, { data: rows, error: null });
+/** An awaited list read that finds nothing. */
+const NONE = { data: [], error: null };
 
 const USER = 'user-1';
 const MiB = 1024 * 1024;
@@ -860,7 +862,7 @@ describe('DubbingService', () => {
 
   describe('deleteDub', () => {
     it('refuses to delete a running dub', async () => {
-      await build({ dubbing_projects: chain({ data: { status: 'processing' }, error: null }) });
+      await build({ dubbing_projects: chain({ data: { status: 'processing' }, error: null }, NONE) });
       await expect(service.deleteDub(USER, 'p-1')).rejects.toThrow(/Cancel it before deleting/);
     });
 
@@ -869,7 +871,7 @@ describe('DubbingService', () => {
         dubbing_projects: chain({
           data: { status: 'completed', input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp3`, is_video: false },
           error: null,
-        }),
+        }, NONE),
       });
       await service.deleteDub(USER, 'p-1');
       expect(tables.dubbing_outputs.delete).toHaveBeenCalled();
@@ -886,7 +888,7 @@ describe('DubbingService', () => {
         dubbing_projects: chain({
           data: { status: 'completed', input_gs_uri: `gs://dub-bucket/${USER}/dubbing/a.mp4`, is_video: true },
           error: null,
-        }),
+        }, NONE),
       });
       await service.deleteDub(USER, 'p-1');
       const deleted = (deleteGcsObject as jest.Mock).mock.calls.map((c) => c[1]);
@@ -906,13 +908,175 @@ describe('DubbingService', () => {
             video_status: 'uploading',
           },
           error: null,
-        }),
+        }, NONE),
       });
       await service.deleteDub(USER, 'p-1');
       expect(abortMultipartUpload).toHaveBeenCalledWith(
         expect.anything(), `${USER}/dubbing/p-1/clip.mp4`, 'upload-1', 'dub-bucket',
       );
       expect(deleteGcsPrefix).toHaveBeenCalledWith(expect.anything(), `${USER}/dubbing/p-1/`, 'dub-bucket');
+    });
+
+    // A regenerated dub's source is the original's: it goes only with the original.
+    it('deletes a regenerated dub alone, leaving the source it shares', async () => {
+      await build({
+        dubbing_projects: chain({
+          data: { status: 'completed', source_project_id: 'p-1', input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`, is_video: true },
+          error: null,
+        }, NONE),
+      });
+      await service.deleteDub(USER, 'p-2');
+      const prefixes = (deleteGcsPrefix as jest.Mock).mock.calls.map((c) => c[1]);
+      expect(prefixes).toEqual([`${USER}/dubbing/p-2/`, 'dubbed/p-2/']);
+      expect(deleteGcsObject).not.toHaveBeenCalled();
+    });
+
+    it('deletes every dub regenerated from the original before the original and its source', async () => {
+      await build({
+        dubbing_projects: chain({
+          data: { status: 'completed', source_project_id: null, input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`, is_video: false },
+          error: null,
+        }, { data: [{ project_id: 'p-2', status: 'failed' }], error: null }),
+      });
+      await service.deleteDub(USER, 'p-1');
+      const prefixes = (deleteGcsPrefix as jest.Mock).mock.calls.map((c) => c[1]);
+      expect(prefixes).toEqual([`${USER}/dubbing/p-2/`, 'dubbed/p-2/', `${USER}/dubbing/p-1/`, 'dubbed/p-1/']);
+      const deleted = (deleteGcsObject as jest.Mock).mock.calls.map((c) => c[1]);
+      expect(deleted.filter((n) => n === `${USER}/dubbing/p-1/audio.m4a`)).toHaveLength(1);
+    });
+
+    it('refuses to delete the original while a dub regenerated from it is running', async () => {
+      await build({
+        dubbing_projects: chain(
+          { data: { status: 'completed', source_project_id: null }, error: null },
+          { data: [{ project_id: 'p-2', status: 'processing' }], error: null },
+        ),
+      });
+      await expect(service.deleteDub(USER, 'p-1')).rejects.toThrow(/Cancel it before deleting/);
+      expect(tables.dubbing_projects.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('regenerateDub', () => {
+    // A split video dub: the audio was extracted in the browser, the video uploaded in parts.
+    const original = {
+      project_id: 'p-1', user_id: USER, source_project_id: null, status: 'completed', engine: 'elevenlabs',
+      media_name: 'Clip', duration_seconds: DUB_SECONDS, source_fingerprint: 'clip.mp4|9|1',
+      audio_object: `${USER}/dubbing/p-1/audio.m4a`, audio_size: 1000, audio_content_type: 'audio/mp4', audio_extracted: true,
+      input_gs_uri: `gs://dub-bucket/${USER}/dubbing/p-1/audio.m4a`, input_url: 'https://audio',
+      original_media_url: 'https://video', video_object: `${USER}/dubbing/p-1/clip.mp4`, video_size: 500 * MiB,
+      video_content_type: 'video/mp4', video_status: 'uploaded', source_language: null,
+    };
+    const settings = { engine: 'cypher' as const, targets: [{ language: 'fr' }], voiceMode: 'balanced' as const };
+
+    function startsWith(result: unknown = { jobId: 'job-9' }) {
+      return jest.spyOn(service, 'startDub').mockResolvedValue(result as { jobId: string });
+    }
+
+    it('points the new dub at the original\'s stored media, uploading and copying nothing', async () => {
+      await build({ dubbing_projects: chain({ data: original, error: null }) });
+      const start = startsWith();
+      const result = await service.regenerateDub(USER, 'p-1', { ...settings, outputFormat: 'mp4' });
+
+      const row = tables.dubbing_projects.insert.mock.calls[0][0];
+      expect(row).toMatchObject({
+        source_project_id: 'p-1',
+        engine: 'cypher',
+        is_video: true,
+        output_format: 'mp4',
+        audio_object: original.audio_object,
+        input_gs_uri: original.input_gs_uri,
+        video_object: original.video_object,
+        video_status: 'uploaded',
+        media_name: 'Clip',
+      });
+      expect(row.project_id).not.toBe('p-1');
+      expect(createResumableSession).not.toHaveBeenCalled();
+      expect(initiateMultipartUpload).not.toHaveBeenCalled();
+      expect(start).toHaveBeenCalledWith(USER, row.project_id);
+      expect(result).toEqual({ projectId: row.project_id, jobId: 'job-9' });
+    });
+
+    it('goes back to the original when asked to regenerate a regenerated dub', async () => {
+      await build({ dubbing_projects: chain({ data: original, error: null }) });
+      tables.dubbing_projects.maybeSingle
+        .mockResolvedValueOnce({ data: { ...original, project_id: 'p-2', source_project_id: 'p-1' }, error: null })
+        .mockResolvedValueOnce({ data: original, error: null });
+      startsWith();
+      await service.regenerateDub(USER, 'p-2', settings);
+      expect(tables.dubbing_projects.insert.mock.calls[0][0]).toMatchObject({ source_project_id: 'p-1' });
+    });
+
+    it('refuses MP4 when only the audio of the video was uploaded', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...original, video_object: null, video_status: null }, error: null }),
+      });
+      await expect(service.regenerateDub(USER, 'p-1', { ...settings, outputFormat: 'mp4' }))
+        .rejects.toThrow(/dubbed to audio only/);
+      expect(tables.dubbing_projects.insert).not.toHaveBeenCalled();
+    });
+
+    it('defaults to audio when the video is not in storage', async () => {
+      await build({
+        dubbing_projects: chain({ data: { ...original, video_object: null, video_status: null }, error: null }),
+      });
+      startsWith();
+      await service.regenerateDub(USER, 'p-1', settings);
+      expect(tables.dubbing_projects.insert.mock.calls[0][0]).toMatchObject({ is_video: false, output_format: 'mp3' });
+    });
+
+    it('refuses media whose upload never finished', async () => {
+      await build({ dubbing_projects: chain({ data: { ...original, status: 'uploading' }, error: null }) });
+      await expect(service.regenerateDub(USER, 'p-1', settings)).rejects.toThrow(/not finished uploading/);
+    });
+
+    it('removes the new dub again when it cannot start', async () => {
+      await build({ dubbing_projects: chain({ data: original, error: null }) });
+      tables.dubbing_projects.maybeSingle
+        .mockResolvedValueOnce({ data: original, error: null }) // the original
+        .mockResolvedValueOnce({ data: { analysis: null }, error: null }) // its analysis (Cypher)
+        .mockResolvedValueOnce({ data: { status: 'uploading' }, error: null }); // the new dub, never started
+      jest.spyOn(service, 'startDub').mockRejectedValue(new ForbiddenException('short'));
+      await expect(service.regenerateDub(USER, 'p-1', settings)).rejects.toThrow('short');
+      expect(tables.dubbing_projects.delete).toHaveBeenCalled();
+      expect(tables.dubbing_outputs.delete).toHaveBeenCalled();
+    });
+
+    it('reuses the original\'s finished Cypher analysis when the spoken language matches', async () => {
+      const analysis = { complete: true, version: 9, speakers: [{ id: 'S1' }] };
+      await build({ dubbing_projects: chain({ data: original, error: null }) });
+      tables.dubbing_projects.maybeSingle
+        .mockResolvedValueOnce({ data: original, error: null })
+        .mockResolvedValueOnce({ data: { analysis }, error: null });
+      startsWith();
+      await service.regenerateDub(USER, 'p-1', settings);
+      expect(tables.dubbing_projects.insert.mock.calls[0][0].analysis).toBe(analysis);
+    });
+
+    it('lets Cypher listen again when the spoken language differs', async () => {
+      await build({ dubbing_projects: chain({ data: original, error: null }) });
+      startsWith();
+      await service.regenerateDub(USER, 'p-1', { ...settings, sourceLanguage: 'en' });
+      expect(tables.dubbing_projects.insert.mock.calls[0][0].analysis).toBeNull();
+    });
+  });
+
+  describe('getDubGroup', () => {
+    it('returns the original first, then each regenerated dub with its own languages', async () => {
+      const root = { project_id: 'p-1', source_project_id: null, status: 'completed', is_video: true, created_at: '1', target_language: 'es' };
+      const regenerated = { project_id: 'p-2', source_project_id: 'p-1', status: 'completed', is_video: false, created_at: '2', target_language: 'fr' };
+      await build({
+        dubbing_projects: chain({ data: root, error: null }, { data: [regenerated], error: null }),
+        dubbing_outputs: outputsTable([
+          { project_id: 'p-1', language: 'es', status: 'completed', segments_done: 0, credits_consumed: 5 },
+          { project_id: 'p-2', language: 'fr', status: 'completed', segments_done: 0, credits_consumed: 5 },
+        ]),
+      });
+      const dubs = await service.getDubGroup(USER, 'p-2');
+      expect(dubs.map((d) => [d.projectId, d.sourceProjectId, d.outputs.map((o) => o.language)])).toEqual([
+        ['p-1', null, ['es']],
+        ['p-2', 'p-1', ['fr']],
+      ]);
     });
   });
 });

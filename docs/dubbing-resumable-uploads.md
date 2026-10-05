@@ -452,6 +452,37 @@ Cypher's speaker analysis is saved after every window, each language's translati
 every batch, and each dubbed turn as it lands, so a retry resumes inside a language, not
 at its start. A resume refuses a different file (`source_fingerprint`: name, size, last modified).
 
+## Regenerating
+
+**Regenerate** on a dub's page opens `/dashboard/dubbing/new?from=<id>`: the same media,
+dubbed again with any engine, languages, output format and voice. The previous dub's
+settings are the starting point. Nothing is uploaded.
+
+- **The source is reused, never copied.** The new dub is a row of its own with
+  `source_project_id` set to the original dub, and its source columns (`audio_object`,
+  `input_gs_uri`, `video_object`, ...) point at the original's objects. The worker reads
+  the source from those columns and writes its scratch files under the new dub's own
+  prefix, so it needed no change.
+- **One media, many dubs.** Regenerating a regenerated dub goes back to the original, so
+  every dub of a media hangs off one row. The list shows one row per media (with the
+  newest dub's status and a dub count); the details page shows the original beside the
+  dub picked, side by side from `lg` and stacked below it, and every dub of the media.
+- **Delete.** A regenerated dub deletes only its outputs and its own prefix. Deleting the
+  original deletes every dub regenerated from it, then the source. Either is refused while
+  a dub of the media is running.
+- **MP4 needs the video in storage.** An audio-only dub of a video uploaded only its
+  extracted audio, so its media can be regenerated to MP3 or WAV only: MP4 shows, but
+  disabled, with the reason. A media whose audio could not be extracted uploaded the whole
+  file, which is the video, so MP4 is offered.
+- **A new dub, a new charge.** Plan, languages, length, size and balance are checked against
+  the stored duration and size, and the dub starts right away (`startDub`). If it cannot
+  start, the new row is removed: nothing was charged.
+- **Cypher reuses the original's speaker analysis** when it is finished and the dub is told
+  the same spoken language, so Gemini does not listen to the same audio again. Only the
+  original's: its stems and voice samples live under its prefix, which outlives every dub
+  regenerated from it.
+- A media whose upload never finished cannot be regenerated.
+
 ## Credits
 
 - Priced per engine: see Pricing above.
@@ -478,7 +509,7 @@ Output (per language): `pending → dubbing → (awaiting_video) → completed |
 
 Migrations `packages/supabase/migrations/20260926000000_dubbing_resumable_uploads.sql`,
 `20260928000000_dubbing_voice_mode_and_timelines.sql` and
-`20261004000000_dubbing_output_format.sql`.
+`20261004000000_dubbing_output_format.sql` and `20261005000000_dubbing_regenerate.sql`.
 
 `dubbing_projects` gains:
 
@@ -492,7 +523,9 @@ Migrations `packages/supabase/migrations/20260926000000_dubbing_resumable_upload
 | `source_language` | What the source is spoken in; null means detect it |
 | `voice_mode` | `like_me`, `balanced` (default) or `native` |
 | `keyterms` | Names and terms kept as they are (`text[]`, default empty). The web app no longer asks for them; the API still accepts them |
-| `vendor_projects` | ElevenLabs project per model: `{ dubbing_v2, dubbing_v1 }`, plus `generation` on dubs from the removed regenerate |
+| `vendor_projects` | ElevenLabs project per model: `{ dubbing_v2, dubbing_v1 }`, plus `generation` on dubs from the removed ElevenLabs regenerate |
+| `output_format` | `mp4`, `mp3` or `wav`; null on dubs from before the choice |
+| `source_project_id` | The original dub a regenerated one belongs to; null on an original. Indexed, not a foreign key (`project_id` is not unique) |
 
 New table `dubbing_outputs`: `language`, `accent`, `status`, `translation` (Cypher),
 `segment_count` / `segments_done`, `vendor_dub_id` (ElevenLabs), `dubbed_audio_url`,
@@ -519,12 +552,15 @@ Removed: `POST /dubbing/sign-upload`, `POST /dubbing`.
 | `POST /dubbing/:id/upload/video-complete` | Assembles the parts; queues the mux if a dub is waiting |
 | `POST /dubbing/:id/resume` | Retry the unfinished languages from where they stopped |
 | `POST /dubbing/:id/cancel` | Cancel whatever the dub is doing: stop its job, end a wait for the video (refunded), or discard a dub that never started |
-| `GET /dubbing/:id` | Now returns `engine`, `speakerCount` and `outputs` (one per language) |
-| `GET /dubbing` | Each dub now carries `languages` (one query for all outputs, not one per dub) |
+| `POST /dubbing/:id/regenerate` | Dub the media again with `engine`, `targets`, `outputFormat`, `sourceLanguage`, `voiceMode`; reuses the stored source and starts right away. Returns `{ projectId, jobId }` |
+| `GET /dubbing/:id` | Now returns `engine`, `speakerCount`, `outputs` (one per language), `sourceProjectId`, `durationSeconds`, `sourceIsVideo` and `sourceHasVideo` |
+| `GET /dubbing/:id/group` | Every dub of the media, from any of them: the original first, then each regenerated dub |
+| `GET /dubbing` | One row per media: originals only, each with `languages` across all its dubs, `dub_count`, and the newest dub's status |
 
-Removed: regenerate (it had no UI once the dub's page became read-only). Unchanged: stop,
-status SSE (now without media URLs: it is unauthenticated), delete (which now also removes
-the outputs and `dubbed/<projectId>/`).
+Removed: the old ElevenLabs regenerate (it had no UI once the dub's page became read-only;
+see Regenerating for its replacement). Unchanged: stop, status SSE (now without media URLs:
+it is unauthenticated). Delete now also removes the outputs and `dubbed/<projectId>/`, and
+on an original every dub regenerated from it.
 
 ## Storage layout
 
@@ -612,7 +648,10 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
    `20260927000000_blog_dubbing_language_count.sql` (blog copy, 29 to 33 languages),
    `20260928000000_dubbing_voice_mode_and_timelines.sql` (schema: the worker reads the new
    columns, so this must be in before the worker is deployed) and
-   `20260928000100_blog_dubbing_language_count_94.sql` (blog copy, 33 to 94).
+   `20260928000100_blog_dubbing_language_count_94.sql` (blog copy, 33 to 94),
+   `20261004000000_dubbing_output_format.sql` and `20261005000000_dubbing_regenerate.sql`
+   (schema: the API reads both new columns on every dub read, so they must be in before it
+   is deployed).
 2. Regenerate `llms.txt` once the blog migrations are in, so the two comparison-table rows
    it quotes pick up the new count: `pnpm --filter web llms:generate`. (The header line was
    already moved to 94 by hand in this change; the generator writes the same line.)
