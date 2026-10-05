@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: "Is there a free plan?",
-    a: "Yes! The Starter plan is completely free with 500 credits per month and no credit card required. Every feature is unlocked on the free plan, AI voice training, script generation, ideation, thumbnails, subtitles, story builder, dubbing and more. Paid plans simply give you more credits.",
+    a: "Yes! The Starter plan is completely free with 500 credits per month and no credit card required. AI voice training, script generation, ideation, thumbnails, subtitles, story builder and dubbing are all included on the free plan. Paid plans give you more credits, and video generation starts on Pro.",
   },
   {
     q: "Can I export my content?",

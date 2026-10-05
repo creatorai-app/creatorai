@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: "How long can AI-generated video clips be?",
-    a: "Clips run up to about 10 seconds with synchronized audio. For longer stories, generate several clips and stitch them together.",
+    a: "Clips run 4, 6 or 8 seconds with synchronized audio. For longer stories, generate several clips and stitch them together.",
   },
 ]
 

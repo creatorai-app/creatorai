@@ -64,13 +64,13 @@ const features = [
   { title: "Script Generation", icon: PenTool, description: "Input a topic and context to generate personalized scripts or let AI modify your existing draft." },
   { title: "Topic & Idea Research", icon: Search, description: "Add relevant links and stats from the web, uploaded PDFs, or let AI do the research for you." },
   { title: "Thumbnail Generator", icon: ImageIcon, description: "Creates thumbnails based on your past thumbnail style." },
-  { title: "Course Module", icon: BookOpen, description: "Dedicated feature for educators to create complete course modules and playlists." },
   { title: "Subtitle Generator", icon: FileText, description: "Creates multi-language, editable subtitles for your videos." },
   { title: "Audio Translation", icon: Volume2, description: "Generate audio in multiple languages in your own voice using generative voice cloning." },
   { title: "Referral Program", icon: Gift, description: "Earn credits via referrals to unlock premium features." },
 ]
 
 const futureFeatures = [
+  { title: "Course Module", description: "Dedicated feature for educators to create complete course modules and playlists.", icon: BookOpen },
   { title: "Multi-Platform Support", description: "Expand features for TikTok, Instagram Reels, and podcasts.", icon: Globe },
   { title: "Collaboration Mode", description: "Real-time collaboration for teams.", icon: MessageSquare },
   { title: "Advanced Personalization", description: "Train AI with custom fine-tuned models.", icon: Settings },
@@ -159,7 +159,7 @@ export default function AboutPage() {
                   Unlike general-purpose chatbots such as ChatGPT, Creator AI is built exclusively
                   for the YouTube creator pipeline, from topic research and story planning through
                   voice-matched script generation, CTR-optimized thumbnails, SRT/VTT subtitle export,
-                  and AI dubbing in 24+ languages.
+                  and AI dubbing in 90+ languages.
                 </p>
               </div>
               <dl className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
@@ -238,7 +238,6 @@ export default function AboutPage() {
             <InfiniteMovingCards
               items={[
                 { quote: "Other tools treat every creator the same. Creator AI evolves with your channel, the more you use it, the better it gets.", name: "Adaptive Intelligence", title: "AI that grows with you" },
-                { quote: "Course modules structured to your teaching style. Playlists organized the way your audience expects.", name: "Educator-Friendly", title: "Personalized course creation" },
                 { quote: "2–5 hours of scripting reduced to minutes, without losing the authentic voice your audience subscribed for.", name: "Hours Saved, Voice Kept", title: "Speed without compromise" },
                 { quote: "Your referral credits, your workflow, your creative fingerprint, everything in Creator AI revolves around you.", name: "Built Around You", title: "Every feature, personalized" },
               ]}

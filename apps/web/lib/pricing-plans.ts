@@ -4,17 +4,7 @@
 // the names, prices and credit counts here in sync with the
 // 20260619000000_pricing_plans_rebuild.sql migration.
 
-import { formatDubbingAllowance } from "@repo/validation";
-
-/**
- * Dubbing a plan's credits buy, e.g. "5.0 hrs", the same on both engines. Derived from
- * the credit rate rather than written into `features`: a hardcoded number here would keep
- * advertising 5 hours the moment the multiplier moves, which is exactly how the env
- * override shipped a 5x mispricing once already.
- */
-export function dubbingAllowanceFor(plan: MarketingPlan): string {
-  return formatDubbingAllowance(plan.credits, plan.id);
-}
+import { VIDEO_GENERATION_PLANS } from "@repo/validation";
 
 export interface MarketingPlan {
   /** Display slug (not the DB uuid). */
@@ -41,13 +31,13 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     priceMonthly: 0,
     priceAnnualMonthly: 0,
     credits: 500,
-    tagline: "Best for trying Creator AI risk-free, every feature unlocked, no card.",
+    tagline: "Best for trying Creator AI risk-free, no card.",
     features: [
       "500 credits every month",
       "No credit card required",
       "Train the AI on your own voice",
       "Scripts, ideas, thumbnails & subtitles",
-      "Story Builder, dubbing & video generation",
+      "Story Builder & dubbing",
     ],
     group: "free",
   },
@@ -60,7 +50,7 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     tagline: "Best for weekly creators who want a steady flow of scripts, thumbnails and ideas.",
     features: [
       "3,000 credits every month",
-      "Every feature included",
+      "Every feature except video generation",
       "Save 20% with annual billing",
       "Voice-matched scripts in minutes",
       "Click-worthy thumbnails & subtitles",
@@ -122,17 +112,23 @@ export const MARKETING_PLANS: MarketingPlan[] = [
   },
 ];
 
-/** Every feature is available on every plan, listed once for comparison UIs. */
-export const ALL_FEATURES: string[] = [
-  "AI voice & style training",
-  "Video idea generation",
-  "Script writing",
-  "Story Builder with retention score",
-  "Thumbnail generation",
-  "Subtitle generation & export",
-  "Multi-language support",
-  "Audio dubbing",
-  "Video generation",
-  "Course Builder",
-  "Referral & affiliate programs",
+/** Same on every plan, appended after each plan's own features on the pricing cards. */
+export const SHARED_PLAN_FEATURES: string[] = [
+  "Up to 10 video ideas per run with a comparison matrix",
+  "3 thumbnail variations for A/B testing",
+  "Dubbing in 90+ languages",
+];
+
+/** Rows of the /pricing comparison table. `plans` limits a row to those plan ids; omitted means every plan. */
+export const ALL_FEATURES: { name: string; plans?: readonly string[] }[] = [
+  { name: "AI voice & style training" },
+  { name: "Up to 10 video ideas per run with a comparison matrix" },
+  { name: "Script writing" },
+  { name: "Story Builder with retention score" },
+  { name: "3 thumbnail variations for A/B testing" },
+  { name: "Subtitle generation & export" },
+  { name: "Multi-language support" },
+  { name: "Dubbing in 90+ languages" },
+  { name: "Video generation", plans: VIDEO_GENERATION_PLANS },
+  { name: "Referral & affiliate programs" },
 ];

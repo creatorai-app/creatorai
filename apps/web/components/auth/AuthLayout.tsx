@@ -29,8 +29,8 @@ const FEATURES = [
   { k: "IDEATION", t: "opportunity score ······ 91", c: "#2563eb" },
   { k: "SCRIPT", t: "hook rewritten in your voice", c: "#ec4899" },
   { k: "SUBTITLES", t: "12 languages · burned in", c: "#0891b2" },
-  { k: "DUBBING", t: "your cloned voice · 29 langs", c: "#a855f7" },
-  { k: "THUMBNAILS", t: "4 variants · A/B ready", c: "#6366f1" },
+  { k: "DUBBING", t: "your cloned voice · 90+ langs", c: "#a855f7" },
+  { k: "THUMBNAILS", t: "3 variants · A/B ready", c: "#6366f1" },
 ]
 
 const PILLS = [
@@ -206,7 +206,7 @@ export default function AuthLayout({
             style={{ fontSize: "12px", lineHeight: 1.9, color: "rgba(99,102,241,.6)" }}
           >
             <div>style match ······· 94%</div>
-            <div>languages live ····· 29</div>
+            <div>languages live ····· 90+</div>
           </div>
         </div>
 

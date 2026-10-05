@@ -155,8 +155,8 @@ export default function ToolsPage() {
                 Inside the free account
               </h2>
               <p className="mt-4 max-w-2xl text-slate-600 md:text-lg">
-                The Starter plan unlocks every feature. The limit is credits, not capability, and
-                there is no card required to start.
+                The Starter plan unlocks every feature except video generation, which starts on Pro.
+                The limit is credits, not capability, and there is no card required to start.
               </p>
             </div>
 

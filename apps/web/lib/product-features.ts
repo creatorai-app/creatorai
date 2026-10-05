@@ -351,7 +351,8 @@ export const CORE_FEATURES: ProductFeature[] = [
     highlights: [
       "AI-powered trend analysis for your niche",
       "Auto mode or manual topic focus",
-      "Generate 1-5 ideas per session",
+      "Generate up to 10 ideas per session",
+      "Comparison matrix to weigh the ideas side by side",
       "Opportunity scores and trend snapshots for each idea",
     ],
     icon: Lightbulb,
@@ -377,7 +378,7 @@ export const CORE_FEATURES: ProductFeature[] = [
           "Auto mode reads your channel and niche and proposes ideas unprompted. Topic mode narrows the search to something you already have in mind.",
       },
       {
-        title: "Generate one to five ideas",
+        title: "Generate up to ten ideas",
         description:
           "Each idea comes back with an angle, a trend snapshot and an opportunity score, so the shortlist is comparable rather than a wall of titles.",
       },
@@ -424,7 +425,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         question: "How many ideas can I generate at once?",
         answer:
-          "One to five per session. The cap is deliberate: five scored ideas you will compare beats fifty you will not read.",
+          "Up to ten per session, three by default, with a comparison matrix so you can weigh them side by side. The cap is deliberate: ten scored ideas you will compare beats fifty you will not read.",
       },
       {
         question: "Do the ideas come with anything I can film from?",
@@ -559,6 +560,7 @@ export const CORE_FEATURES: ProductFeature[] = [
     highlights: [
       "AI-generated thumbnails from text descriptions",
       "Upload video frames or reference images",
+      "3 variations per run for A/B testing",
       "Multiple aspect ratio options",
       "Consistent with your brand identity",
     ],
@@ -850,7 +852,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         question: "How many languages can I dub into?",
         answer:
-          `${DUB_LANGUAGES} in total. ElevenLabs covers all ${ELEVENLABS_LANGUAGES}; Cypher, the in-house engine, covers ${CYPHER_LANGUAGES} of them. Creator and Pro dub into two languages from one upload, Business and Scale into three.`,
+          `${DUB_LANGUAGES} in total. ElevenLabs covers all ${ELEVENLABS_LANGUAGES}; Cypher, the in-house engine, covers ${CYPHER_LANGUAGES} of them. Starter dubs into one language per upload, Creator and Pro into two, Business and Scale into three.`,
       },
       {
         question: "What if more than one person speaks in the video?",
@@ -883,6 +885,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       "Start from an image for more control",
       "Audio generated alongside the video",
       "Download and drop straight into your edit",
+      "Available on Pro, Business and Scale",
     ],
     icon: Film,
     gradient: "from-fuchsia-500 to-pink-500",
@@ -944,7 +947,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         question: "How long are the generated clips?",
         answer:
-          "Short, in the range you would use for B-roll or an opener rather than a full scene. They are built to be cut into a video, not to be one.",
+          "4, 6 or 8 seconds, the range you would use for B-roll or an opener rather than a full scene. They are built to be cut into a video, not to be one.",
       },
       {
         question: "Does the clip come with audio?",

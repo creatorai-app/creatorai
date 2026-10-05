@@ -46,7 +46,7 @@ const comparisons = [
     genericAI: false,
   },
   {
-    feature: "Dubbing in 24+ Languages",
+    feature: "Dubbing in 90+ Languages",
     description:
       "Natural-sounding AI dubbing to reach global audiences without hiring voice actors.",
     icon: Languages,

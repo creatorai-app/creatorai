@@ -11,7 +11,7 @@ import { SparklesCore } from "@repo/ui/sparkles";
 import { MButton } from "@repo/ui/moving-border";
 import { ArrowRight, Check, Zap, CreditCard, Shield } from "lucide-react";
 import { useSupabase } from "@/components/supabase-provider";
-import { MARKETING_PLANS, ALL_FEATURES, dubbingAllowanceFor } from "@/lib/pricing-plans";
+import { MARKETING_PLANS, ALL_FEATURES } from "@/lib/pricing-plans";
 import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import { trackFunnel } from "@/lib/funnel";
 
@@ -159,14 +159,6 @@ export default function PricingPage() {
                       </td>
                     ))}
                   </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="py-3.5 px-4 text-sm text-slate-700">Dubbing</td>
-                    {MARKETING_PLANS.map((p) => (
-                      <td key={p.id} className="text-center py-3.5 px-4 text-sm font-medium text-slate-800">
-                        {dubbingAllowanceFor(p)}
-                      </td>
-                    ))}
-                  </tr>
                   <tr className="border-b border-slate-100 bg-slate-50/40">
                     <td className="py-3.5 px-4 text-sm text-slate-700">Best for</td>
                     {MARKETING_PLANS.map((p) => (
@@ -176,11 +168,15 @@ export default function PricingPage() {
                     ))}
                   </tr>
                   {ALL_FEATURES.map((feature) => (
-                    <tr key={feature} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-4 text-sm text-slate-700">{feature}</td>
+                    <tr key={feature.name} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3.5 px-4 text-sm text-slate-700">{feature.name}</td>
                       {MARKETING_PLANS.map((p) => (
                         <td key={p.id} className="text-center py-3.5 px-4">
-                          <Check className="w-5 h-5 text-green-500 mx-auto" />
+                          {!feature.plans || feature.plans.includes(p.id) ? (
+                            <Check className="w-5 h-5 text-green-500 mx-auto" aria-label="Included" />
+                          ) : (
+                            <span className="text-slate-400" aria-label="Not included">-</span>
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -206,7 +202,7 @@ export default function PricingPage() {
               Start Free, Upgrade Anytime
             </h2>
             <p className="max-w-[600px] mx-auto text-slate-300 md:text-lg mb-8">
-              No credit card required. Get 500 free credits every month and full access to every feature.
+              No credit card required. Get 500 free credits every month and every feature except video generation.
             </p>
             <Link href={billingHref("starter")}>
               <MButton
