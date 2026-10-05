@@ -4,6 +4,7 @@ import {
   DEFAULT_DUB_VOICE_MODE,
   DUB_ENGINES,
   DUB_KEYTERMS_MAX,
+  DUB_OUTPUT_FORMATS,
   DUB_VOICE_MODES,
   elevenLabsTargetTag,
   isKnownDubLanguage,
@@ -53,6 +54,8 @@ export const InitDubUploadSchema = z
       .refine(isKnownDubLanguage, { message: 'Unsupported source language' })
       .optional(),
     voiceMode: z.enum(DUB_VOICE_MODES).default(DEFAULT_DUB_VOICE_MODE),
+    // Omitted: MP4 for a video, MP3 for audio (what every dub was before the choice).
+    outputFormat: z.enum(DUB_OUTPUT_FORMATS).optional(),
     // Names and terms to keep as they are. Checked one by one against ElevenLabs' rules,
     // then trimmed and deduplicated, so what is stored is exactly what is sent.
     keyterms: z
@@ -69,6 +72,9 @@ export const InitDubUploadSchema = z
       .optional(),
   })
   .superRefine((input, ctx) => {
+    if (input.outputFormat === 'mp4' && !input.isVideo) {
+      ctx.addIssue({ code: 'custom', path: ['outputFormat'], message: 'An audio file can only be dubbed to audio' });
+    }
     const seen = new Set<string>();
     input.targets.forEach(({ language, accent }, i) => {
       // Checked against the chosen engine: Cypher speaks fewer languages than ElevenLabs.
@@ -165,6 +171,8 @@ export const DubResponseSchema = z.object({
   // Null when the source language was left to be detected.
   sourceLanguage: z.string().nullish(),
   voiceMode: z.enum(DUB_VOICE_MODES).nullish(),
+  // Null on dubs from before the choice; dubOutputFormatOf resolves it.
+  outputFormat: z.enum(DUB_OUTPUT_FORMATS).nullish(),
   keyterms: z.array(z.string()).nullish(),
   outputs: z.array(DubOutputSchema),
 });

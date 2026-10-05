@@ -27,6 +27,7 @@ import {
   rawChannels,
   stemToFlac,
   toDubPcm,
+  toTrack,
 } from './ffmpeg';
 
 const execFileAsync = promisify(execFile);
@@ -117,6 +118,13 @@ async function main() {
     const alone = path.join(dir, 'alone.mp3');
     await mixDub({ speech: faster, gainDb: -3, totalSeconds: 10, output: alone });
     assert.ok((await probeDurationSeconds(alone))! < 2.5, 'speech-only track should end with its speech');
+    const wav = path.join(dir, 'mixed.wav');
+    await mixDub({ speech: faster, background: speechy, gainDb: 3, totalSeconds: 4.5, output: wav });
+    assert.ok(Math.abs((await probeDurationSeconds(wav))! - 4.5) < 0.1, 'WAV mix is not the source length');
+    assert.equal((await fs.readFile(wav)).subarray(0, 4).toString('ascii'), 'RIFF');
+    const converted = path.join(dir, 'converted.wav');
+    await toTrack(mixed, converted);
+    assert.equal((await fs.readFile(converted)).subarray(8, 12).toString('ascii'), 'WAVE');
 
     // The mux: dubbed audio over a video, padded and stopped at the video's length.
     const video = path.join(dir, 'video.mp4');

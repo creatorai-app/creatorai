@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
-  DubbedResult,
   DubbingProgress,
   DubUploadTargets,
   DEFAULT_DUB_ENGINE,
@@ -12,20 +11,21 @@ import {
   accentsFor,
   isSupportedDubLanguage,
   type DubEngine,
+  type DubOutputFormat,
   type DubResponse,
   type DubTarget,
   type DubVoiceMode,
   dubLanguageLabel,
+  dubOutputFormatOf,
   calculateDubbingCreditsByDuration,
   formatDubDuration,
   formatUploadLimit,
   maxDubBytesForPlan,
   maxDubSecondsForPlan,
-  STARTER_MAX_DUB_BYTES,
-  STARTER_MAX_DUB_SECONDS,
 } from "@repo/validation";
 import { api, getApiErrorMessage } from "@/lib/api-client";
 import { useSupabase } from "@/components/supabase-provider";
+import { useAccess } from "@/hooks/useAccess";
 import { BACKEND_URL } from "@/lib/constants";
 import { cancelDubbing, getDubbing, resumeDubbing } from "@/lib/api/getDubbings";
 import {
@@ -39,6 +39,19 @@ import {
 } from "@/lib/dubbing-upload";
 
 const languageList = (codes: string[]) => codes.map(dubLanguageLabel).join(", ");
+
+interface DubAccess {
+  allowed: boolean;
+  plan: string | null;
+  maxDurationSeconds: number;
+  maxUploadBytes: number;
+  maxLanguages: number;
+  creditsPerSecond: number;
+  voiceModeEngines?: DubEngine[];
+}
+
+// Where the voice mode does something; ElevenLabs always, Cypher once its v2 voices are live.
+const DEFAULT_VOICE_MODE_ENGINES: DubEngine[] = ["elevenlabs"];
 
 // BullMQ SSE state -> the UI's DubbingProgress state.
 function mapState(state: string): DubbingProgress["state"] {
@@ -88,24 +101,23 @@ export function useDubbing() {
   // null: let the engine detect the source language.
   const [sourceLanguage, setSourceLanguageState] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState<DubVoiceMode>(DEFAULT_DUB_VOICE_MODE);
-  const [keyterms, setKeyterms] = useState<string[]>([]);
+  // What was picked; an audio file cannot come back as a video, so MP4 falls back to MP3
+  // for it without forgetting the pick if a video is chosen next.
+  const [pickedOutputFormat, setOutputFormat] = useState<DubOutputFormat>("mp4");
+  const outputFormat: DubOutputFormat = !isVideo && pickedOutputFormat === "mp4" ? "mp3" : pickedOutputFormat;
   const [mediaName, setMediaName] = useState("");
-  const [dubbedResult, setDubbedResult] = useState<DubbedResult | null>(null);
 
-  const [allowed, setAllowed] = useState(false);
-  const [accessLoading, setAccessLoading] = useState(true);
-  // The plan's ceilings and its credits-per-second, all resolved by the API so the
-  // form prices and rejects a file exactly the way the server will. Seeded with the
-  // Starter values so the form never advertises a limit wider than the cheapest plan
-  // while /access is still in flight.
-  const [maxDurationSeconds, setMaxDurationSeconds] = useState(STARTER_MAX_DUB_SECONDS);
-  const [maxUploadBytes, setMaxUploadBytes] = useState(STARTER_MAX_DUB_BYTES);
-  // Each engine has its own per-second rate; null until /access answers.
-  const [creditsPerSecond, setCreditsPerSecond] = useState<Record<DubEngine, number> | null>(null);
-  const [maxLanguages, setMaxLanguages] = useState(1);
-  // Where the voice mode does something; ElevenLabs always, Cypher once its v2 voices are live.
-  const [voiceModeEngines, setVoiceModeEngines] = useState<DubEngine[]>(["elevenlabs"]);
-  const [plan, setPlan] = useState<string | null>(null);
+  // The plan, its ceilings and its per-second rate, resolved by the API so the form prices
+  // and rejects a file the way the server will. Unknown (null) until /access answers; the
+  // form then skips its own checks and leaves them to the server.
+  const { data: access, settled: accessSettled } = useAccess<DubAccess>("/api/v1/dubbing/access");
+  const allowed = access ? access.allowed : null;
+  const accessLoading = !accessSettled;
+  const maxDurationSeconds = access?.maxDurationSeconds ?? null;
+  const maxUploadBytes = access?.maxUploadBytes ?? null;
+  const creditsPerSecond = access?.creditsPerSecond ?? null;
+  const maxLanguages = access?.maxLanguages ?? 1;
+  const voiceModeEngines = access?.voiceModeEngines ?? DEFAULT_VOICE_MODE_ENGINES;
 
   // The job followed over SSE (null when none), and whether the user asked to cancel
   // (suppresses the generic failure toast).
@@ -126,31 +138,6 @@ export function useDubbing() {
     progress: 0,
     message: "",
   });
-
-  // Every plan can dub; Starter is limited on clip length and size instead.
-  useEffect(() => {
-    api
-      .get<{
-        allowed: boolean;
-        plan: string | null;
-        maxDurationSeconds: number;
-        maxUploadBytes: number;
-        maxLanguages: number;
-        creditsPerSecond: Record<DubEngine, number>;
-        voiceModeEngines?: DubEngine[];
-      }>("/api/v1/dubbing/access", { requireAuth: true })
-      .then((res) => {
-        setAllowed(!!res.allowed);
-        setPlan(res.plan ?? null);
-        if (res.maxDurationSeconds) setMaxDurationSeconds(res.maxDurationSeconds);
-        if (res.maxUploadBytes) setMaxUploadBytes(res.maxUploadBytes);
-        if (res.creditsPerSecond) setCreditsPerSecond(res.creditsPerSecond);
-        if (res.maxLanguages) setMaxLanguages(res.maxLanguages);
-        if (res.voiceModeEngines) setVoiceModeEngines(res.voiceModeEngines);
-      })
-      .catch(() => setAllowed(false))
-      .finally(() => setAccessLoading(false));
-  }, []);
 
   // Closing the tab mid-upload loses nothing (the dub's page can pick it back up), but
   // the browser should still ask first.
@@ -199,7 +186,7 @@ export function useDubbing() {
       toast.error("Unsupported file", { description: "Please upload an audio or video file." });
       return;
     }
-    if (file.size > maxUploadBytes) {
+    if (maxUploadBytes !== null && file.size > maxUploadBytes) {
       toast.error("File too large", {
         description: `Your plan accepts files up to ${formatUploadLimit(maxUploadBytes)}.`,
       });
@@ -216,7 +203,7 @@ export function useDubbing() {
       return;
     }
 
-    if (duration > maxDurationSeconds) {
+    if (maxDurationSeconds !== null && duration > maxDurationSeconds) {
       toast.error("Clip is too long for your plan", {
         description: `Your plan dubs clips up to ${formatDubDuration(maxDurationSeconds)}. This one is ${formatDubDuration(Math.round(duration))}. Trim it, or upgrade for a longer limit.`,
       });
@@ -226,7 +213,6 @@ export function useDubbing() {
     setIsVideo(file.type.startsWith("video/"));
     setMediaFile(file);
     setMediaDuration(duration);
-    setDubbedResult(null);
     setProgress({ state: "idle", progress: 0, message: "" });
   }, [maxDurationSeconds, maxUploadBytes]);
 
@@ -234,24 +220,6 @@ export function useDubbing() {
     void handleFileSelect(e.target.files?.[0]);
     if (fileInputRef.current) fileInputRef.current.value = ""; // allow re-selecting the same file
   }, [handleFileSelect]);
-
-  const resetForm = useCallback(() => {
-    uploadAbortRef.current?.abort();
-    eventSourceRef.current?.close();
-    setMediaFile(null);
-    setMediaDuration(null);
-    setTargetsState([]);
-    setSourceLanguageState(null);
-    setVoiceMode(DEFAULT_DUB_VOICE_MODE);
-    setKeyterms([]);
-    setMediaName("");
-    setDubbedResult(null);
-    setProjectId(null);
-    setAttached(null);
-    setVideoUpload({ state: "idle", percent: 0 });
-    setProgress({ state: "idle", progress: 0, message: "" });
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }, []);
 
   /** Stream a job's status over SSE. Replaces any job followed before it. */
   const followJob = useCallback((jobId: string, dubProjectId: string) => {
@@ -285,7 +253,6 @@ export function useDubbing() {
         // Every language's result lives on the dub itself; one may have failed on its own.
         void getDubbing(dubProjectId).then((dub) => {
           const outputs = dub?.outputs ?? [];
-          setDubbedResult({ projectId: dubProjectId, outputs });
           updateProgress("completed", 100, "Dubbing complete!");
           const ready = outputs.filter((o) => o.status === "completed").map((o) => o.language);
           const failed = outputs.filter((o) => o.status === "failed").map((o) => o.language);
@@ -371,17 +338,19 @@ export function useDubbing() {
       // Fail before the upload rather than after it — the server enforces this too,
       // this just saves the user the wait. Re-checked WITH the language, because the
       // dubbing_v1 route caps lower than the plan does.
-      const durationCap = maxDubSecondsForPlan(plan, languages, engine);
-      if (durationSeconds > durationCap) {
-        throw new Error(
-          `Your plan can dub ${languageList(languages)} clips up to ${formatDubDuration(durationCap)}. This one is ${formatDubDuration(Math.round(durationSeconds))}. Trim it, or upgrade for a longer limit.`,
-        );
-      }
-      const sizeCap = maxDubBytesForPlan(plan, languages, engine);
-      if (mediaFile.size > sizeCap) {
-        throw new Error(
-          `Your plan accepts ${languageList(languages)} files up to ${formatUploadLimit(sizeCap)}.`,
-        );
+      if (access) {
+        const durationCap = maxDubSecondsForPlan(access.plan, languages, engine);
+        if (durationSeconds > durationCap) {
+          throw new Error(
+            `Your plan can dub ${languageList(languages)} clips up to ${formatDubDuration(durationCap)}. This one is ${formatDubDuration(Math.round(durationSeconds))}. Trim it, or upgrade for a longer limit.`,
+          );
+        }
+        const sizeCap = maxDubBytesForPlan(access.plan, languages, engine);
+        if (mediaFile.size > sizeCap) {
+          throw new Error(
+            `Your plan accepts ${languageList(languages)} files up to ${formatUploadLimit(sizeCap)}.`,
+          );
+        }
       }
 
       // 1. Only the sound is needed to dub, so a video's audio track goes up first.
@@ -406,7 +375,7 @@ export function useDubbing() {
           targets: picked.map((t) => (t.accent ? { language: t.language, accent: t.accent } : { language: t.language })),
           ...(sourceLanguage ? { sourceLanguage } : {}),
           voiceMode,
-          ...(keyterms.length ? { keyterms } : {}),
+          outputFormat,
           mediaName: mediaName.trim(),
           fingerprint: fileFingerprint(mediaFile),
           audio: { contentType: audio.contentType, size: audio.blob.size, extracted: !!extracted },
@@ -439,7 +408,7 @@ export function useDubbing() {
       updateProgress("failed", 0, message);
       toast.error("Error dubbing media", { description: message });
     }
-  }, [mediaFile, mediaDuration, targets, engine, sourceLanguage, voiceMode, keyterms, maxLanguages, isVideo, mediaName, session, updateProgress, plan, followJob, runVideoUpload]);
+  }, [mediaFile, mediaDuration, targets, engine, sourceLanguage, voiceMode, outputFormat, maxLanguages, isVideo, mediaName, session, updateProgress, access, followJob, runVideoUpload]);
 
   /** Pick the video upload back up after it paused, sending only the missing parts. */
   const resumeVideoUpload = useCallback(async () => {
@@ -476,12 +445,12 @@ export function useDubbing() {
       setProjectId(id);
       // What the progress card and the result show; the form itself is not shown here.
       setIsVideo(dub.isVideo);
+      setOutputFormat(dubOutputFormatOf(dub));
       setMediaName(dub.mediaName ?? "");
       setEngineState(dub.engine ?? DEFAULT_DUB_ENGINE);
       setTargetsState(dub.outputs.map((o) => ({ language: o.language })));
 
       if (dub.status === "completed") {
-        setDubbedResult({ projectId: id, outputs: dub.outputs });
         updateProgress("completed", 100, "Dubbing complete!");
       } else if (DUB_JOB_STATUSES.includes(dub.status) && dub.jobId) {
         followJob(dub.jobId, id);
@@ -540,7 +509,7 @@ export function useDubbing() {
   const languageCount = Math.max(1, targets.filter((t) => t.language).length);
   const estimatedCredits =
     mediaDuration !== null && creditsPerSecond !== null
-      ? calculateDubbingCreditsByDuration(mediaDuration, creditsPerSecond[engine]) * languageCount
+      ? calculateDubbingCreditsByDuration(mediaDuration, creditsPerSecond) * languageCount
       : null;
 
   return {
@@ -556,13 +525,13 @@ export function useDubbing() {
     setSourceLanguage,
     voiceMode,
     setVoiceMode,
+    outputFormat,
+    setOutputFormat,
     voiceModeEngines,
-    keyterms,
-    setKeyterms,
     maxLanguages,
     mediaName,
     setMediaName,
-    dubbedResult,
+    projectId,
     progress,
     isLoading,
     allowed,
@@ -570,7 +539,6 @@ export function useDubbing() {
     maxDurationSeconds,
     maxUploadBytes,
     estimatedCredits,
-    creditsPerSecond,
     attached,
     attach,
     videoUpload,
@@ -578,7 +546,6 @@ export function useDubbing() {
     cancelDub,
     handleFileChange,
     handleFileSelect,
-    resetForm,
     handleDubMedia,
   };
 }

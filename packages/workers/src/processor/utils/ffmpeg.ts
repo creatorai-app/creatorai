@@ -211,10 +211,15 @@ const LIMITER = 'alimiter=limit=0.891:level=false';
 // one of the two readings is off, and a sane mix beats an exact match.
 const MAX_GAIN_DB = 20;
 
+/** The dubbed track's codec, from the output's extension: 16-bit PCM for .wav, MP3 otherwise. */
+export function trackCodecArgs(output: string): string[] {
+  return output.endsWith('.wav') ? ['-c:a', 'pcm_s16le'] : ['-c:a', 'libmp3lame', '-q:a', '2'];
+}
+
 /**
  * The finished dubbed track: the assembled speech (raw PCM) at `gainDb`, over the
  * background stem when there is one (amix without normalisation, so neither is ducked),
- * limited, cut to the source's length, and encoded as MP3.
+ * limited, cut to the source's length, and encoded as MP3 or WAV (trackCodecArgs).
  */
 export function mixArgs({
   speech,
@@ -230,7 +235,7 @@ export function mixArgs({
   output: string;
 }): string[] {
   const gain = `volume=${Math.max(-MAX_GAIN_DB, Math.min(MAX_GAIN_DB, gainDb)).toFixed(2)}dB`;
-  const encode = ['-t', totalSeconds.toFixed(3), '-c:a', 'libmp3lame', '-q:a', '2', output];
+  const encode = ['-t', totalSeconds.toFixed(3), ...trackCodecArgs(output), output];
   if (!background) {
     return ['-y', ...PCM_INPUT, '-i', speech, '-af', `${gain},${LIMITER}`, ...encode];
   }
@@ -248,9 +253,9 @@ export async function mixDub(opts: Parameters<typeof mixArgs>[0]): Promise<void>
   await runFfmpeg(mixArgs(opts));
 }
 
-/** Any audio or video file's sound as MP3 (ElevenLabs may hand back either). */
-export async function toMp3(inputPath: string, outputPath: string): Promise<void> {
-  await runFfmpeg(['-y', '-i', inputPath, '-vn', '-c:a', 'libmp3lame', '-q:a', '2', outputPath]);
+/** Any audio or video file's sound as the dubbed track's format (ElevenLabs may hand back either). */
+export async function toTrack(inputPath: string, outputPath: string): Promise<void> {
+  await runFfmpeg(['-y', '-i', inputPath, '-vn', ...trackCodecArgs(outputPath), outputPath]);
 }
 
 /** Join WAV clips end to end into one 16-bit WAV (a speaker's voice sample). */

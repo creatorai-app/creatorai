@@ -13,7 +13,7 @@ import {
   Languages,
   Film,
 } from "lucide-react";
-import { dubbableLanguagesFor, formatDubbingAllowanceFor, supportedLanguages } from "@repo/validation";
+import { dubbableLanguagesFor, formatDubbingAllowance, supportedLanguages } from "@repo/validation";
 import type { ContentFaq, ContentSection, ContentStep } from "./content-shapes";
 
 // Dubbing figures quoted on the public page, from the same constants the product uses,
@@ -21,8 +21,7 @@ import type { ContentFaq, ContentSection, ContentStep } from "./content-shapes";
 const DUB_LANGUAGES = supportedLanguages.length;
 const CYPHER_LANGUAGES = dubbableLanguagesFor("cypher").length;
 const ELEVENLABS_LANGUAGES = dubbableLanguagesFor("elevenlabs").length;
-const CREATOR_DUBBING_ELEVENLABS = formatDubbingAllowanceFor(3000, "creator", "elevenlabs");
-const CREATOR_DUBBING_CYPHER = formatDubbingAllowanceFor(3000, "creator", "cypher");
+const CREATOR_DUBBING = formatDubbingAllowance(3000, "creator");
 
 /**
  * The canonical list of what Creator AI ships.
@@ -815,7 +814,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         heading: "What dubbing costs, and when it is worth it",
         body: [
-          `Dubbing is priced per minute of finished video, per language, on every plan, so the cost of testing a language is one video rather than a commitment. Creator's monthly credits cover ${CREATOR_DUBBING_ELEVENLABS} of ElevenLabs dubbing or ${CREATOR_DUBBING_CYPHER} with Cypher. That is the sensible way to find out whether a market exists for your content before translating a back catalogue into it.`,
+          `Dubbing is priced per minute of finished video, per language, on every plan, so the cost of testing a language is one video rather than a commitment. Creator's monthly credits cover ${CREATOR_DUBBING} of dubbing, on either engine. That is the sensible way to find out whether a market exists for your content before translating a back catalogue into it.`,
           "The videos worth dubbing first are usually evergreen. A tutorial that still pulls traffic two years on earns the translation back; a news reaction does not.",
         ],
       },
@@ -846,7 +845,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         question: "How is dubbing priced?",
         answer:
-          `Per minute of finished video, per language, on every plan. Each engine has its own rate: Creator's credits cover ${CREATOR_DUBBING_ELEVENLABS} with ElevenLabs or ${CREATOR_DUBBING_CYPHER} with Cypher. A single video is a cheap way to test whether an audience exists in a language before committing to more.`,
+          `Per minute of finished video, per language, on every plan. Both engines cost the same: Creator's credits cover ${CREATOR_DUBBING} of dubbing on either. A single video is a cheap way to test whether an audience exists in a language before committing to more.`,
       },
       {
         question: "How many languages can I dub into?",

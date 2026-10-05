@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { AlertCircle, Download, Info, Loader2 } from "lucide-react"
+import { AlertCircle, Captions, Download, Info, Loader2 } from "lucide-react"
 import { Button } from "@repo/ui/button"
 import { Badge } from "@repo/ui/badge"
 import { accentLabel, dubLanguageLabel, type DubOutput, type DubOutputStatus } from "@repo/validation"
 import { downloadFile } from "@/lib/download"
+import { api, getApiErrorMessage } from "@/lib/api-client"
 import { DubbingMediaPlayer } from "@/components/dashboard/dubbing/DubbingMediaPlayer"
 import { DubTimeline } from "@/components/dashboard/dubbing/DubTimeline"
 
@@ -52,15 +54,19 @@ function extensionOf(url: string): string {
 
 /** Every language of a dub: its state, a player and a download once it has one. */
 export function DubOutputsList({
+  projectId,
   outputs,
   isVideo,
   mediaName,
 }: {
+  projectId: string
   outputs: DubOutput[]
   isVideo: boolean
   mediaName?: string | null
 }) {
+  const router = useRouter()
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [subtitling, setSubtitling] = useState<string | null>(null)
   const [seek, setSeek] = useState<Record<string, { time: number; key: number }>>({})
 
   const download = async (output: DubOutput, url: string) => {
@@ -71,6 +77,22 @@ export function DubOutputsList({
       toast.error("Download failed", { description: "Please try again" })
     } finally {
       setDownloading(null)
+    }
+  }
+
+  // The subtitle job reads the dubbed video already in storage, so nothing is uploaded again.
+  const addSubtitles = async (output: DubOutput) => {
+    setSubtitling(output.language)
+    try {
+      const { subtitleId } = await api.post<{ subtitleId: string }>(
+        "/api/v1/subtitle/from-dub",
+        { projectId, language: output.language },
+        { requireAuth: true },
+      )
+      router.push(`/dashboard/subtitles/${subtitleId}`)
+    } catch (error) {
+      toast.error("Could not add subtitles", { description: getApiErrorMessage(error, "Please try again.") })
+      setSubtitling(null)
     }
   }
 
@@ -91,17 +113,32 @@ export function DubOutputsList({
                 </Badge>
               </div>
               {finalUrl && (
-                <Button
-                  size="sm"
-                  onClick={() => download(output, finalUrl)}
-                  disabled={downloading === output.language}
-                  className="bg-purple-600 text-white hover:bg-purple-700"
-                >
-                  {downloading === output.language
-                    ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    : <Download className="mr-1.5 h-4 w-4" />}
-                  Download
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {isVideo && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addSubtitles(output)}
+                      disabled={subtitling !== null}
+                    >
+                      {subtitling === output.language
+                        ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                        : <Captions className="mr-1.5 h-4 w-4" />}
+                      Add subtitles
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => download(output, finalUrl)}
+                    disabled={downloading === output.language}
+                    className="bg-purple-600 text-white hover:bg-purple-700"
+                  >
+                    {downloading === output.language
+                      ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      : <Download className="mr-1.5 h-4 w-4" />}
+                    Download
+                  </Button>
+                </div>
               )}
             </div>
 

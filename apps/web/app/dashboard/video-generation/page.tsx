@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Clapperboard } from "lucide-react"
-import { getVideoGenerationAccess } from "@/lib/api/getVideoGenerations"
+import type { VideoGenerationAccess } from "@/lib/api/getVideoGenerations"
+import { useAccess } from "@/hooks/useAccess"
 import { useVideoGeneration } from "@/hooks/useVideoGeneration"
 import { VideoModeCards } from "@/components/dashboard/video-generation/VideoModeCards"
 import { VideoGenerationForm } from "@/components/dashboard/video-generation/VideoGenerationForm"
@@ -14,19 +15,15 @@ import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog"
 import { useAISetupGate } from "@/hooks/useAISetupGate"
 
 export default function VideoGenerationPage() {
-  const [allowed, setAllowed] = useState<boolean | null>(null)
+  const { data: access } = useAccess<VideoGenerationAccess>("/api/v1/video-generation/access")
   const [showUpgrade, setShowUpgrade] = useState(false)
   const vm = useVideoGeneration()
   const gate = useAISetupGate()
 
-  useEffect(() => {
-    getVideoGenerationAccess().then((a) => setAllowed(a.allowed))
-  }, [])
-
   // UI is fully unlocked so everyone can explore the modes; the gates fire on
   // Generate. Setup is checked before the plan because that's the order the API
   // enforces. The server still enforces both authoritatively regardless.
-  const planLocked = allowed === false
+  const planLocked = access?.allowed === false
   const locked = gate.locked || planLocked
   const handleGenerate = async () => {
     if (gate.locked) {

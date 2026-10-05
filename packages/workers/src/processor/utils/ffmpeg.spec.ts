@@ -112,6 +112,12 @@ describe('mixArgs', () => {
     ]);
   });
 
+  it('writes 16-bit PCM for a WAV track', () => {
+    expect(mixArgs({ speech: 's.pcm', gainDb: 0, totalSeconds: 10, output: 'o.wav' }).slice(-4)).toEqual([
+      '10.000', '-c:a', 'pcm_s16le', 'o.wav',
+    ]);
+  });
+
   it('never moves the level by more than 20 dB', () => {
     expect(mixArgs({ speech: 's', gainDb: 45, totalSeconds: 1, output: 'o' }).join(' ')).toContain('volume=20.00dB');
     expect(mixArgs({ speech: 's', gainDb: -45, totalSeconds: 1, output: 'o' }).join(' ')).toContain('volume=-20.00dB');

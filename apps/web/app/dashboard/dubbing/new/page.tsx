@@ -3,34 +3,29 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as motion from "motion/react-m";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { AnimatePresence } from "motion/react";
 import { Button } from "@repo/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { Label } from "@repo/ui/label";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
 import {
-  Loader2, Play, UploadCloud, ArrowLeft, CheckCircle2,
-  Mic, Languages, FileAudio, FileVideo, ArrowUpRight, Type,
-  RotateCw, Plus, List, Lock, HelpCircle, Coins, Cpu,
-  AudioWaveform, Tags, Clapperboard, Music,
+  Loader2, Play, UploadCloud, CheckCircle2, Mic, Languages,
+  FileAudio, FileVideo, ArrowUpRight, RotateCw, List, Lock, HelpCircle, Clapperboard, Music,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@repo/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@repo/ui/sheet";
 import { useDubbing } from "@/hooks/useDubbing";
 import { useAISetupGate } from "@/hooks/useAISetupGate";
-import { supportedLanguages, dubLanguageLabel, dubbableLanguagesFor, formatDubDuration, formatUploadLimit, DUB_VIDEO_WAIT_HOURS } from "@repo/validation";
+import { supportedLanguages, dubbableLanguagesFor, formatDubDuration, formatUploadLimit, DUB_VIDEO_WAIT_HOURS } from "@repo/validation";
 import { useSupabase } from "@/components/supabase-provider";
 import { GenerationProgress, type GenerationProgressStep } from "@/components/dashboard/common/GenerationProgress";
 import { DubbingResumeUpload, useDubResumeUpload } from "@/components/dashboard/dubbing/DubbingResumeUpload";
 import { DubbingHowItWorks } from "@/components/dashboard/dubbing/DubbingHowItWorks";
-import { DubbingVoiceAnimation } from "@/components/dashboard/dubbing/DubbingVoiceAnimation";
 import { DubEngineCards } from "@/components/dashboard/dubbing/DubEngineCards";
 import { DubLanguageTargets } from "@/components/dashboard/dubbing/DubLanguageTargets";
-import { DubOutputsList } from "@/components/dashboard/dubbing/DubOutputsList";
 import { DubSourceLanguage } from "@/components/dashboard/dubbing/DubSourceLanguage";
 import { DubVoiceModePicker } from "@/components/dashboard/dubbing/DubVoiceMode";
-import { DubKeyterms } from "@/components/dashboard/dubbing/DubKeyterms";
+import { DubOutputFormatPicker } from "@/components/dashboard/dubbing/DubOutputFormat";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -81,35 +76,6 @@ function DubbingUpgradeCard() {
   );
 }
 
-/** Icon-only button with a tooltip — used for the result-card toolbar. */
-function IconAction({
-  label, onClick, disabled, primary, children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  primary?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant={primary ? "default" : "outline"}
-          size="icon"
-          onClick={onClick}
-          disabled={disabled}
-          className={primary ? "bg-purple-600 hover:bg-purple-700 text-white" : ""}
-          aria-label={label}
-        >
-          {children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 export default function NewDubbingPage() {
   return (
     <Suspense fallback={
@@ -142,13 +108,13 @@ function NewDubbing() {
     setSourceLanguage,
     voiceMode,
     setVoiceMode,
+    outputFormat,
+    setOutputFormat,
     voiceModeEngines,
-    keyterms,
-    setKeyterms,
     maxLanguages,
     mediaName,
     setMediaName,
-    dubbedResult,
+    projectId,
     progress,
     isLoading,
     allowed,
@@ -156,7 +122,6 @@ function NewDubbing() {
     maxDurationSeconds,
     maxUploadBytes,
     estimatedCredits,
-    creditsPerSecond,
     cancelDub,
     attached,
     attach,
@@ -164,7 +129,6 @@ function NewDubbing() {
     resumeVideoUpload,
     handleFileChange,
     handleFileSelect,
-    resetForm,
     handleDubMedia,
   } = useDubbing();
 
@@ -189,13 +153,19 @@ function NewDubbing() {
     return () => clearInterval(iv);
   }, [waitingElsewhere, reattach]);
 
-  // This page only runs a dub; once one it picked up has failed (or was cancelled), its
-  // details page shows what happened and offers the retry.
+  // This page only runs a dub. A finished one goes to its details page, as does one it
+  // picked up that failed (or was cancelled), where the retry is offered.
   useEffect(() => {
-    if (!dubId || progress.state !== "failed") return;
-    // A dub that never started is discarded by a cancel, and one not found has no page.
-    router.replace(attached && attached.status !== "uploading" ? `/dashboard/dubbing/${dubId}` : "/dashboard/dubbing");
-  }, [dubId, attached, progress.state, router]);
+    if (progress.state === "completed" && projectId) {
+      router.replace(`/dashboard/dubbing/${projectId}`);
+    } else if (dubId && progress.state === "failed") {
+      // A dub that never started is discarded by a cancel, and one not found has no page.
+      router.replace(attached && attached.status !== "uploading" ? `/dashboard/dubbing/${dubId}` : "/dashboard/dubbing");
+    }
+  }, [dubId, projectId, attached, progress.state, router]);
+
+  // An audio-only dub of a video is finalized like any audio dub: nothing is rendered.
+  const deliversVideo = isVideo && outputFormat === "mp4";
 
   // The upload stopped: the audio never landed, or the video is still partial.
   const needsFile = !!attached && attached.status !== "completed"
@@ -216,19 +186,14 @@ function NewDubbing() {
       ? `Uploading your video alongside the dub: ${upload.status.percent}%. Keep this tab open.`
       : needsFile && !upload.status
         ? `The dub finishes once the video upload does. Left unfinished for ${DUB_VIDEO_WAIT_HOURS} hours, it is cancelled and not charged.`
-        : isVideo ? "Rendering video can take a few minutes" : "Longer clips are dubbed in segments and take a few minutes";
+        : deliversVideo ? "Rendering video can take a few minutes" : "Longer clips are dubbed in segments and take a few minutes";
   const progressSteps: GenerationProgressStep[] = [
     { label: "Queued", icon: Loader2, threshold: 0 },
     { label: engine === "cypher" ? "Finding speakers" : "Translating", icon: Languages, threshold: 5 },
     { label: "Cloning", icon: Mic, threshold: 25 },
-    { label: isVideo ? "Rendering" : "Finalizing", icon: isVideo ? Clapperboard : Music, threshold: 82 },
+    { label: deliversVideo ? "Rendering" : "Finalizing", icon: deliversVideo ? Clapperboard : Music, threshold: 82 },
     { label: "Done", icon: CheckCircle2, threshold: 100 },
   ];
-
-  const startOver = () => {
-    resetForm();
-    if (dubId) router.replace("/dashboard/dubbing/new");
-  };
 
   const [isDragging, setIsDragging] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -253,10 +218,7 @@ function NewDubbing() {
   };
 
   const pickedLanguages = targets.filter((t) => t.language).map((t) => t.language);
-  const selectedLanguageLabel = pickedLanguages
-    .map(dubLanguageLabel)
-    .join(", ");
-  const isComplete = !!dubbedResult && progress.state === "completed";
+  const showForm = !dubId && !accessLoading && !isLoading;
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -273,344 +235,182 @@ function NewDubbing() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="container py-8 relative"
+      className="relative min-h-full bg-gradient-to-br from-purple-50 to-white px-4 py-8 dark:from-purple-950/30 dark:to-slate-900 sm:px-6 lg:px-8"
     >
       <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-purple-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
-      {/* Header — icon-only back button on the left */}
       <motion.div variants={itemVariants} className="mb-8 flex items-center gap-4">
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => router.push("/dashboard/dubbing")}
-                className="shrink-0"
-                aria-label="Back to Dubbings"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Back to Dubbings</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Mic className="h-6 w-6 sm:h-7 sm:w-7 text-purple-500" />
-            {dubId ? mediaName || "Dubbing" : "New Dubbing"}
-          </h1>
-          <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1 text-base">
-            {dubId
-              ? "Picking up this dub from where it stopped."
-              : "Upload an audio or video file and dub it into another language in the original voice."}
-          </p>
+        <h1 className="min-w-0 flex-1 truncate text-2xl sm:text-3xl font-bold tracking-tight">
+          {dubId ? mediaName || "Dubbing" : "New Dubbing"}
+        </h1>
+        <div className="flex shrink-0 items-center gap-2">
+          {showForm && (
+            <Button variant="outline" onClick={() => setShowHowItWorks(true)} aria-label="How it works">
+              <HelpCircle className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">How it works</span>
+            </Button>
+          )}
+          <Button asChild variant="outline" aria-label="My dubs">
+            <Link href="/dashboard/dubbing">
+              <List className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">My dubs</span>
+            </Link>
+          </Button>
+          {showForm && (
+            <Button
+              onClick={handleGenerate}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={!locked && (!mediaFile || !pickedLanguages.length || !mediaName.trim())}
+            >
+              {locked ? <Lock className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+              {locked ? "Unlock dubbing" : "Dub media"}
+            </Button>
+          )}
         </div>
       </motion.div>
 
       {gate.banner && <div className="mb-8">{gate.banner}</div>}
 
-      {accessLoading || (dubId && !attached) ? (
+      {accessLoading || (dubId && !attached) || progress.state === "completed" ? (
         <motion.div variants={itemVariants} className="flex justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
         </motion.div>
       ) : (
-        <div className="mx-auto w-full max-w-3xl">
-          <motion.div variants={itemVariants}>
-            <AnimatePresence mode="wait">
-              {isLoading || upload.status ? (
-                <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                  <GenerationProgress
-                    progress={Math.round(progressView.progress)}
-                    statusMessage={progressView.message || "Starting…"}
-                    title="Dubbing in Progress"
-                    icon={Mic}
-                    steps={progressSteps}
-                    hint={progressHint}
-                    onStop={stop}
-                    stopLabel="Cancel Dubbing"
+        <motion.div variants={itemVariants}>
+          <AnimatePresence mode="wait">
+            {isLoading || upload.status ? (
+              <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                <GenerationProgress
+                  progress={Math.round(progressView.progress)}
+                  statusMessage={progressView.message || "Starting…"}
+                  title="Dubbing in Progress"
+                  icon={Mic}
+                  steps={progressSteps}
+                  hint={progressHint}
+                  onStop={stop}
+                  stopLabel="Cancel Dubbing"
+                />
+                {needsFile && !upload.status && (
+                  <DubbingResumeUpload banner onPick={(file) => void upload.resume(file)} />
+                )}
+                {videoUpload.state === "failed" && (
+                  <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+                    <p>
+                      The video upload paused at {videoUpload.percent}%. The dub keeps going, and the parts
+                      already sent are kept.
+                    </p>
+                    <Button size="sm" variant="outline" onClick={resumeVideoUpload} className="shrink-0">
+                      <RotateCw className="mr-2 h-4 w-4" /> Resume upload
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            ) : dubId ? (
+              <motion.div key="resume" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {needsFile ? (
+                  <DubbingResumeUpload
+                    onPick={(file) => void upload.resume(file)}
+                    onCancel={attached?.status === "uploading" ? stop : undefined}
                   />
-                  {needsFile && !upload.status && (
-                    <DubbingResumeUpload banner onPick={(file) => void upload.resume(file)} />
-                  )}
-                  {videoUpload.state === "failed" && (
-                    <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
-                      <p>
-                        The video upload paused at {videoUpload.percent}%. The dub keeps going, and the parts
-                        already sent are kept.
-                      </p>
-                      <Button size="sm" variant="outline" onClick={resumeVideoUpload} className="shrink-0">
-                        <RotateCw className="mr-2 h-4 w-4" /> Resume upload
-                      </Button>
-                    </div>
-                  )}
-                </motion.div>
-              ) : isComplete ? (
-                <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                  <Card>
-                    <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-                      <div className="min-w-0">
-                        <CardTitle className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                          Dubbing Complete
-                        </CardTitle>
-                        <CardDescription className="mt-1.5">
-                          Dubbed into {selectedLanguageLabel}. Preview, regenerate or download below.
-                        </CardDescription>
-                      </div>
+                ) : (
+                  // Settling into one of the states above, or on the way to the details page.
+                  <div className="flex justify-center py-24">
+                    <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                  </div>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="media-name">Name</Label>
+                    <Input
+                      id="media-name"
+                      placeholder="My video"
+                      value={mediaName}
+                      onChange={(e) => setMediaName(e.target.value)}
+                      maxLength={100}
+                      className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-purple-400"
+                    />
+                  </div>
 
-                      {/* Icon toolbar — before the preview */}
-                      <TooltipProvider delayDuration={0}>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <IconAction label="Back to list" onClick={() => router.push("/dashboard/dubbing")}>
-                            <List className="h-4 w-4" />
-                          </IconAction>
-                          <IconAction label="Dub another file" onClick={startOver}>
-                            <Plus className="h-4 w-4" />
-                          </IconAction>
-                          {/* Needs the file in this tab; a picked-up dub has none. */}
-                          {mediaFile && (
-                            <IconAction label="Regenerate" onClick={handleDubMedia}>
-                              <RotateCw className="h-4 w-4" />
-                            </IconAction>
-                          )}
-                        </div>
-                      </TooltipProvider>
-                    </CardHeader>
-                    <CardContent>
-                      <DubOutputsList outputs={dubbedResult!.outputs} isVideo={isVideo} mediaName={mediaName} />
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ) : dubId ? (
-                <motion.div key="resume" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  {needsFile ? (
-                    <Card>
-                      <CardContent>
-                        <DubbingResumeUpload
-                          onPick={(file) => void upload.resume(file)}
-                          onCancel={attached?.status === "uploading" ? stop : undefined}
-                        />
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    // Settling into one of the states above, or on the way to the details page.
-                    <div className="flex justify-center py-24">
-                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-                    </div>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <Card className="overflow-hidden transition-all duration-300 hover:shadow-[0_8px_30px_rgba(168,85,247,0.10)] hover:border-purple-500/40">
-                    {/* Hero band, in place of a text header: it is the one thing on the
-                        page that explains what a dub is without being read. */}
-                    <div className="relative border-b border-purple-100 dark:border-purple-900/40 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-slate-900 px-6 pt-6 pb-5 text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowHowItWorks(true)}
-                        className="absolute right-3 top-3 text-slate-600 hover:text-purple-700 dark:text-slate-400 dark:hover:text-purple-300"
-                      >
-                        <HelpCircle className="h-4 w-4 sm:mr-1.5" />
-                        <span className="hidden sm:inline">How it works</span>
-                      </Button>
-
-                      <DubbingVoiceAnimation />
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 mt-2">
-                        One voice, every language
-                      </h2>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Clone the speaker and re-voice their content, no re-recording.
-                      </p>
-                    </div>
-
-                    <CardContent className="space-y-6 pt-6">
-                      {/* Media Name */}
-                      <div className="space-y-2">
-                        <Label htmlFor="media-name" className="flex items-center gap-1.5">
-                          <Type className="h-4 w-4" />
-                          Media Name
-                        </Label>
-                        <Input
-                          id="media-name"
-                          placeholder="Enter a name for your dubbed media"
-                          value={mediaName}
-                          onChange={(e) => setMediaName(e.target.value)}
-                          maxLength={100}
-                        />
-                      </div>
-
-                      {/* Animated upload drop zone */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <UploadCloud className="h-4 w-4" />
-                          Upload Audio or Video File
-                        </Label>
-
-                        <Label
-                          htmlFor="media-upload"
-                          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                          onDragLeave={() => setIsDragging(false)}
-                          onDrop={handleDrop}
-                          className={`group relative flex w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed py-12 px-6 transition-all duration-300 ${isDragging
-                            ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 scale-[1.01]"
-                            : mediaFile
-                              ? "border-purple-300 bg-purple-50/40 dark:bg-purple-900/10"
-                              : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 hover:bg-purple-50/60 dark:hover:bg-purple-900/10 hover:border-purple-300"
-                            }`}
-                        >
-                          {/* What the dub will cost, as soon as the file's length is known.
-                              pointer-events-none so it never swallows a click meant for the
-                              drop zone underneath it. */}
-                          {mediaFile && mediaDuration !== null && (
-                            <div className="pointer-events-none absolute right-3 top-3 text-right">
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-white px-3 py-1 text-xs font-semibold text-purple-700 shadow-sm dark:border-purple-800 dark:bg-slate-900 dark:text-purple-300">
-                                <Coins className="h-3.5 w-3.5" />
-                                {estimatedCredits !== null ? `~${estimatedCredits.toLocaleString()} credits` : "Pricing…"}
-                              </span>
-                              <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">
-                                {formatClock(mediaDuration)} of media
-                              </span>
-                            </div>
-                          )}
-
-                          <motion.div
-                            whileHover={{ scale: 1.08 }}
-                            whileTap={{ scale: 0.94 }}
-                            className={`h-16 w-16 rounded-full flex items-center justify-center shadow-lg transition-colors duration-300 ${mediaFile ? "bg-purple-600" : "bg-slate-900 dark:bg-slate-700 group-hover:bg-purple-600"
-                              }`}
-                          >
-                            {mediaFile ? (
-                              isVideo ? <FileVideo className="h-7 w-7 text-white" /> : <FileAudio className="h-7 w-7 text-white" />
-                            ) : (
-                              <UploadCloud className="h-7 w-7 text-white" />
-                            )}
-                          </motion.div>
-
-                          <div className="text-center">
-                            <p className="text-base font-semibold text-slate-900 dark:text-slate-100 break-all">
-                              {mediaFile ? mediaFile.name : isDragging ? "Drop your file here" : "Drag & drop your file"}
-                            </p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                              {mediaFile ? (
-                                `${(mediaFile.size / (1024 * 1024)).toFixed(2)} MB · click to change`
-                              ) : (
-                                <>or <span className="text-purple-600 dark:text-purple-400 font-medium underline underline-offset-2">browse files</span></>
-                              )}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-400 uppercase tracking-widest font-bold">
-                            <span>MP3 · WAV · MP4 · MOV</span>
-                            <span className="hidden sm:inline w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
-                            {/* The plan's real caps, not generic ones: a Starter user needs to
-                                know their limit before picking a file, not after. */}
-                            <span>Max {formatUploadLimit(maxUploadBytes)} · {formatDubDuration(maxDurationSeconds)} per clip</span>
-                          </div>
-                        </Label>
-                        {estimatedCredits !== null && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            An estimate. The final charge is settled against the length our provider
-                            measures, so a shorter clip refunds the difference.
-                          </p>
-                        )}
-                        <Input
-                          ref={fileInputRef}
-                          id="media-upload"
-                          type="file"
-                          accept="audio/*,video/*"
-                          className="hidden"
-                          onChange={handleFileChange}
-                        />
-                      </div>
-
-                      {/* Dubbing engine */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <Cpu className="h-4 w-4" />
-                          Dubbing Engine
-                        </Label>
-                        <DubEngineCards engine={engine} onSelect={setEngine} creditsPerSecond={creditsPerSecond} />
-                      </div>
-
-                      {/* Target languages: one output each, up to the plan's limit */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <Languages className="h-4 w-4" />
-                          Target Language{maxLanguages > 1 ? "s" : ""}
-                        </Label>
-                        <DubLanguageTargets
-                          engine={engine}
-                          targets={targets}
-                          onChange={setTargets}
-                          max={maxLanguages}
-                          sourceLanguage={sourceLanguage}
-                        />
-                      </div>
-
-                      {/* What the source is spoken in (optional) */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <Mic className="h-4 w-4" />
-                          Spoken language
-                        </Label>
-                        <DubSourceLanguage
-                          value={sourceLanguage}
-                          onChange={setSourceLanguage}
-                          targets={pickedLanguages}
-                        />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Leave it to detect, or pick it for short clips, strong accents or mixed languages.
-                        </p>
-                      </div>
-
-                      {/* How close the dubbed voices stay to the originals, where the engine can do it */}
-                      {voiceModeEngines.includes(engine) && (
-                        <div className="space-y-2">
-                          <Label className="flex items-center gap-1.5">
-                            <AudioWaveform className="h-4 w-4" />
-                            Voice
-                          </Label>
-                          <DubVoiceModePicker engine={engine} value={voiceMode} onChange={setVoiceMode} />
-                        </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="media-upload">File</Label>
+                    <Label
+                      htmlFor="media-upload"
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center font-normal transition-colors ${isDragging || mediaFile
+                        ? "border-purple-400 bg-purple-50/60 dark:bg-purple-900/20"
+                        : "border-slate-200 bg-white/60 hover:border-purple-300 dark:border-slate-800 dark:bg-slate-900/40"
+                        }`}
+                    >
+                      {mediaFile ? (
+                        isVideo ? <FileVideo className="h-8 w-8 text-purple-600" /> : <FileAudio className="h-8 w-8 text-purple-600" />
+                      ) : (
+                        <UploadCloud className="h-8 w-8 text-slate-400" />
                       )}
+                      <span className="break-all text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {mediaFile ? mediaFile.name : "Drop a file or click to browse"}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {mediaFile && mediaDuration !== null
+                          ? `${formatClock(mediaDuration)} · ${estimatedCredits !== null ? `~${estimatedCredits.toLocaleString()} credits` : "Pricing…"}`
+                          : maxUploadBytes !== null && maxDurationSeconds !== null
+                            ? `Audio or video, up to ${formatUploadLimit(maxUploadBytes)} and ${formatDubDuration(maxDurationSeconds)}`
+                            : "Audio or video"}
+                      </span>
+                    </Label>
+                    <Input
+                      ref={fileInputRef}
+                      id="media-upload"
+                      type="file"
+                      accept="audio/*,video/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </div>
 
-                      {/* Names and terms that must not be translated */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <Tags className="h-4 w-4" />
-                          Names and terms <span className="font-normal text-slate-500 dark:text-slate-400">(optional)</span>
-                        </Label>
-                        <DubKeyterms value={keyterms} onChange={setKeyterms} />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Brands, products and people to keep exactly as they are.
-                        </p>
-                      </div>
-                    </CardContent>
+                  <div className="space-y-2">
+                    <Label>Output</Label>
+                    <DubOutputFormatPicker value={outputFormat} onChange={setOutputFormat} allowVideo={!mediaFile || isVideo} />
+                  </div>
+                </div>
 
-                    <CardFooter>
-                      <Button
-                        onClick={handleGenerate}
-                        size="lg"
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all active:scale-[0.98]"
-                        disabled={!locked && (!mediaFile || !pickedLanguages.length || !mediaName.trim())}
-                      >
-                        {gate.locked ? (
-                          <><Lock className="mr-2 h-4 w-4" /> {gate.step === "connect" ? "Connect your channel to dub" : "Train your AI to dub"}</>
-                        ) : planLocked ? (
-                          <><Lock className="mr-2 h-4 w-4" /> Unlock audio dubbing</>
-                        ) : (
-                          <><Play className="mr-2 h-4 w-4" /> Dub {selectedLanguageLabel ? `to ${selectedLanguageLabel}` : "Media"}</>
-                        )}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </div>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Engine</Label>
+                    <DubEngineCards engine={engine} onSelect={setEngine} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Dub into</Label>
+                    <DubLanguageTargets
+                      engine={engine}
+                      targets={targets}
+                      onChange={setTargets}
+                      max={maxLanguages}
+                      sourceLanguage={sourceLanguage}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Spoken language</Label>
+                    <DubSourceLanguage value={sourceLanguage} onChange={setSourceLanguage} targets={pickedLanguages} />
+                  </div>
+
+                  {voiceModeEngines.includes(engine) && (
+                    <div className="space-y-2">
+                      <Label>Voice</Label>
+                      <DubVoiceModePicker engine={engine} value={voiceMode} onChange={setVoiceMode} />
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>

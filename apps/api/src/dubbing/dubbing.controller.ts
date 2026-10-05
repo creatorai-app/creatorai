@@ -61,6 +61,11 @@ export class DubbingController {
         fingerprint: { type: 'string', description: 'name|size|lastModified, checked on resume' },
         sourceLanguage: { type: 'string', example: 'en', description: 'Language of the source. Omit to detect it. Must not be a target.' },
         voiceMode: { type: 'string', enum: ['like_me', 'balanced', 'native'], default: 'balanced', description: 'How close each cloned voice stays to the original' },
+        outputFormat: {
+          type: 'string',
+          enum: ['mp4', 'mp3', 'wav'],
+          description: 'What the dub comes back as: the video (mp4, video sources only) or the dubbed track alone. Omit for mp4 on a video, mp3 on audio. An audio-only dub of a video uploads no video.',
+        },
         keyterms: {
           type: 'array',
           maxItems: 50,

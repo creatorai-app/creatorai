@@ -59,7 +59,7 @@ jest.mock('./utils/ffmpeg', () => {
     fitTurn: jest.fn(async ({ input, output, tempo }: { input: string; output: string; tempo: number }) => copyScaled(input, output, tempo)),
     measureLoudness: jest.fn(async (_i: string, raw = false) => (raw ? -26 : -20)),
     mixDub: jest.fn(async ({ output }: { output: string }) => write(output, 'MP3')),
-    toMp3: jest.fn(async (_i: string, out: string) => write(out, 'MP3')),
+    toTrack: jest.fn(async (_i: string, out: string) => write(out, 'MP3')),
     muxDubbedAudio: jest.fn(async () => undefined),
   };
 });
@@ -129,7 +129,7 @@ db.client = {
   },
 };
 
-const RATE = paidDubbingMultiplier('cypher', {});
+const RATE = paidDubbingMultiplier();
 const PER_LANGUAGE = calculateDubbingCreditsByDuration(30, RATE);
 const PREFIX = 'u1/dubbing/p1/';
 
