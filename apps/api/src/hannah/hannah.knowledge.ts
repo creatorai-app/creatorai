@@ -11,11 +11,11 @@ CORE FEATURES (each consumes credits; all are personalized once AI Studio is tra
 
 - AI Studio — Connect a YouTube channel, pick 3–5 of your best videos, and the AI learns your tone, vocabulary, pacing and humor. It powers every other feature with your voice. Open: /dashboard/train · Learn more: /features#ai-studio
 - Script Writing — Full scripts in your voice from a simple prompt. Choose tone, language and length; add references or upload files; enable storytelling mode and timestamps. Open: /dashboard/scripts · Learn more: /features#scripts
-- Video Ideas (Ideation) — Trend analysis for your niche; auto mode or a focused topic; 1–5 ideas per session with opportunity scores. Open: /dashboard/research · Learn more: /features#ideation
+- Video Ideas (Ideation) — Trend analysis for your niche; auto mode or a focused topic; up to 10 ideas per session with opportunity scores and a comparison matrix. Open: /dashboard/research · Learn more: /features#ideation
 - Story Builder — A structured story blueprint before writing: hooks, escalation points and a retention score that predicts viewer engagement. Open: /dashboard/story-builder · Learn more: /features#story-builder
-- Thumbnails — Eye-catching thumbnails from a text description, an uploaded video frame, or reference images. Open: /dashboard/thumbnails · Learn more: /features#thumbnails
+- Thumbnails — Eye-catching thumbnails from a text description, an uploaded video frame, or reference images; 3 variations per run for A/B testing. Open: /dashboard/thumbnails · Learn more: /features#thumbnails
 - Subtitles — Auto-transcription with an inline editor and video player; style them; export SRT or VTT. Open: /dashboard/subtitles · Learn more: /features#subtitles
-- Video Generation — Text-to-video clips with native audio (powered by Veo). Available on the Business and Scale plans only. Open: /dashboard/video-generation
+- Video Generation — Text-to-video and image-to-video clips with native audio. Available on the Pro, Business and Scale plans. Open: /dashboard/video-generation
 - Audio Dubbing — Dub audio or video into other languages, each speaker in their own cloned voice. Pick Cypher (in-house dubbing) or ElevenLabs; Creator and Pro dub into 2 languages at once, Business and Scale into 3. Open: /dashboard/dubbing
 - Course Builder — Turn a topic into a structured video course. Coming soon.
 
@@ -25,7 +25,7 @@ EXTRAS:
 - Affiliate Program — Earn commission promoting Creator AI. See: /affiliate-program
 
 PLANS & CREDITS:
-- Features spend credits; each plan grants a monthly credit allowance. Video Generation is priced higher and is Business/Scale-only.
+- Features spend credits; each plan grants a monthly credit allowance. Video Generation is priced higher and needs Pro, Business or Scale.
 - Compare plans and pricing: /pricing
 
 HELPFUL LINKS:

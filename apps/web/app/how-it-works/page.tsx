@@ -124,7 +124,7 @@ const FAQS = [
   },
   {
     q: "What does the free plan actually include?",
-    a: "The Starter plan is free, needs no card, and gives you 500 credits a month. That covers AI training, scripts, ideation, story structures, thumbnails and subtitles. Dubbing is available on every plan, with clips capped at 60 seconds on Starter. Video generation needs a Pro plan or above.",
+    a: "The Starter plan is free, needs no card, and gives you 500 credits a month. That covers AI training, scripts, ideation, story structures, thumbnails and subtitles. Dubbing is available on every plan, with videos up to 45 minutes on Starter. Video generation needs a Pro plan or above.",
   },
   {
     q: "Will the scripts sound like AI wrote them?",
