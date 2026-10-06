@@ -29,7 +29,6 @@ import {
   dubProjectPrefix,
   isSupportedDubLanguage,
   maxDubLanguagesForPlan,
-  paidDubbingMultiplier,
   DUB_ENGINES,
   DUBBING_CANCEL_PREFIX,
   DEFAULT_DUB_VOICE_MODE,
@@ -147,7 +146,7 @@ export class DubbingService {
   /**
    * Lightweight gate check for the UI: form vs. upgrade card, the upload limits, and
    * the plan's credits-per-second so the form can price a file the same way this service
-   * will. The rate is resolved here because only the API sees the env override.
+   * will.
    */
   async getAccess(userId: string) {
     const planName = await this.getActivePlanName(userId);
@@ -168,7 +167,7 @@ export class DubbingService {
 
   /** Credits per second of source, per language, for a plan. The same on both engines. */
   private rate(planName: string | null | undefined): number {
-    return dubbingMultiplierForPlan(planName, paidDubbingMultiplier(process.env));
+    return dubbingMultiplierForPlan(planName); // , paidDubbingMultiplier(process.env)
   }
 
   /** Dubs from before the engine choice ran on whichever engine speaks their language. */

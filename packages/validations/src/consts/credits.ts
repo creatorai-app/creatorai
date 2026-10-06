@@ -85,10 +85,10 @@ export const VIDEO_GENERATION_CREDIT_MULTIPLIER = 85;
 // marginal COGS is $0. The grant is the budget: ~55 Creator users, or ~3 Business
 // users, at FULL utilisation drain it entirely.
 //
-// When the grant ends, raise this via the DUBBING_CREDIT_MULTIPLIER env var (no
-// deploy): 2.5 → 20 min/month at the 80% target, 5 → 10 min at 90%. Or move dubbing
-// to the in-house pipeline, which has to land under ~$0.016/min for 5 hours to hold
-// 80% margin at $24.
+// Hard-coded, no env override, until the grant ends. Then raise it: 5/sec (300/min)
+// clears 80% on ElevenLabs at the Pro annual floor, 1.6667/sec (100/min) clears 50%.
+// Or move dubbing to the in-house pipeline, which has to land under ~$0.016/min for
+// 5 hours to hold 80% margin at $24.
 export const DUBBING_CREDIT_MULTIPLIER = 1 / 6;
 
 // Cypher (in-house: Gemini + Chatterbox on Modal) costs ~$0.054 per source minute,
@@ -104,16 +104,13 @@ export const DUBBING_CREDIT_MULTIPLIER = 1 / 6;
 // about 2.8 minutes, enough to hear a real dub and no more.
 export const STARTER_DUBBING_CREDIT_MULTIPLIER = 3;
 
-/**
- * The paid per-second rate, with DUBBING_CREDIT_MULTIPLIER's env override when one is
- * set and valid. Shared by the API (reserves) and the worker (settles) so the two cannot
- * disagree.
- */
-export function paidDubbingMultiplier(env: Record<string, string | undefined> = {}): number {
-  const raw = env.DUBBING_CREDIT_MULTIPLIER;
-  const parsed = raw ? Number(raw) : NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DUBBING_CREDIT_MULTIPLIER;
-}
+// Env override, off while the rate is hard-coded. To restore it, uncomment this and pass
+// paidDubbingMultiplier(process.env) to dubbingMultiplierForPlan in the API and worker.
+// export function paidDubbingMultiplier(env: Record<string, string | undefined> = {}): number {
+//   const raw = env.DUBBING_CREDIT_MULTIPLIER;
+//   const parsed = raw ? Number(raw) : NaN;
+//   return Number.isFinite(parsed) && parsed > 0 ? parsed : DUBBING_CREDIT_MULTIPLIER;
+// }
 
 /**
  * Credits per second for a plan. Mirrors maxDubSecondsForPlan's convention exactly —

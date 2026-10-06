@@ -138,12 +138,11 @@ describe('DubbingService', () => {
       delete process.env.CYPHER_TTS_V2_URL;
     });
 
-    it('prices a paid plan at the shared rate, which an env override moves', async () => {
+    it('prices a paid plan at the hard-coded rate, whatever the environment says', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
-      await expect(service.getAccess(USER)).resolves.toMatchObject({ creditsPerSecond: DUBBING_CREDIT_MULTIPLIER });
-      process.env.DUBBING_CREDIT_MULTIPLIER = '2';
+      process.env.DUBBING_CREDIT_MULTIPLIER = '5';
       try {
-        await expect(service.getAccess(USER)).resolves.toMatchObject({ creditsPerSecond: 2 });
+        await expect(service.getAccess(USER)).resolves.toMatchObject({ creditsPerSecond: DUBBING_CREDIT_MULTIPLIER });
       } finally {
         delete process.env.DUBBING_CREDIT_MULTIPLIER;
       }

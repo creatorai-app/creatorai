@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import { calculateDubbingCreditsByDuration, paidDubbingMultiplier } from '@repo/validation';
+import { calculateDubbingCreditsByDuration, DUBBING_CREDIT_MULTIPLIER } from '@repo/validation';
 import { DubbingProcessor } from './dubbing.processor';
 
 // Cypher end to end against an in-memory database and bucket, with ffmpeg, Gemini, the
@@ -129,7 +129,7 @@ db.client = {
   },
 };
 
-const RATE = paidDubbingMultiplier();
+const RATE = DUBBING_CREDIT_MULTIPLIER;
 const PER_LANGUAGE = calculateDubbingCreditsByDuration(30, RATE);
 const PREFIX = 'u1/dubbing/p1/';
 
