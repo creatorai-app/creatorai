@@ -53,7 +53,6 @@ import {
   STARTER_DUBBING_CREDIT_MULTIPLIER,
   dubbingMultiplierForPlan,
   formatDubbingAllowance,
-  paidDubbingMultiplier,
 } from './credits';
 import { InitDubUploadSchema, RegenerateDubSchema, DubVideoPartSchema, DubOutputSchema } from '../schema/dubbing.schema';
 
@@ -442,9 +441,5 @@ for (const bad of ['<b>', 'a{b}', 'x[1]', 'back\\slash', 'a>b']) {
 assert.notEqual(keytermProblem('   '), null);
 assert.deepEqual(normalizeKeyterms([' Creator AI ', 'creator  ai', 'Cypher', '', 'Cypher']), ['Creator AI', 'Cypher']);
 
-// One rate on both engines; an env override moves it, a bad one is ignored.
-assert.equal(paidDubbingMultiplier(), DUBBING_CREDIT_MULTIPLIER);
-assert.equal(paidDubbingMultiplier({ DUBBING_CREDIT_MULTIPLIER: '2' }), 2);
-assert.equal(paidDubbingMultiplier({ DUBBING_CREDIT_MULTIPLIER: 'nope' }), DUBBING_CREDIT_MULTIPLIER);
 
 console.log('dubbing self-check OK');

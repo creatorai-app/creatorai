@@ -51,11 +51,11 @@ hours on Cypher and ElevenLabs; only the languages differ.
 |---|---|
 | Paid plans | `DUBBING_CREDIT_MULTIPLIER` = **1/6**/s (10/min) |
 | Starter | 3/s (the trial rate) |
-| Env override (no deploy) | `DUBBING_CREDIT_MULTIPLIER` |
 
-`paidDubbingMultiplier(env)` resolves the rate with its override, and the API (reserve),
-the worker (settle) and the new-dub form (estimate, via `/dubbing/access`) all go through
-it, so the three cannot disagree. What a month buys:
+Both are hard-coded, with no env override, until the ElevenLabs grant ends.
+`dubbingMultiplierForPlan` resolves the rate, and the API (reserve), the worker (settle)
+and the new-dub form (estimate, via `/dubbing/access`) all go through it, so the three
+cannot disagree. What a month buys:
 
 | Plan | Credits | Dubbing |
 |---|---|---|
@@ -86,7 +86,7 @@ forced alignment once per minute of source (not per language), on top of this.
 At the shared rate the 10 credits a paid minute costs cover about $0.009, so Cypher runs
 at a loss per minute, as ElevenLabs does at list price outside its grant. That was a
 product decision (2026-10-02): one price, so the choice of engine is about languages.
-Raising `DUBBING_CREDIT_MULTIPLIER` raises both.
+Raising `DUBBING_CREDIT_MULTIPLIER` in code raises both.
 
 ## ElevenLabs: the dubbing project API
 
@@ -625,8 +625,6 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
 
 - `ELEVENLABS_API_KEY` must be set for the **worker** (`packages/workers/.env` in
   production). It is set locally; the worker only needs it once someone picks ElevenLabs.
-- `DUBBING_CREDIT_MULTIPLIER` (optional, API **and** worker): overrides the per-second
-  rate on both engines. Set it in both places or the reserve and the settle will disagree.
 - `MODAL_API_URL`, `GOOGLE_*` and `GCS_DUBBING_BUCKET`: unchanged.
 - `ELEVENLABS_API_KEY` on the **worker** now also turns on Cypher's stem separation and
   forced alignment. A scoped key needs dubbing, speech to text / forced alignment, and

@@ -1,4 +1,4 @@
-import { calculateDubbingCreditsByDuration, paidDubbingMultiplier, DUB_VIDEO_WAIT_HOURS } from '@repo/validation';
+import { calculateDubbingCreditsByDuration, DUBBING_CREDIT_MULTIPLIER, DUB_VIDEO_WAIT_HOURS } from '@repo/validation';
 import { DubbingProcessor } from './dubbing.processor';
 import * as elevenlabs from './utils/elevenlabs-dubbing';
 import * as ffmpeg from './utils/ffmpeg';
@@ -95,7 +95,7 @@ fakeDb.client = {
   },
 };
 
-const RATE = paidDubbingMultiplier();
+const RATE = DUBBING_CREDIT_MULTIPLIER;
 const PER_LANGUAGE = calculateDubbingCreditsByDuration(30, RATE);
 
 function seed({
