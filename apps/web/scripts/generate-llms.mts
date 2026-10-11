@@ -19,7 +19,7 @@ import { config } from "dotenv";
 import { loadPublishedPosts } from "../lib/blog-source.ts";
 import type { BlogPost } from "../lib/blog-types.ts";
 import { FREE_TOOLS } from "../lib/free-tools.ts";
-import { dubbableLanguagesFor, supportedLanguages } from "@repo/validation";
+import { dubbableLanguagesFor, supportedLanguages, subtitleLanguages } from "@repo/validation";
 
 const SITE = "https://trycreatorai.com";
 const LF = String.fromCharCode(10);
@@ -56,9 +56,9 @@ fragmented stack (ChatGPT + Canva + subtitle tools) with one dashboard.
 
 ## Key Features
 
-- Voice-matched script generation trained on your channel
+- Voice-matched script generation built on your channel's AI memory
 - AI thumbnail generator (1280×720, CTR-optimized)
-- Subtitle generation with SRT/VTT export
+- Subtitle generation in ${subtitleLanguages.length} languages, with optional translation and SRT/VTT export
 - Video dubbing into ${supportedLanguages.length} languages, every speaker in their own cloned voice: Cypher (in-house, ${dubbableLanguagesFor("cypher").length} languages) or ElevenLabs (${dubbableLanguagesFor("elevenlabs").length})
 - AI video generation: short clips with audio from a text prompt or a start image
 - Topic and trend research for your niche

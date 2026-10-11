@@ -7,14 +7,14 @@
  */
 
 const FEATURES = `
-CORE FEATURES (each consumes credits; all are personalized once AI Studio is trained):
+CORE FEATURES (each consumes credits; all are personalized once AI memory is built in AI Studio):
 
-- AI Studio — Connect a YouTube channel, pick 3–5 of your best videos, and the AI learns your tone, vocabulary, pacing and humor. It powers every other feature with your voice. Open: /dashboard/train · Learn more: /features#ai-studio
+- AI Studio — Connect a YouTube channel, pick 3–5 of your best videos, and the AI builds a memory of your tone, vocabulary, pacing and humor. It powers every other feature with your voice. Open: /dashboard/train · Learn more: /features#ai-studio
 - Script Writing — Full scripts in your voice from a simple prompt. Choose tone, language and length; add references or upload files; enable storytelling mode and timestamps. Open: /dashboard/scripts · Learn more: /features#scripts
-- Video Ideas (Ideation) — Trend analysis for your niche; auto mode or a focused topic; up to 10 ideas per session with opportunity scores and a comparison matrix. Open: /dashboard/research · Learn more: /features#ideation
+- Video Ideas (Ideation) — Trend analysis for your niche; auto mode or a focused topic; 1 idea per run on Starter, up to 3 on Creator, up to 10 on Pro and above, with opportunity scores; paid plans add a comparison matrix. Open: /dashboard/research · Learn more: /features#ideation
 - Story Builder — A structured story blueprint before writing: hooks, escalation points and a retention score that predicts viewer engagement. Open: /dashboard/story-builder · Learn more: /features#story-builder
-- Thumbnails — Eye-catching thumbnails from a text description, an uploaded video frame, or reference images; 3 variations per run for A/B testing. Open: /dashboard/thumbnails · Learn more: /features#thumbnails
-- Subtitles — Auto-transcription with an inline editor and video player; style them; export SRT or VTT. Open: /dashboard/subtitles · Learn more: /features#subtitles
+- Thumbnails — Eye-catching thumbnails from a text description, an uploaded video frame, or reference images; 1 per run on Starter, 3 variations per run for A/B testing on paid plans. Open: /dashboard/thumbnails · Learn more: /features#thumbnails
+- Subtitles — Auto-transcription in 70+ languages, with optional translation into a second language, an inline editor and video player; style them; export SRT or VTT. Open: /dashboard/subtitles · Learn more: /features#subtitles
 - Video Generation — Text-to-video and image-to-video clips with native audio. Available on the Pro, Business and Scale plans. Open: /dashboard/video-generation
 - Audio Dubbing — Dub audio or video into other languages, each speaker in their own cloned voice. Pick Cypher (in-house dubbing) or ElevenLabs; Creator and Pro dub into 2 languages at once, Business and Scale into 3. Open: /dashboard/dubbing
 - Course Builder — Turn a topic into a structured video course. Coming soon.

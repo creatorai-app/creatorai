@@ -172,7 +172,9 @@ export default function PricingPage() {
                       <td className="py-3.5 px-4 text-sm text-slate-700">{feature.name}</td>
                       {MARKETING_PLANS.map((p) => (
                         <td key={p.id} className="text-center py-3.5 px-4">
-                          {!feature.plans || feature.plans.includes(p.id) ? (
+                          {feature.values ? (
+                            <span className="text-sm text-slate-700">{feature.values[p.id] ?? "-"}</span>
+                          ) : !feature.plans || feature.plans.includes(p.id) ? (
                             <Check className="w-5 h-5 text-green-500 mx-auto" aria-label="Included" />
                           ) : (
                             <span className="text-slate-400" aria-label="Not included">-</span>

@@ -18,6 +18,12 @@ export interface MarketingPlan {
   credits: number;
   /** One short reason to choose this plan. */
   tagline: string;
+  /**
+   * Name of the plan this one builds on. The card renders "Everything in X, plus:" and
+   * `features` lists ONLY what this tier adds, so no bullet is repeated down the ladder.
+   * Omitted on Starter, which is the baseline every other plan inherits.
+   */
+  inheritsFrom?: string;
   features: string[];
   popular?: boolean;
   /** Grouping for layout: consumer creators vs. studios/agencies. */
@@ -34,10 +40,11 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     tagline: "Best for trying Creator AI risk-free, no card.",
     features: [
       "500 credits every month",
-      "No credit card required",
-      "Train the AI on your own voice",
-      "Scripts, ideas, thumbnails & subtitles",
-      "Story Builder & dubbing",
+      "Build AI memory on your own voice",
+      "Scripts & Story Builder",
+      "1 video idea and 1 thumbnail per run",
+      "Subtitles in 70+ languages",
+      "Dubbing in 90+ languages",
     ],
     group: "free",
   },
@@ -48,13 +55,12 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     priceAnnualMonthly: 19,
     credits: 3000,
     tagline: "Best for weekly creators who want a steady flow of scripts, thumbnails and ideas.",
+    inheritsFrom: "Starter",
     features: [
       "3,000 credits every month",
-      "Every feature except video generation",
-      "Save 20% with annual billing",
-      "Voice-matched scripts in minutes",
-      "Click-worthy thumbnails & subtitles",
-      "Referral + affiliate rewards",
+      "Up to 3 video ideas per run",
+      "Idea comparison matrix",
+      "3 thumbnail variations for A/B testing",
     ],
     popular: true,
     group: "consumer",
@@ -66,13 +72,12 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     priceAnnualMonthly: 39,
     credits: 8000,
     tagline: "Best for daily uploaders and growing channels publishing at full speed.",
+    inheritsFrom: "Creator",
     features: [
       "8,000 credits every month",
-      "Every feature included",
-      "Save 20% with annual billing",
+      "Up to 10 video ideas per run",
+      "AI video generation",
       "Priority generation speed",
-      "All AI tools, fully unlocked",
-      "Referral + affiliate rewards",
     ],
     group: "consumer",
   },
@@ -83,12 +88,11 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     priceAnnualMonthly: null,
     credits: 50000,
     tagline: "Best for studios and multi-channel teams producing content at scale.",
+    inheritsFrom: "Pro",
     features: [
       "50,000 credits every month",
-      "Every feature included",
       "Built for studios & teams",
       "Highest generation throughput",
-      "All AI tools, fully unlocked",
       "Priority support",
     ],
     group: "studio",
@@ -100,34 +104,29 @@ export const MARKETING_PLANS: MarketingPlan[] = [
     priceAnnualMonthly: null,
     credits: 100000,
     tagline: "Best for agencies and networks running high-volume content operations.",
+    inheritsFrom: "Business",
     features: [
       "100,000 credits every month",
-      "Every feature included",
       "Built for agencies & networks",
       "Maximum generation throughput",
-      "All AI tools, fully unlocked",
-      "Priority support",
     ],
     group: "studio",
   },
 ];
 
-/** Same on every plan, appended after each plan's own features on the pricing cards. */
-export const SHARED_PLAN_FEATURES: string[] = [
-  "Up to 10 video ideas per run with a comparison matrix",
-  "3 thumbnail variations for A/B testing",
-  "Dubbing in 90+ languages",
-];
-
-/** Rows of the /pricing comparison table. `plans` limits a row to those plan ids; omitted means every plan. */
-export const ALL_FEATURES: { name: string; plans?: readonly string[] }[] = [
-  { name: "AI voice & style training" },
-  { name: "Up to 10 video ideas per run with a comparison matrix" },
+/**
+ * Rows of the /pricing comparison table. `plans` limits a check mark to those plan ids
+ * (omitted means every plan); `values` shows text per plan id instead of a check.
+ */
+export const ALL_FEATURES: { name: string; plans?: readonly string[]; values?: Record<string, string> }[] = [
+  { name: "AI voice & style memory" },
+  { name: "Video ideas per run", values: { starter: "1", creator: "Up to 3", pro: "Up to 10", business: "Up to 10", scale: "Up to 10" } },
+  { name: "Idea comparison matrix", plans: ["creator", "pro", "business", "scale"] },
   { name: "Script writing" },
   { name: "Story Builder with retention score" },
-  { name: "3 thumbnail variations for A/B testing" },
+  { name: "Thumbnail generation", values: { starter: "1 per run", creator: "3 variations", pro: "3 variations", business: "3 variations", scale: "3 variations" } },
   { name: "Subtitle generation & export" },
-  { name: "Multi-language support" },
+  { name: "Subtitles in 70+ languages" },
   { name: "Dubbing in 90+ languages" },
   { name: "Video generation", plans: VIDEO_GENERATION_PLANS },
   { name: "Referral & affiliate programs" },
