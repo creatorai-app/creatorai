@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isSupportedSubtitleLanguage, isSupportedSubtitleTarget } from '../consts/subtitles';
 
 export const SubtitleLineSchema = z.object({
   start: z.string(),
@@ -6,10 +7,18 @@ export const SubtitleLineSchema = z.object({
   text: z.string(),
 });
 
+// Both languages are interpolated into the Gemini prompt, so they are validated against
+// the offered list rather than taken as free text.
 export const CreateSubtitleSchema = z.object({
   subtitleId: z.string().min(1),
-  language: z.string().optional(),
-  targetLanguage: z.string().optional(),
+  language: z
+    .string()
+    .refine(isSupportedSubtitleLanguage, 'Unsupported subtitle language')
+    .optional(),
+  targetLanguage: z
+    .string()
+    .refine(isSupportedSubtitleTarget, 'Unsupported translation language')
+    .optional(),
   duration: z.number().optional(),
 });
 

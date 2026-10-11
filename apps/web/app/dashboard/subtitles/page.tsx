@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { dubLanguageLabel } from "@repo/validation";
 import * as motion from "motion/react-m";
 import Link from "next/link";
 import { Button } from "@repo/ui/button";
@@ -90,7 +91,7 @@ export default function SubtitlesPage() {
             const displayTitle = s.title || s.filename;
             return (
                 displayTitle.toLowerCase().includes(q) ||
-                s.language.toLowerCase().includes(q) ||
+                dubLanguageLabel(s.language).toLowerCase().includes(q) ||
                 s.status.toLowerCase().includes(q)
             );
         });

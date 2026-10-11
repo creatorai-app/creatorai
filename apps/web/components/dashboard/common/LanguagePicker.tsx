@@ -15,8 +15,8 @@ export interface LanguageOption {
   note?: string
 }
 
-/** A language dropdown with a search box at the top. */
-export function DubLanguagePicker({
+/** A language dropdown with a search box at the top. Shared by dubbing and subtitles. */
+export function LanguagePicker({
   value,
   onChange,
   options,

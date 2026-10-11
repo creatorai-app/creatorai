@@ -13,6 +13,7 @@ import { IdeationProcessor } from './processor/ideation.processor';
 import { ScriptProcessor } from './processor/script.processor';
 import { VideoGenerationProcessor } from './processor/video-generation.processor';
 import { DubbingProcessor } from './processor/dubbing.processor';
+import { SubtitleProcessor } from './processor/subtitle.processor';
 import { EmailCampaignProcessor } from './processor/email-campaign.processor';
 
 @Module({
@@ -47,9 +48,10 @@ import { EmailCampaignProcessor } from './processor/email-campaign.processor';
       { name: 'script' },
       { name: 'video-generation' },
       { name: 'dubbing' },
+      { name: 'subtitle' },
       { name: 'email-campaign' },
     ),
   ],
-  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor, EmailCampaignProcessor, SubscriptionReminderService],
+  providers: [TrainAiProcessor, ThumbnailProcessor, StoryBuilderProcessor, IdeationProcessor, ScriptProcessor, VideoGenerationProcessor, DubbingProcessor, SubtitleProcessor, EmailCampaignProcessor, SubscriptionReminderService],
 })
 export class WorkerModule {}

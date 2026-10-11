@@ -45,7 +45,7 @@ export default function SubtitleEditorPage() {
         subtitleData?.video_path,
         subtitleData?.video_url
     );
-    const { isGenerating, handleGenerate } = useSubtitleGeneration(id as string, videoDuration, refetch);
+    const { isGenerating, progress, statusMessage, handleGenerate } = useSubtitleGeneration(id as string, videoDuration, refetch);
     const { undo, redo, canUndo, canRedo } = useUndoRedo(subtitles, setSubtitles);
     const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
     const debouncedSubtitles = useDebounce(subtitles, 500);
@@ -146,6 +146,8 @@ export default function SubtitleEditorPage() {
                         currentSub={currentSubtitle}
                         editingIndex={editingIndex}
                         isGenerating={isGenerating}
+                        progress={progress}
+                        statusMessage={statusMessage}
                         videoDuration={videoDuration}
                         onAddLine={handleAddLine}
                         onUpdate={updateSubtitle}

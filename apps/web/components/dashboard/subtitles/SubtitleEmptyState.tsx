@@ -7,6 +7,8 @@ import { GenerateSubtitlesForm } from './GenerateSubtitlesForm';
 
 type SubtitleEmptyStateProps = {
     isGenerating: boolean;
+    progress?: number;
+    statusMessage?: string;
     videoDuration: number | null;
     onGenerate: (language: string, targetLanguage: string) => void;
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -15,6 +17,8 @@ type SubtitleEmptyStateProps = {
 
 export function SubtitleEmptyState({
     isGenerating,
+    progress,
+    statusMessage,
     videoDuration,
     onGenerate,
     onFileChange,
@@ -54,6 +58,8 @@ export function SubtitleEmptyState({
                         <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 bg-slate-50/50 dark:bg-slate-900/30">
                             <GenerateSubtitlesForm
                                 isGenerating={isGenerating}
+                                progress={progress}
+                                statusMessage={statusMessage}
                                 videoDuration={videoDuration}
                                 onGenerate={onGenerate}
                             />

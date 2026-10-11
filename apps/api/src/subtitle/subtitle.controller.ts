@@ -1,5 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, Res, UseGuards, UnauthorizedException, BadRequestException, UsePipes } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, Res, UseGuards, UnauthorizedException, BadRequestException, UsePipes, Sse } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import type { Observable } from 'rxjs';
+import { createJobSSE } from '../common/sse';
 import { createReadStream } from 'fs';
 import { SubtitleService } from './subtitle.service';
 import { SupabaseAuthGuard } from '../guards/auth.guard';
@@ -31,11 +35,14 @@ import type {
 @Controller('subtitle')
 @UseGuards(SupabaseAuthGuard)
 export class SubtitleController {
-  constructor(private readonly subtitleService: SubtitleService) { }
+  constructor(
+    private readonly subtitleService: SubtitleService,
+    @InjectQueue('subtitle') private readonly queue: Queue,
+  ) { }
 
   @Post()
   @UseGuards(OnboardedGuard)
-  @ApiOperation({ summary: 'Create subtitle record' })
+  @ApiOperation({ summary: 'Queue a subtitle generation job' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -55,6 +62,33 @@ export class SubtitleController {
       throw new UnauthorizedException('User not found');
     }
     return this.subtitleService.create(body, userId);
+  }
+
+  @Post('cancel/:jobId')
+  @ApiOperation({ summary: 'Cancel a queued or running subtitle job' })
+  @ApiParam({ name: 'jobId' })
+  cancel(@Param('jobId') jobId: string, @Req() req: AuthRequest) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.subtitleService.cancel(jobId, userId);
+  }
+
+  @Sse('status/:jobId')
+  @ApiOperation({ summary: 'SSE: subtitle job status' })
+  @ApiParam({ name: 'jobId' })
+  status(@Param('jobId') jobId: string, @Req() req: AuthRequest): Observable<MessageEvent> {
+    return createJobSSE({
+      queue: this.queue,
+      jobId,
+      req,
+      getMessages: {
+        active: 'Transcribing your video...',
+        completed: 'Subtitles ready!',
+        failed: 'Subtitle generation failed',
+      },
+    });
   }
 
   @Get()

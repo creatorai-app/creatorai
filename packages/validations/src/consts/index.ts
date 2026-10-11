@@ -8,3 +8,4 @@ export * from './upload';
 export * from './videoGeneration';
 export * from './storyBlueprint';
 export * from './storyBlueprintPrompt';
+export * from './subtitles';
