@@ -7,6 +7,8 @@ import { api, getApiErrorMessage } from "@/lib/api-client"
 import { downloadFile } from "@/lib/download"
 import { useSSE, type SSEEvent } from "./useSSE"
 import { useTypewriter } from "./useTypewriter"
+import { useCurrentPlan } from "./useCurrentPlan"
+import { maxThumbnailsForPlan } from "@repo/validation"
 
 export type ThumbnailRatio = '16:9' | '9:16' | '1:1' | '4:3'
 
@@ -64,7 +66,9 @@ export function useThumbnailGeneration(options?: UseThumbnailGenerationOptions) 
   const [storyBuilderId] = useState(options?.initialStoryBuilderId)
   const [ideationId] = useState(options?.initialIdeationId)
   const [ideaIndex] = useState(options?.initialIdeaIndex)
-  const [generateCount] = useState(3)
+  const { planName } = useCurrentPlan()
+  // ponytail: before the plan loads, ask for 3; the API clamps to the plan's max.
+  const generateCount = planName ? maxThumbnailsForPlan(planName) : 3
   const [videoLink, setVideoLink] = useState("")
   const [referenceImage, setReferenceImage] = useState<File | null>(null)
   const [faceImage, setFaceImage] = useState<File | null>(null)

@@ -99,7 +99,7 @@ export function ThumbnailOutputPanel({
         ) : (
           <GenerationPlaceholder
             title="Ready to create thumbnails?"
-            description="Fill out the form and our AI will generate 3 unique thumbnail variations."
+            description="Fill out the form and our AI will generate your thumbnails."
           />
         )}
       </CardContent>

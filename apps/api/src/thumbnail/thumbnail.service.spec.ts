@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bullmq';
 import { ThumbnailService } from './thumbnail.service';
 import { SupabaseService } from '../supabase/supabase.service';
+import { BillingService } from '../billing/billing.service';
 import { THUMBNAIL_CREDIT_MULTIPLIER } from '@repo/validation';
 import { createGoogleAI } from '../utils/genai';
 
@@ -43,6 +44,8 @@ describe('ThumbnailService', () => {
   let queue: { add: jest.Mock };
   let storage: Record<string, jest.Mock>;
 
+  let planName = 'Pro';
+
   async function build(overrides: Record<string, any> = {}) {
     jest.clearAllMocks();
     tables = {
@@ -70,13 +73,17 @@ describe('ThumbnailService', () => {
           },
         },
         { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: BillingService, useValue: { getBillingInfo: async () => ({ currentPlan: { name: planName } }) } },
         { provide: getQueueToken('thumbnail'), useValue: queue },
       ],
     }).compile();
     service = module.get(ThumbnailService);
   }
 
-  beforeEach(() => build());
+  beforeEach(() => {
+    planName = 'Pro';
+    return build();
+  });
 
   describe('input validation', () => {
     it('rejects a reference image over 10MB', async () => {
@@ -134,6 +141,15 @@ describe('ThumbnailService', () => {
         profiles: chain({ data: { credits: THUMBNAIL_CREDIT_MULTIPLIER * 2, ai_trained: true }, error: null }),
       });
       await expect(service.createJob(USER, input)).resolves.toMatchObject({ status: 'queued' });
+    });
+
+    it('caps Starter at one thumbnail and bills only that one', async () => {
+      planName = 'Starter';
+      await build({
+        profiles: chain({ data: { credits: THUMBNAIL_CREDIT_MULTIPLIER, ai_trained: true }, error: null }),
+      });
+      await expect(service.createJob(USER, { ...input, generateCount: 3 })).resolves.toMatchObject({ status: 'queued' });
+      expect(queue.add.mock.calls[0][1]).toMatchObject({ generateCount: 1 });
     });
 
     it('404s when the profile is missing', async () => {

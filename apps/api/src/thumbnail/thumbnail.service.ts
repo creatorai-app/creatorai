@@ -10,12 +10,14 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { SupabaseService } from '../supabase/supabase.service';
+import { BillingService } from '../billing/billing.service';
 import {
   type CreateThumbnailInput,
   type SurpriseThumbnailPromptInput,
   hasEnoughCredits,
   THUMBNAIL_CREDIT_MULTIPLIER,
   getMinimumCreditsForThumbnailRequest,
+  maxThumbnailsForPlan,
 } from '@repo/validation';
 import { createGoogleAI, GEMINI_TEXT_MODEL } from '../utils/genai';
 
@@ -30,6 +32,7 @@ export class ThumbnailService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly billingService: BillingService,
     @InjectQueue('thumbnail') private readonly queue: Queue,
   ) {}
 
@@ -39,11 +42,14 @@ export class ThumbnailService {
     referenceImage?: Express.Multer.File,
     faceImage?: Express.Multer.File,
   ) {
-    const { prompt, context, ratio, generateCount, videoLink, personalized } = input;
+    const { prompt, context, ratio, videoLink, personalized } = input;
 
     if (referenceImage) this.validateImageFile(referenceImage, 'Reference image');
     if (faceImage) this.validateImageFile(faceImage, 'Face image');
     if (videoLink) this.validateVideoLink(videoLink);
+
+    const billing = await this.billingService.getBillingInfo(userId);
+    const generateCount = Math.min(input.generateCount, maxThumbnailsForPlan(billing.currentPlan?.name));
 
     // ── Check profile + credits ──
     const thumbnailMultiplier = this.getEnvNumber(
