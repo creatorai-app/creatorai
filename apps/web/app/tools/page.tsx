@@ -80,7 +80,7 @@ export default function ToolsPage() {
               <GoogleSignupCta source="tools-hub-hero" label="Get started free" />
             </div>
             <div className="mt-5 flex justify-center">
-              <ConnectChannelCta label="Connect your channel and train the model for a personalized experience" />
+              <ConnectChannelCta label="Connect your channel and build AI memory for a personalized experience" />
             </div>
           </div>
 
@@ -207,7 +207,7 @@ export default function ToolsPage() {
           <div className="mx-auto max-w-3xl px-6 text-center">
             <h2 className="text-3xl font-bold md:text-4xl">Get the version that sounds like you</h2>
             <p className="mx-auto mt-4 max-w-xl text-slate-300 md:text-lg">
-              Connect your channel, train the AI on a few of your videos, and every script, idea
+              Connect your channel, build AI memory from a few of your videos, and every script, idea
               and thumbnail after that is personalized. 500 credits a month, free, no card.
             </p>
             <div className="mt-8 flex justify-center">

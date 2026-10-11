@@ -309,7 +309,7 @@ export default function ToolPageShell({
           <div className="mx-auto max-w-3xl px-6 text-center">
             <h2 className="text-3xl font-bold md:text-4xl">Stop starting from a blank page</h2>
             <p className="mx-auto mt-4 max-w-xl text-slate-300 md:text-lg">
-              Scripts, ideas, thumbnails, subtitles and dubbing, all trained on your channel.
+              Scripts, ideas, thumbnails, subtitles and dubbing, all built on your channel's AI memory.
               500 credits a month, free, no card.
             </p>
             <div className="mt-8 flex justify-center">

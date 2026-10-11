@@ -21,7 +21,7 @@ export function HowItWorksGuide() {
         <motion.div variants={itemVariants}>
             <Accordion type="single" collapsible value={guideOpen} onValueChange={setGuideOpen} className="w-full">
                 <AccordionItem value="how-it-works">
-                    <AccordionTrigger className="font-semibold">How does model training work?</AccordionTrigger>
+                    <AccordionTrigger className="font-semibold">How does AI memory work?</AccordionTrigger>
                     <AccordionContent className="pt-4">
                         <div className="space-y-6">
                             {steps.map(({ step, title, desc, icon: Icon }) => (

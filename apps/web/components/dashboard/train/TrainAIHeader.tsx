@@ -22,7 +22,7 @@ export function TrainAIHeader({ isYtConnected, isAiTrained, freeTrainingUsed, la
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">AI Studio</h1>
         <p className="hidden sm:block text-slate-600 dark:text-slate-400 mt-1">
-          Train your model on your unique content style.
+          Build AI memory from your unique content style.
         </p>
       </div>
 
@@ -58,7 +58,7 @@ export function TrainAIHeader({ isYtConnected, isAiTrained, freeTrainingUsed, la
             <XCircle className="h-3.5 w-3.5" />
           )}
           <Bot className="h-3.5 w-3.5" />
-          {isAiTrained ? "Trained" : "Not Trained"}
+          {isAiTrained ? "Memory Built" : "No Memory Yet"}
         </Badge>
 
         {isAiTrained && lastCreditsConsumed !== null && (
@@ -68,7 +68,7 @@ export function TrainAIHeader({ isYtConnected, isAiTrained, freeTrainingUsed, la
           >
             <Coins className="h-3.5 w-3.5" />
             {lastCreditsConsumed === 0
-              ? "Free training"
+              ? "Free memory build"
               : `${lastCreditsConsumed} credit${lastCreditsConsumed !== 1 ? "s" : ""} used`}
           </Badge>
         )}
@@ -81,7 +81,7 @@ export function TrainAIHeader({ isYtConnected, isAiTrained, freeTrainingUsed, la
             className="gap-1.5 py-1 px-2.5 border-green-300 text-green-700 dark:border-green-800 dark:text-green-400"
           >
             <Coins className="h-3.5 w-3.5" />
-            First training free
+            First memory build free
           </Badge>
         )}
       </div>

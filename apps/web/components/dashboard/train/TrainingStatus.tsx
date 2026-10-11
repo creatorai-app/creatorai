@@ -57,7 +57,7 @@ export function TrainingStatus({ profile, isConnectingYoutube, onConnectYoutube 
                     <Step
                         icon={isYtConnected ? <CheckCircle className="h-5 w-5" /> : <Youtube className="h-5 w-5" />}
                         title="Connect YouTube Channel"
-                        description={isYtConnected ? "Your channel is successfully connected." : "Allow access to start the training process."}
+                        description={isYtConnected ? "Your channel is successfully connected." : "Allow access to start building your AI memory."}
                         isComplete={isYtConnected}
                         isActive={!isYtConnected}
                     >
@@ -76,8 +76,8 @@ export function TrainingStatus({ profile, isConnectingYoutube, onConnectYoutube 
 
                     <Step
                         icon={isAiTrained ? <CheckCircle className="h-5 w-5" /> : <CircleDot className="h-5 w-5" />}
-                        title="Train Your AI"
-                        description={isAiTrained ? "Your AI is trained and ready to create." : "Provide 3-5 videos in the form below."}
+                        title="Build AI Memory"
+                        description={isAiTrained ? "Your AI memory is built and ready to create." : "Provide 3-5 videos in the form below."}
                         isComplete={isAiTrained}
                         isActive={isYtConnected}
                     >

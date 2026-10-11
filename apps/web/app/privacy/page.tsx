@@ -208,7 +208,7 @@ const PrivacyPage = () => {
                 not given that permission and will not.
               </p>
               <p>
-                <strong>What we send.</strong> When you train your AI, we send the model the
+                <strong>What we send.</strong> When you build your AI memory, we send the model the
                 YouTube URLs of the videos you selected, and the model watches them — the
                 actual audio and video, not just the title and description. We also send the
                 prompts, context, and files you provide when using our generation tools.
@@ -221,7 +221,7 @@ const PrivacyPage = () => {
                 is attached to your account and used only for your generations.
               </p>
               <p>
-                <strong>Training, precisely.</strong> "Training your AI" in our product means
+                <strong>AI memory, precisely.</strong> "Building AI memory" in our product means
                 building this profile for you. It does not mean we fine-tune a model, and your
                 content is never pooled with other users' content to train a shared model.
               </p>

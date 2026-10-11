@@ -33,9 +33,9 @@ export function AISetupBanner({ step }: { step: SetupStep }) {
       }
     : {
         eyebrow: "Step 2 of 2",
-        title: "Train your AI to use this feature",
-        body: "Your channel is connected. Training builds your personal model so everything sounds like you.",
-        cta: "Start training",
+        title: "Build AI memory to use this feature",
+        body: "Your channel is connected. Building AI memory teaches it your style so everything sounds like you.",
+        cta: "Build AI memory",
       };
 
   return (

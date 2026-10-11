@@ -29,7 +29,7 @@ export async function checkUserPermissions(supabase: SupabaseClient) {
     const typedProfile: ProfileData = profile as ProfileData;
 
     if (!typedProfile.ai_trained && !typedProfile.youtube_connected) {
-        return { user, profile: typedProfile, error: NextResponse.json({ message: 'AI training and YouTube connection are required' }, { status: 403 }) };
+        return { user, profile: typedProfile, error: NextResponse.json({ message: 'AI memory and YouTube connection are required' }, { status: 403 }) };
     }
 
     if (typedProfile.credits < 1) {

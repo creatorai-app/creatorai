@@ -15,7 +15,7 @@ const steps = [
   {
     step: 2,
     title: "Customize Style",
-    desc: "Choose tone, language, duration, and formatting options. The AI adapts to your channel's trained style.",
+    desc: "Choose tone, language, duration, and formatting options. The AI adapts to the style in your AI memory.",
     icon: Settings2,
   },
   {

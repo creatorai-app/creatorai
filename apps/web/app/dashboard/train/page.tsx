@@ -79,8 +79,8 @@ export default function TrainAIPage() {
       <SuccessDialog
         open={showModal}
         onOpenChange={setShowModal}
-        title="Model Training Complete!"
-        description="Your AI model has been trained on your unique style. Enjoy the personalized experience."
+        title="AI Memory Built!"
+        description="Your AI memory now holds your unique style. Enjoy the personalized experience."
         nextSteps={nextSteps}
       />
 

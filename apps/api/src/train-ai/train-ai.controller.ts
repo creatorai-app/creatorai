@@ -38,7 +38,7 @@ export class TrainAiController {
     const userId = getUserId(req);
     const jobId = `train-ai-${userId}-${Date.now()}`;
     await this.queue.add('train-ai', { ...dto, userId }, { jobId });
-    return { message: 'Training queued', jobId };
+    return { message: 'AI memory build queued', jobId };
   }
 
   @Post('stop/:jobId')
@@ -62,7 +62,7 @@ export class TrainAiController {
 
     if (state === 'waiting' || state === 'delayed') {
       await job.remove();
-      return { message: 'Training cancelled' };
+      return { message: 'AI memory build cancelled' };
     }
 
     if (state === 'active') {
@@ -88,8 +88,8 @@ export class TrainAiController {
       includeLogs: true,
       getMessages: {
         active: 'Processing...',
-        completed: 'Training completed!',
-        failed: 'Training failed - check logs',
+        completed: 'AI memory built!',
+        failed: 'AI memory build failed - check logs',
       },
     });
   }

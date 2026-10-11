@@ -4,7 +4,7 @@ import { createMetadata } from "@/lib/seo";
 export const metadata: Metadata = createMetadata({
   title: "Sign Up Free",
   description:
-    "Create a free Creator AI account: 500 credits a month, no credit card. Train the AI on your own YouTube videos and generate scripts, thumbnails, subtitles and dubs that sound like you.",
+    "Create a free Creator AI account: 500 credits a month, no credit card. Build AI memory from your own YouTube videos and generate scripts, thumbnails, subtitles and dubs that sound like you.",
   alternates: { canonical: "/signup" },
   openGraph: { url: "/signup" },
 });

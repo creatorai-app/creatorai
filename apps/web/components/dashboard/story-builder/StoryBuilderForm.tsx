@@ -135,12 +135,12 @@ export function StoryBuilderForm({
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {personalized
                 ? "Blueprint adapts to your channel's past videos' style"
-                : "Toggle on to use your past trained profile"}
+                : "Toggle on to use your AI memory"}
             </p>
           ) : (
             <div className="flex items-center justify-between gap-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-2.5">
               <p className="text-xs text-amber-700 dark:text-amber-400">
-                Train your AI in the AI Studio to unlock personalized blueprints
+                Build your AI memory in the AI Studio to unlock personalized blueprints
               </p>
               <Link href="/dashboard/train">
                 <Button variant="outline" size="sm" className="shrink-0 text-xs gap-1 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">
@@ -342,7 +342,7 @@ export function StoryBuilderForm({
           <Input
             id="tone"
             placeholder={personalized && aiTrained
-              ? "Leave empty for your trained tone, or override"
+              ? "Leave empty for the tone in your AI memory, or override"
               : "e.g., Energetic and motivational, casual and conversational"}
             value={tone}
             onChange={(e) => setTone(e.target.value)}

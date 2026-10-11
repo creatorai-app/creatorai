@@ -316,7 +316,7 @@ export default function ScriptGeneratorWidget() {
           >
             Create a free account
           </Link>{" "}
-          and train the AI on your own videos.
+          and build AI memory from your own videos.
         </p>
       )}
     </div>

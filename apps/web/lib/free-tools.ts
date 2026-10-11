@@ -71,7 +71,7 @@ export interface FreeTool {
 
 const SIGNUP_BENEFITS = [
   "500 free credits every month, no card",
-  "Train the AI on your own channel so output sounds like you",
+  "Build AI memory from your own channel so output sounds like you",
   "Scripts, ideas, thumbnails, subtitles, story blueprints and dubbing in one place",
   "Save, edit and export everything you generate",
 ];
@@ -320,7 +320,7 @@ export const FREE_TOOLS: FreeTool[] = [
         body: [
           "This page runs one anonymous, single-shot version of Creator AI's script engine. It knows your topic, your tone and your target length, and nothing about you. That produces a good generic script, which is exactly what a free sample should be.",
           "The paid feature starts somewhere else entirely. It reads your existing videos through AI Studio and builds a style profile: your tone, vocabulary level, pacing, recurring themes, humour and narrative structure. Every script after that is generated against that profile, so it comes out sounding like your channel instead of like an AI.",
-          "It also does the things a one-shot tool cannot: longer videos, five languages, storytelling mode, timestamps, uploaded reference files, and scripts generated directly from an idea you saved in ideation. The free Starter plan includes 500 credits a month with no card, which is enough to train the AI and feel the difference.",
+          "It also does the things a one-shot tool cannot: longer videos, five languages, storytelling mode, timestamps, uploaded reference files, and scripts generated directly from an idea you saved in ideation. The free Starter plan includes 500 credits a month with no card, which is enough to build your AI memory and feel the difference.",
         ],
       },
     ],
@@ -381,7 +381,7 @@ export const FREE_TOOLS: FreeTool[] = [
       {
         question: "Will the script sound like me?",
         answer:
-          "Not from this page. It has no way to know what you sound like. It writes a clean, well-structured generic script. Sounding like you requires training the AI on your existing videos in AI Studio, which is what the personalized script feature does.",
+          "Not from this page. It has no way to know what you sound like. It writes a clean, well-structured generic script. Sounding like you requires building AI memory from your existing videos in AI Studio, which is what the personalized script feature does.",
       },
       {
         question: "Do I own the scripts I generate?",
@@ -563,7 +563,7 @@ export const FREE_TOOLS: FreeTool[] = [
       {
         question: "Can I turn the blueprint into a script?",
         answer:
-          "Yes, inside the app. Sign up and the blueprint is saved to your dashboard, where the script writer can build on it using a voice profile trained on your own videos. On this page you get the structure itself, which is the part most outlines are missing.",
+          "Yes, inside the app. Sign up and the blueprint is saved to your dashboard, where the script writer can build on it using an AI memory built from your own videos. On this page you get the structure itself, which is the part most outlines are missing.",
       },
       {
         question: "How many free blueprints can I generate?",

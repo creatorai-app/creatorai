@@ -241,7 +241,7 @@ export function SubtitleUploader({ onUploadSuccess, scriptId }: SubtitleUploader
                         {gate.locked ? (
                             <>
                                 <Lock className="mr-2 h-4 w-4" />
-                                {gate.step === "connect" ? "Connect your channel first" : "Train your AI first"}
+                                {gate.step === "connect" ? "Connect your channel first" : "Build your AI memory first"}
                             </>
                         ) : isUploading ? (
                             <>

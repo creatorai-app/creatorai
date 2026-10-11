@@ -42,7 +42,7 @@ function ConnectScene({ className = "" }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       role="img"
-      aria-label="Animation: a YouTube channel connects to a model, which trains to completion"
+      aria-label="Animation: a YouTube channel connects to a model, which builds its AI memory"
     >
       <defs>
         <SceneDefs ns="s1" />

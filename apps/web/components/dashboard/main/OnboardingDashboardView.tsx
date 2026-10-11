@@ -142,16 +142,16 @@ export function OnboardingDashboardView(props: SharedProps) {
               </div>
 
               <span className="text-[10px] font-black uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-2 bg-purple-50 dark:bg-purple-500/10 px-2 py-1 rounded-sm">Phase 02</span>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">Train AI Studio</h3>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">Build AI Memory</h3>
               <p className="text-slate-500 dark:text-slate-400 mb-4 max-w-[300px] leading-relaxed text-sm md:text-base">
-                Process your channel's videos to generate a highly personalized AI model tailored exactly to you.
+                Process your channel's videos to build an AI memory tailored exactly to you.
               </p>
 
               {/* The free run is once per account: keyed off free_training_used, which
                   survives a disconnect, not ai_trained, which does not. */}
               {!props.profile?.free_training_used && (
                 <p className="mb-6 text-sm font-semibold text-green-700 dark:text-green-400">
-                  Your first training is free. No credits charged.
+                  Your first memory build is free. No credits charged.
                 </p>
               )}
 
@@ -165,7 +165,7 @@ export function OnboardingDashboardView(props: SharedProps) {
                             disabled={!props.isYoutubeConnected}
                             className={`w-full h-12 text-base ${props.isYoutubeConnected && !props.isAiTrained ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-500/25' : ''}`}
                           >
-                            {props.isAiTrained ? 'Manage AI' : 'Start Training'}
+                            {props.isAiTrained ? 'Manage AI Memory' : 'Build AI Memory'}
                           </Button>
                         </Link>
                       </div>
