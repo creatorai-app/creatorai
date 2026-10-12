@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { creatorAiFetch } from '@/lib/creator-ai-http';
 import { Resend } from 'resend';
+import { generateWelcomeEmail, WELCOME_EMAIL_SUBJECT } from '@repo/email-templates';
 import { BACKEND_URL } from '@/lib/constants';
 
 function escapeHtml(str: string): string {
@@ -26,26 +27,9 @@ async function sendWelcomeEmail(
     await resend.emails.send({
       from: 'Creator AI <onboarding@trycreatorai.com>',
       to: email,
-      subject: 'Welcome to Creator AI!',
+      subject: WELCOME_EMAIL_SUBJECT,
       replyTo: 'support@trycreatorai.com',
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: auto; padding: 20px;">
-          <h1 style="color: #4F46E5; margin-bottom: 10px;">Welcome aboard, ${escapeHtml(full_name)}! 🎉</h1>
-          
-          <p>We're excited to have you join <strong>Creator AI</strong>. 🚀</p>
-          <p>
-            Open your dashboard:
-            <a href="https://trycreatorai.com/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">
-              Go to Dashboard
-            </a>
-          </p>
-
-          <p style="margin-top: 30px;">Have any questions? Just reply to this email or reach us at 
-            <a href="mailto:support@trycreatorai.com" style="color: #4F46E5; text-decoration: none;">support@trycreatorai.com</a>.
-          </p>
-
-          <p style="margin-top: 20px;">Cheers,<br/>The Creator AI Team</p>
-        </div>`,
+      html: generateWelcomeEmail({ fullName: full_name, email }),
     });
   } catch (error) {
     console.error('Error sending welcome email:', error);
