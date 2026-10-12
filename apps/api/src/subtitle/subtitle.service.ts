@@ -1,5 +1,7 @@
-import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException, PayloadTooLargeException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException, PayloadTooLargeException, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   type CreateSubtitleInput,
@@ -9,11 +11,12 @@ import {
   type FinalizeUploadInput,
   type BurnSubtitleInput,
   type SubtitleFromDubInput,
-  calculateSubtitleCredits,
   hasEnoughCredits,
   getMinimumCreditsForSubtitleRequest,
   SUBTITLE_CREDIT_MULTIPLIER,
-  TOKENS_PER_CREDIT,
+  SUBTITLE_AUTO_DETECT,
+  SUBTITLE_NO_TRANSLATION,
+  SUBTITLE_CANCEL_PREFIX,
   convertJsonToSrt,
   subtitleUploadLimitBytes,
   subtitleMaxDurationSeconds,
@@ -21,8 +24,6 @@ import {
   dubLanguageLabel,
 } from '@repo/validation';
 import {
-  createGoogleAI,
-  GEMINI_TEXT_MODEL,
   getMimeTypeFromUrl,
   configureFFmpeg,
   streamVideoToFile,
@@ -44,6 +45,7 @@ export class SubtitleService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    @InjectQueue('subtitle') private readonly queue: Queue,
   ) {}
 
   private async logErrorToDB(message: string, subtitleId: string) {
@@ -65,197 +67,123 @@ export class SubtitleService {
     return value.replace(/[^\w.\-]/g, '_');
   }
 
+  /**
+   * Queues the run and returns immediately. Generation itself is the `subtitle` worker's
+   * job: a 45-minute video would otherwise hold an HTTP request open past every proxy
+   * timeout between the browser and the API, with no retry and no progress.
+   */
   async create(input: CreateSubtitleInput, userId: string) {
     const { subtitleId, language, targetLanguage, duration } = input;
 
-    try {
-      const { data: profileData, error: profileError } = await this.supabaseService.getClient()
-        .from('profiles')
-        .select('credits')
-        .eq('user_id', userId)
-        .single();
+    const { data: profileData, error: profileError } = await this.supabaseService.getClient()
+      .from('profiles')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
 
-      if (profileError || !profileData) {
-        await this.logErrorToDB('Profile not found or profile fetch failed', subtitleId);
-        throw new NotFoundException('Profile not found');
-      }
+    if (profileError || !profileData) {
+      await this.logErrorToDB('Profile not found or profile fetch failed', subtitleId);
+      throw new NotFoundException('Profile not found');
+    }
 
-      const subtitleMultiplier = this.getEnvNumber(
-        'SUBTITLE_CREDIT_MULTIPLIER',
-        SUBTITLE_CREDIT_MULTIPLIER,
-      );
-      const tokensPerCredit = this.getEnvNumber('TOKENS_PER_CREDIT', TOKENS_PER_CREDIT);
-      const minCredits = getMinimumCreditsForSubtitleRequest(subtitleMultiplier);
-      if (!hasEnoughCredits(profileData.credits, minCredits)) {
-        await this.logErrorToDB('Insufficient credits', subtitleId);
-        throw new ForbiddenException('Insufficient credits. Please upgrade your plan or earn more credits.');
-      }
+    const subtitleMultiplier = this.getEnvNumber(
+      'SUBTITLE_CREDIT_MULTIPLIER',
+      SUBTITLE_CREDIT_MULTIPLIER,
+    );
+    const minCredits = getMinimumCreditsForSubtitleRequest(subtitleMultiplier);
+    if (!hasEnoughCredits(profileData.credits, minCredits)) {
+      await this.logErrorToDB('Insufficient credits', subtitleId);
+      throw new ForbiddenException('Insufficient credits. Please upgrade your plan or earn more credits.');
+    }
 
-      const { data: subtitle, error: subtitleError } = await this.supabaseService.getClient()
-        .from('subtitle_jobs')
-        .select('video_url, video_gs_uri')
-        .eq('user_id', userId)
-        .eq('id', subtitleId)
-        .single();
+    const { data: subtitle, error: subtitleError } = await this.supabaseService.getClient()
+      .from('subtitle_jobs')
+      .select('video_url, video_gs_uri, status')
+      .eq('user_id', userId)
+      .eq('id', subtitleId)
+      .single();
 
-      if ((subtitleError && subtitleError.code !== 'PGRST116') || !subtitle?.video_gs_uri) {
-        await this.logErrorToDB('Subtitle lookup failed or video_gs_uri missing', subtitleId);
-        throw new NotFoundException('Subtitle lookup error');
-      }
+    if ((subtitleError && subtitleError.code !== 'PGRST116') || !subtitle?.video_gs_uri) {
+      await this.logErrorToDB('Subtitle lookup failed or video_gs_uri missing', subtitleId);
+      throw new NotFoundException('Subtitle lookup error');
+    }
 
-      const video_url = subtitle.video_url;
-      const video_gs_uri = subtitle.video_gs_uri;
-      const ai = await createGoogleAI(this.configService);
+    if (subtitle.status === 'processing') {
+      throw new ConflictException('This video is already being transcribed. Please wait for it to finish.');
+    }
 
-      const isAutoDetect = !language || language.toLowerCase() === 'auto detect' || language.toLowerCase() === 'auto';
-      const languageInstruction = isAutoDetect
-        ? "Automatically detect the language being spoken and transcribe in that language."
-        : `Transcribe the audio in ${language}.`;
+    const sourceLanguage = language || SUBTITLE_AUTO_DETECT;
+    const target = targetLanguage || SUBTITLE_NO_TRANSLATION;
+    const bullJobId = `sub-${userId}-${Date.now()}`;
 
-      const hasTargetLanguage = targetLanguage && targetLanguage.toLowerCase() !== 'none' && targetLanguage.toLowerCase() !== 'same';
-      const targetLanguageInstruction = hasTargetLanguage
-        ? `After transcription, translate all subtitle text to ${targetLanguage}. Maintain the same timestamps but provide the translated text.`
-        : "Provide subtitles in the original/detected language without translation.";
+    const { error: queueUpdateError } = await this.supabaseService.getClient()
+      .from('subtitle_jobs')
+      .update({
+        status: 'queued',
+        job_id: bullJobId,
+        language: sourceLanguage,
+        target_language: target,
+        duration: duration,
+        error_message: null,
+      })
+      .eq('id', subtitleId)
+      .eq('user_id', userId);
 
-      const prompt = `
-You are an expert, highly-accurate subtitle transcription service.
-Your task is to transcribe the provided audio file and generate precise, time-stamped subtitles.
+    if (queueUpdateError) {
+      throw new InternalServerErrorException('Failed to queue subtitle job');
+    }
 
-**LANGUAGE INSTRUCTION:** ${languageInstruction}
+    await this.queue.add(
+      'generate-subtitles',
+      {
+        userId,
+        subtitleId,
+        bullJobId,
+        videoGsUri: subtitle.video_gs_uri,
+        mimeType: getMimeTypeFromUrl(subtitle.video_url),
+        language: sourceLanguage,
+        targetLanguage: target,
+      },
+      { jobId: bullJobId },
+    );
 
-**TARGET LANGUAGE INSTRUCTION:** ${targetLanguageInstruction}
+    return { success: true, subtitleId, jobId: bullJobId };
+  }
 
-**CRITICAL RULES:**
-1.  **Format:** Your entire response MUST be a valid JSON object with two keys: "detected_language" (string) and "subtitles" (array). Do NOT include any text, headers, or markdown formatting (like \`\`\`json) before or after the object.
-2.  **Language Detection:** The "detected_language" field MUST contain the full name of the language detected in the audio (e.g., "English", "Spanish", "Hindi", "French", etc.).
-3.  **Translation:** ${hasTargetLanguage ? `Translate all subtitle text to ${targetLanguage} while keeping timestamps accurate. The subtitle text should be in ${targetLanguage}, not the original language.` : 'Provide subtitles in the detected/original language.'}
-4.  **Timestamps:** Timestamps MUST be in the exact \`HH:MM:SS.mmm\` format (hours:minutes:seconds.milliseconds).
-5.  **Punctuation:** Include correct punctuation (commas, periods, question marks) for readability.
-6.  **Silence:** Do NOT generate subtitle entries for periods of silence.
-7.  **Non-Speech:** (Optional) Transcribe significant non-speech sounds in brackets, e.g., [MUSIC], [LAUGHTER], [APPLAUSE].
-8.  **Accuracy:** Transcribe the audio verbatim. Do not paraphrase or correct the speaker's grammar. ${hasTargetLanguage ? `When translating, maintain the meaning and tone of the original speech.` : ''}
-9.  **SUBTITLE LENGTH:** Keep each subtitle entry SHORT and concise. Each subtitle should contain a maximum of 1-2 short sentences or 5-10 words. Break longer sentences into multiple subtitle entries with appropriate timestamps. This ensures subtitles are readable and don't cover the entire screen. Think of comfortable reading speed - viewers should be able to read the subtitle in 2-3 seconds.
+  /**
+   * Cancels a queued or running job. A waiting job is removed outright; an active one is
+   * flagged in Redis and the worker throws at its next checkpoint.
+   */
+  async cancel(jobId: string, userId: string) {
+    const { data: row } = await this.supabaseService.getClient()
+      .from('subtitle_jobs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('job_id', jobId)
+      .maybeSingle();
 
-10. **Title:** Generate a short, descriptive title (max 60 characters) summarizing the main topic of the video based on the transcribed content. The title should be concise and meaningful.
+    if (!row) throw new NotFoundException('Subtitle job not found');
 
-**Output Example:**
-{
-  "detected_language": "English",
-  "title": "Introduction to Machine Learning Basics",
-  "subtitles": [
-    { "start": "00:00:01.200", "end": "00:00:04.100", "text": "${hasTargetLanguage ? `[Translated text in ${targetLanguage}]` : 'Hello everyone, and welcome.'}" },
-    { "start": "00:00:04.350", "end": "00:00:07.000", "text": "${hasTargetLanguage ? `[Translated text in ${targetLanguage}]` : 'Today we\'re going to discuss...'}" },
-    { "start": "00:00:07.100", "end": "00:00:08.000", "text": "[MUSIC]" }
-  ]
-}
-`;
+    const job = await this.queue.getJob(jobId);
+    if (!job) return { message: 'Job already finished' };
 
-      const fileType = getMimeTypeFromUrl(video_url);
-
-      // Vertex AI reads the media directly from GCS via its gs:// URI (no inline bytes,
-      // no Files API). This lifts the old ~50MB inline ceiling to GCS's 2GB object limit.
-      const parts = [
-        { text: prompt },
-        {
-          fileData: {
-            fileUri: video_gs_uri,
-            mimeType: fileType,
-          },
-        },
-      ];
-
-      let result: any;
-      try {
-        result = await ai.models.generateContent({
-          model: GEMINI_TEXT_MODEL,
-          contents: [{ role: "user", parts }],
-        });
-      } catch (geminiError) {
-        this.logger.error('Gemini API error', geminiError);
-        await this.logErrorToDB(`Gemini API error: ${geminiError}`, subtitleId);
-        throw new InternalServerErrorException('Failed to generate subtitles from Gemini API');
-      }
-
-      let subtitlesData;
-      try {
-        const rawText = result.text;
-        const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        subtitlesData = JSON.parse(cleanedText);
-
-        if (!subtitlesData.detected_language || !subtitlesData.subtitles || !subtitlesData.title) {
-          throw new Error('Invalid response structure from Gemini');
-        }
-      } catch (parseError) {
-        await this.logErrorToDB(`Failed to parse Gemini JSON: ${String(parseError)}`, subtitleId);
-        this.logger.error('Failed to parse JSON from Gemini', parseError);
-        throw new InternalServerErrorException('Failed to parse subtitle data');
-      }
-
-      const subtitlesJson = subtitlesData.subtitles;
-      const detectedLanguage = subtitlesData.detected_language;
-      const generatedTitle = (subtitlesData.title as string)?.slice(0, 60);
-
-      const { data, error: subtitleInsertError } = await this.supabaseService.getClient()
-        .from("subtitle_jobs")
-        .update({
-          subtitles_json: subtitlesJson,
-          status: "done",
-          language: language,
-          detected_language: detectedLanguage,
-          target_language: targetLanguage,
-          duration: duration,
-          title: generatedTitle,
-        })
-        .eq("id", subtitleId)
-        .eq("user_id", userId)
-        .select()
-        .single();
-
-      if (subtitleInsertError) {
-        await this.logErrorToDB(`Failed to update subtitles: ${subtitleInsertError.message}`, subtitleId);
-        throw new InternalServerErrorException('Failed to update subtitles');
-      }
-
-      const totalTokens = result?.usageMetadata?.totalTokenCount ?? 0;
-      const creditsConsumed = calculateSubtitleCredits(
-        { totalTokens },
-        { tokensPerCredit, multiplier: subtitleMultiplier },
-      );
-
-      if (!hasEnoughCredits(profileData.credits, creditsConsumed)) {
-        await this.logErrorToDB('Insufficient credits for token usage', subtitleId);
-        throw new ForbiddenException('Insufficient credits for this operation.');
-      }
-
-      const { error: updateError } = await this.supabaseService.getClient()
-        .rpc('update_user_credits', {
-          user_uuid: userId,
-          credit_change: -creditsConsumed,
-        });
-
-      if (updateError) {
-        this.logger.error('Error updating credits', updateError);
-        if (updateError.message?.includes('Insufficient credits')) {
-          throw new ForbiddenException('Insufficient credits for this operation.');
-        }
-        throw new InternalServerErrorException('Failed to update credits');
-      }
-
+    const state = await job.getState();
+    if (state === 'waiting' || state === 'delayed') {
+      await job.remove();
       await this.supabaseService.getClient()
         .from('subtitle_jobs')
-        .update({ credits_consumed: creditsConsumed, total_tokens: totalTokens })
-        .eq('id', subtitleId);
-
-      return {
-        success: true,
-        detected_language: detectedLanguage,
-        target_language: hasTargetLanguage ? targetLanguage : detectedLanguage,
-        creditsConsumed,
-        totalTokens,
-      };
-    } catch (error) {
-      throw error;
+        .update({ status: 'failed', error_message: 'Cancelled by user' })
+        .eq('id', row.id);
+      return { message: 'Subtitle generation cancelled' };
     }
+
+    if (state === 'active') {
+      const client = await this.queue.client;
+      await client.set(`${SUBTITLE_CANCEL_PREFIX}${jobId}`, '1', 'EX', 3600);
+      return { message: 'Cancellation requested' };
+    }
+
+    return { message: 'Job already finished' };
   }
 
   async findAll(userId: string) {

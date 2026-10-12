@@ -207,7 +207,7 @@ export function VideoUrlForm({
                                     ) : (
                                         <Upload className="mr-2 h-5 w-5" />
                                     )}
-                                    {isAiTrained ? "Re-train AI" : "Start Training"}
+                                    {isAiTrained ? "Rebuild AI Memory" : "Build AI Memory"}
                                 </>
                             )}
                         </Button>

@@ -40,7 +40,7 @@ export function GenerationProgress({
   hint,
   compact = false,
   onStop,
-  stopLabel = "Stop Training",
+  stopLabel = "Stop",
 }: GenerationProgressProps) {
   const resolvedSteps = steps.length > 0 ? steps : DEFAULT_STEPS
 

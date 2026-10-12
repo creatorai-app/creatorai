@@ -105,7 +105,7 @@ export default function Dashboard() {
 
       if (error) throw error
       setShowDisconnectDialog(false)
-      toast.success("YouTube channel disconnected. Your trained style data has been deleted.")
+      toast.success("YouTube channel disconnected. Your AI memory has been deleted.")
       await fetchUserProfile(user.id)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to disconnect YouTube channel."
@@ -150,10 +150,10 @@ export default function Dashboard() {
                   subtitles, dubs and ideas are untouched.
                 </p>
                 <p>
-                  To get personalised results again you would need to reconnect and train
+                  To get personalised results again you would need to reconnect and rebuild your AI memory
                   from scratch
                   {profile?.free_training_used
-                    ? ", which costs credits — the free first training has already been used."
+                    ? ", which costs credits — the free first memory build has already been used."
                     : "."}
                 </p>
               </div>

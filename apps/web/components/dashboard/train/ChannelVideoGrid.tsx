@@ -134,7 +134,7 @@ export function ChannelVideoGrid({
                   ) : (
                     <Upload className="mr-1.5 h-4 w-4" />
                   )}
-                  {isAiTrained ? "Re-train Model" : "Start Training"}
+                  {isAiTrained ? "Rebuild AI Memory" : "Build AI Memory"}
                 </>
               )}
             </Button>

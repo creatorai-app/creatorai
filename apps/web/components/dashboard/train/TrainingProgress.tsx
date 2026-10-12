@@ -6,7 +6,7 @@ import { GenerationProgress, type GenerationProgressStep } from "@/components/da
 const TRAIN_STEPS: GenerationProgressStep[] = [
   { label: "Queued", icon: Loader2, threshold: 0 },
   { label: "Analyzing", icon: Sparkles, threshold: 10 },
-  { label: "Training", icon: Bot, threshold: 30 },
+  { label: "Building", icon: Bot, threshold: 30 },
   { label: "Saving", icon: Upload, threshold: 80 },
   { label: "Done", icon: CheckCircle2, threshold: 100 },
 ]
@@ -22,7 +22,7 @@ export function TrainingProgress({ progress, statusMessage, onStop }: TrainingPr
     <GenerationProgress
       progress={progress}
       statusMessage={statusMessage}
-      title="Model Training in Progress"
+      title="Building Your AI Memory"
       steps={TRAIN_STEPS}
       hint="This may take 2-5 minutes depending on video length"
       onStop={onStop}

@@ -131,21 +131,21 @@ export const CORE_FEATURES: ProductFeature[] = [
     id: "ai-studio",
     title: "AI Studio",
     cardDescription:
-      "Train the AI on your own YouTube videos so every script matches your tone, pacing and vocabulary.",
-    tagline: "Train the AI to sound like you",
+      "Build AI memory from your own YouTube videos so every script matches your tone, pacing and vocabulary.",
+    tagline: "Build an AI memory that sounds like you",
     description:
-      "Connect your YouTube channel and pick a few of your best videos. The AI watches them and learns your tone, vocabulary, pacing, and style. Once trained, everything it creates is personalized to you, not generic.",
+      "Connect your YouTube channel and pick a few of your best videos. The AI watches them and builds a memory of your tone, vocabulary, pacing, and style. Once that memory is built, everything it creates is personalized to you, not generic.",
     highlights: [
       "Connect your YouTube channel in one click",
-      "Select 3-5 videos to train your personal AI model",
+      "Select 3-5 videos to build your personal AI memory",
       "AI learns your speaking style, humor, and vocabulary",
       "Powers all other features with your unique voice",
     ],
     icon: Video,
     gradient: "from-purple-500 to-indigo-500",
-    seoTitle: "Train AI on Your YouTube Channel | Creator AI Studio",
+    seoTitle: "Build AI Memory From Your YouTube Channel | Creator AI Studio",
     seoDescription:
-      "Train AI on your YouTube channel in minutes. AI Studio learns your tone, pacing and vocabulary from your own videos, then writes everything in your voice.",
+      "Build AI memory from your YouTube channel in minutes. AI Studio learns your tone, pacing and vocabulary from your own videos, then writes everything in your voice.",
     focusKeyword: "train ai on your youtube channel",
     keywords: [
       "ai trained on your own videos",
@@ -154,9 +154,9 @@ export const CORE_FEATURES: ProductFeature[] = [
       "personalised ai for youtube creators",
       "ai writing in your own voice",
     ],
-    h1: "Train AI on Your YouTube Channel",
+    h1: "Build AI Memory From Your YouTube Channel",
     answerSummary:
-      "AI Studio trains Creator AI on your YouTube channel so everything it writes sounds like you rather than a generic model. You connect your channel, pick three to five videos you are happy with, and the AI studies your tone, vocabulary, pacing and structure. That trained voice profile then powers scripts, ideas, story outlines and dubbing across the rest of the product.",
+      "AI Studio builds Creator AI's memory of your YouTube channel so everything it writes sounds like you rather than a generic model. You connect your channel, pick three to five videos you are happy with, and the AI studies your tone, vocabulary, pacing and structure. That AI memory then powers scripts, ideas, story outlines and dubbing across the rest of the product.",
     steps: [
       {
         title: "Connect your channel",
@@ -171,7 +171,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         title: "Generate in your own voice",
         description:
-          "Training runs in the background. After it finishes, every script, idea and outline is written through your voice profile instead of a default model tone.",
+          "Building your AI memory runs in the background. After it finishes, every script, idea and outline is written through your voice profile instead of a default model tone.",
       },
     ],
     sections: [
@@ -180,7 +180,7 @@ export const CORE_FEATURES: ProductFeature[] = [
         body: [
           "Ask a general-purpose model for a YouTube script and you get the average of every script on the internet. It is competent, it is structurally fine, and it sounds like no particular person. Viewers notice inside about fifteen seconds, which is exactly the window where they decide whether to stay.",
           "The problem is not the model's writing ability, it is that a prompt is a very thin description of a voice. Tell a model to be *casual and funny* and it produces a stranger's idea of casual and funny. What it cannot do from a prompt is reproduce the specific way you open a video, the phrases you overuse, or the pacing you have settled into after two hundred uploads.",
-          "**Training on your own videos closes that gap by giving the model examples instead of adjectives.** Your uploads already contain everything a description leaves out.",
+          "**Building AI memory from your own videos closes that gap by giving the model examples instead of adjectives.** Your uploads already contain everything a description leaves out.",
         ],
       },
       {
@@ -192,33 +192,33 @@ export const CORE_FEATURES: ProductFeature[] = [
         ],
       },
       {
-        heading: "Retraining, and when to train AI on your YouTube channel again",
+        heading: "Rebuilding your AI memory, and when to do it",
         body: [
-          "Channels drift. The way you presented two years ago is not the way you present now, and a voice profile pinned to old uploads slowly stops matching. Retraining on a fresher set of videos takes the same few minutes as the first run.",
-          "It is also the fastest fix when output feels slightly off. Nine times out of ten the problem is the training set rather than the prompt: a profile built from three unusually formal videos keeps producing unusually formal scripts no matter what you type into the brief.",
+          "Channels drift. The way you presented two years ago is not the way you present now, and a voice profile pinned to old uploads slowly stops matching. Rebuilding the memory from a fresher set of videos takes the same few minutes as the first run.",
+          "It is also the fastest fix when output feels slightly off. Nine times out of ten the problem is the set of videos the memory was built from rather than the prompt: a profile built from three unusually formal videos keeps producing unusually formal scripts no matter what you type into the brief.",
         ],
       },
     ],
     faqs: [
       {
-        question: "How many videos do I need to train the AI?",
+        question: "How many videos do I need to build AI memory?",
         answer:
           "Three to five is enough. More videos do not linearly improve the profile, and a large set of inconsistent uploads produces a blurrier voice than a small set of characteristic ones.",
       },
       {
         question: "Does Creator AI get permission to post to my channel?",
         answer:
-          "No. The connection is read-only. Creator AI reads your public video data and the uploads you select for training, and it never publishes, edits or comments on your behalf.",
+          "No. The connection is read-only. Creator AI reads your public video data and the uploads you select for your AI memory, and it never publishes, edits or comments on your behalf.",
       },
       {
         question: "What if my channel is new and I only have a few videos?",
         answer:
-          "You can train on as little as one video, though the profile is thinner. Creators starting out often train on whichever videos sound closest to how they want to sound, then retrain once they have a real back catalogue.",
+          "You can build AI memory from as little as one video, though the profile is thinner. Creators starting out often pick whichever videos sound closest to how they want to sound, then rebuild once they have a real back catalogue.",
       },
       {
-        question: "Can I retrain the AI later?",
+        question: "Can I rebuild my AI memory later?",
         answer:
-          "Yes, as often as you like. Retraining replaces the existing voice profile, and everything generated afterwards uses the new one.",
+          "Yes, as often as you like. Rebuilding replaces the existing AI memory, and everything generated afterwards uses the new one.",
       },
     ],
     relatedFeatures: ["scripts", "ideation"],
@@ -251,7 +251,7 @@ export const CORE_FEATURES: ProductFeature[] = [
     gradient: "from-pink-500 to-rose-500",
     seoTitle: "AI Script Writing for YouTube, in Your Voice | Creator AI",
     seoDescription:
-      "AI script writing for YouTube that sounds like you. Get a full script with a hook, real transitions and a closing CTA, trained on your own channel.",
+      "AI script writing for YouTube that sounds like you. Get a full script with a hook, real transitions and a closing CTA, built on your channel's AI memory.",
     focusKeyword: "ai script writing for youtube",
     keywords: [
       "ai youtube script writer",
@@ -262,7 +262,7 @@ export const CORE_FEATURES: ProductFeature[] = [
     ],
     h1: "AI Script Writing for YouTube, in Your Own Voice",
     answerSummary:
-      "Creator AI turns a one-line brief into a complete YouTube script written through your trained voice profile. You get a hook built for the first fifteen seconds, sections that flow rather than restart, and a closing call to action, in the language and runtime you choose. Because the model is trained on your uploads, the draft starts close to your voice instead of needing to be rewritten into it.",
+      "Creator AI turns a one-line brief into a complete YouTube script written through your AI memory. You get a hook built for the first fifteen seconds, sections that flow rather than restart, and a closing call to action, in the language and runtime you choose. Because the AI memory is built from your uploads, the draft starts close to your voice instead of needing to be rewritten into it.",
     steps: [
       {
         title: "Describe the video",
@@ -301,7 +301,7 @@ export const CORE_FEATURES: ProductFeature[] = [
         heading: "Where the free generator ends and this begins",
         body: [
           "The [free YouTube script generator](/tools/free-youtube-script-generator) writes from your prompt alone, with no account, and the output is yours to use. It is genuinely useful for a one-off.",
-          "The difference here is the voice profile. A trained account writes through [AI Studio](/features/ai-studio), so the draft arrives already sounding like your channel instead of needing a pass to make it sound like anyone at all. Across a weekly upload schedule, that pass is the actual cost.",
+          "The difference here is the voice profile. An account with AI memory writes through [AI Studio](/features/ai-studio), so the draft arrives already sounding like your channel instead of needing a pass to make it sound like anyone at all. Across a weekly upload schedule, that pass is the actual cost.",
         ],
       },
     ],
@@ -322,9 +322,9 @@ export const CORE_FEATURES: ProductFeature[] = [
           "Yes. Add links, pasted references or uploaded files as context and the script draws on them, which is how you keep a factual video factual.",
       },
       {
-        question: "Do I have to train the AI before writing scripts?",
+        question: "Do I have to build AI memory before writing scripts?",
         answer:
-          "No, but it is the difference between a good generic script and a draft in your voice. Untrained accounts get the same structure with a default tone.",
+          "No, but it is the difference between a good generic script and a draft in your voice. Accounts without AI memory get the same structure with a default tone.",
       },
     ],
     relatedFeatures: ["ai-studio", "story-builder"],
@@ -350,8 +350,8 @@ export const CORE_FEATURES: ProductFeature[] = [
     highlights: [
       "AI-powered trend analysis for your niche",
       "Auto mode or manual topic focus",
-      "Generate up to 10 ideas per session",
-      "Comparison matrix to weigh the ideas side by side",
+      "One idea per run on Starter, up to 3 on Creator, up to 10 on Pro and above",
+      "Comparison matrix to weigh the ideas side by side on paid plans",
       "Opportunity scores and trend snapshots for each idea",
     ],
     icon: Lightbulb,
@@ -405,7 +405,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         heading: "AI video ideas for YouTube that fit your channel, not the average one",
         body: [
-          "Trend data on its own produces ideas for a generic creator in your niche. Combined with a trained voice profile and your upload history, the same trend produces ideas you could actually make: the angle assumes your format, your depth, and the audience you already have.",
+          "Trend data on its own produces ideas for a generic creator in your niche. Combined with your AI memory and upload history, the same trend produces ideas you could actually make: the angle assumes your format, your depth, and the audience you already have.",
           "There is a free version of this at the [YouTube video ideas generator](/tools/free-youtube-video-ideas-generator), which works from a niche alone and needs no account.",
         ],
       },
@@ -424,7 +424,7 @@ export const CORE_FEATURES: ProductFeature[] = [
       {
         question: "How many ideas can I generate at once?",
         answer:
-          "Up to ten per session, three by default, with a comparison matrix so you can weigh them side by side. The cap is deliberate: ten scored ideas you will compare beats fifty you will not read.",
+          "One per run on Starter, up to three on Creator and up to ten on Pro and above. Paid plans add a comparison matrix so you can weigh them side by side. The cap is deliberate: ten scored ideas you will compare beats fifty you will not read.",
       },
       {
         question: "Do the ideas come with anything I can film from?",
@@ -657,21 +657,22 @@ export const CORE_FEATURES: ProductFeature[] = [
     id: "subtitles",
     title: "Subtitles",
     cardDescription:
-      "Auto-generate accurate video subtitles, edit them inline against the player, and export them as SRT or VTT.",
+      "Auto-generate accurate video subtitles in 70+ languages, edit them inline against the player, and export them as SRT or VTT.",
     tagline: "Accurate subtitles, automatically",
     description:
-      "Upload your video and get timed subtitles generated automatically. Edit them inline with a built-in video player, style them how you want, and export as SRT or VTT. No manual transcription needed.",
+      "Upload your video and get timed subtitles generated automatically, in any of 70+ languages. Translate them into another language in the same pass, edit them inline with a built-in video player, and export as SRT or VTT. No manual transcription needed.",
     highlights: [
-      "Auto-transcription from video upload",
+      "Auto-transcription from video upload, in 70+ languages",
+      "Translate captions into another language as they are generated",
       "Built-in subtitle editor with video player",
       "Style and customize your subtitles",
       "Export as SRT or VTT files",
     ],
     icon: MessageSquare,
     gradient: "from-violet-500 to-purple-500",
-    seoTitle: "Automatic Video Subtitle Generator With SRT and VTT Export",
+    seoTitle: "Automatic Video Subtitle Generator in 70+ Languages",
     seoDescription:
-      "An automatic video subtitle generator with an inline editor and SRT or VTT export. Upload a video, get timed captions, fix what matters, then publish.",
+      "An automatic video subtitle generator covering 70+ languages, with an inline editor and SRT or VTT export. Upload a video, get timed captions, fix what matters, then publish.",
     focusKeyword: "automatic video subtitle generator",
     keywords: [
       "auto generate subtitles for video",
@@ -679,10 +680,11 @@ export const CORE_FEATURES: ProductFeature[] = [
       "edit subtitles against the video",
       "add captions to youtube videos",
       "video transcription and timing",
+      "subtitle generator for any language",
     ],
     h1: "An Automatic Video Subtitle Generator You Can Actually Edit",
     answerSummary:
-      "Creator AI transcribes an uploaded video into timed subtitles and gives you an editor with the player beside the text, so corrections happen in context. Once the captions are right you export them as SRT or VTT and upload them with the video. That editing step is the point: automatic transcription is fast everywhere, and it is the names, jargon and product terms it gets wrong that cost you.",
+      "Creator AI transcribes an uploaded video into timed subtitles in any of 70+ languages, optionally translating them as it goes, and gives you an editor with the player beside the text, so corrections happen in context. Once the captions are right you export them as SRT or VTT and upload them with the video. That editing step is the point: automatic transcription is fast everywhere, and it is the names, jargon and product terms it gets wrong that cost you.",
     steps: [
       {
         title: "Upload the video",

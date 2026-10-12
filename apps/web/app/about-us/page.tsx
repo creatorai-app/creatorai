@@ -40,7 +40,7 @@ const benefits = [
   },
   {
     title: "Your AI Creative Team",
-    description: "Functions as a copywriter, researcher, scriptwriter, thumbnail assistant, and title generator, trained on you.",
+    description: "Functions as a copywriter, researcher, scriptwriter, thumbnail assistant, and title generator, built on your AI memory.",
     icon: Users,
     gradient: "from-emerald-500 to-green-500",
   },
@@ -52,7 +52,7 @@ const benefits = [
   },
   {
     title: "Grow at Your Pace",
-    description: "Templates, quick-start tools, and AI training that adapts to your evolving style as your channel grows.",
+    description: "Templates, quick-start tools, and AI memory that adapts to your evolving style as your channel grows.",
     icon: Heart,
     gradient: "from-rose-500 to-pink-500",
   },
@@ -60,7 +60,7 @@ const benefits = [
 
 const features = [
   { title: "YouTube Channel Connection", icon: Video, description: "Link your channel to personalize your AI experience." },
-  { title: "Personalized AI Training", icon: Sparkles, description: "Upload 3–5 videos to train a custom AI model for your style and language." },
+  { title: "Personalized AI Memory", icon: Sparkles, description: "Upload 3–5 videos to build an AI memory of your style and language." },
   { title: "Script Generation", icon: PenTool, description: "Input a topic and context to generate personalized scripts or let AI modify your existing draft." },
   { title: "Topic & Idea Research", icon: Search, description: "Add relevant links and stats from the web, uploaded PDFs, or let AI do the research for you." },
   { title: "Thumbnail Generator", icon: ImageIcon, description: "Creates thumbnails based on your past thumbnail style." },
@@ -73,7 +73,7 @@ const futureFeatures = [
   { title: "Course Module", description: "Dedicated feature for educators to create complete course modules and playlists.", icon: BookOpen },
   { title: "Multi-Platform Support", description: "Expand features for TikTok, Instagram Reels, and podcasts.", icon: Globe },
   { title: "Collaboration Mode", description: "Real-time collaboration for teams.", icon: MessageSquare },
-  { title: "Advanced Personalization", description: "Train AI with custom fine-tuned models.", icon: Settings },
+  { title: "Advanced Personalization", description: "Build AI memory with custom fine-tuned models.", icon: Settings },
   { title: "Creator Community", description: "Share generated content, templates, best prompts, and experiences.", icon: Users },
 ]
 
@@ -223,7 +223,7 @@ export default function AboutPage() {
 
           <InfiniteMovingCards
             items={[
-              { quote: "Generic AI gives everyone the same script. Creator AI gives you YOUR script, in your voice, your style, your words.", name: "Personalized Scripts", title: "Trained on your past videos" },
+              { quote: "Generic AI gives everyone the same script. Creator AI gives you YOUR script, in your voice, your style, your words.", name: "Personalized Scripts", title: "Built from your past videos" },
               { quote: "Upload 3–5 videos and the AI learns your tone, pacing, and vocabulary. Every output sounds authentically you.", name: "AI That Learns You", title: "Custom model per creator" },
               { quote: "Thumbnails that match your visual identity, not a one-size-fits-all template from a generic tool.", name: "Your Thumbnail Style", title: "Consistent brand identity" },
               { quote: "Subtitles and dubbed audio in multiple languages, all preserving your natural voice through generative cloning.", name: "Your Voice, Any Language", title: "Global reach, personal touch" },

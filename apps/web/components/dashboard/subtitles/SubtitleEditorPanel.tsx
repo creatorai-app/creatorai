@@ -18,6 +18,8 @@ type SubtitleEditorPanelProps = {
     currentSub: SubtitleLine | undefined;
     editingIndex: number | null;
     isGenerating: boolean;
+    progress?: number;
+    statusMessage?: string;
     videoDuration: number | null;
     onAddLine: () => void;
     onUpdate: (idx: number, field: keyof SubtitleLine, val: string) => void;
@@ -34,6 +36,8 @@ export function SubtitleEditorPanel({
     currentSub,
     editingIndex,
     isGenerating,
+    progress,
+    statusMessage,
     videoDuration,
     onAddLine,
     onUpdate,
@@ -63,6 +67,8 @@ export function SubtitleEditorPanel({
                 <div className="flex-1 overflow-y-auto">
                     <SubtitleEmptyState
                         isGenerating={isGenerating}
+                        progress={progress}
+                        statusMessage={statusMessage}
                         videoDuration={videoDuration}
                         onGenerate={onGenerate}
                         onFileChange={onFileChange}

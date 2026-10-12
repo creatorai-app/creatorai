@@ -13,7 +13,7 @@ import { useHannah, sessionTitle, type HannahSession } from "@/hooks/useHannah"
 
 const SUGGESTIONS: Record<"public" | "dashboard", string[]> = {
   public: ["What can Creator AI do?", "How does script writing work?", "How much does it cost?"],
-  dashboard: ["How do I train the AI?", "How many credits do I have left?", "What did I make recently?"],
+  dashboard: ["How do I build AI memory?", "How many credits do I have left?", "What did I make recently?"],
 }
 
 function MessageBody({ content }: { content: string }) {

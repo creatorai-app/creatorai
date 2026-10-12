@@ -29,7 +29,6 @@ const HOW_IT_WORKS_STEPS = [
 
 export default function NewIdeationPage() {
   const router = useRouter();
-  // Every plan has the same idea capabilities, usage is bounded only by credits.
   const { maxIdeas, loading: planLoading } = useCurrentPlan();
   const gate = useAISetupGate();
   // A `?freeRun=` from the signup flow: the visitor made this at /tools

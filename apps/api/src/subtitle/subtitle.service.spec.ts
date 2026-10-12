@@ -1,12 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   InternalServerErrorException,
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getQueueToken } from '@nestjs/bullmq';
 import { SubtitleService } from './subtitle.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
@@ -51,9 +53,11 @@ const freePlan = { data: { plans: { price_monthly: 0 } } };
 describe('SubtitleService', () => {
   let service: SubtitleService;
   let tables: Record<string, any>;
+  let queue: { add: jest.Mock; getJob: jest.Mock };
 
   async function build(overrides: Record<string, any> = {}) {
     jest.clearAllMocks();
+    queue = { add: jest.fn().mockResolvedValue(undefined), getJob: jest.fn().mockResolvedValue(null) };
     (gcsObjectMetadata as jest.Mock).mockResolvedValue({ size: 1_000 });
     tables = {
       subscriptions: chain(freePlan),
@@ -69,12 +73,63 @@ describe('SubtitleService', () => {
           useValue: { getClient: () => ({ from: (t: string) => tables[t], rpc: jest.fn() }) },
         },
         { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: getQueueToken('subtitle'), useValue: queue },
       ],
     }).compile();
     service = module.get(SubtitleService);
   }
 
   beforeEach(() => build());
+
+  describe('create (queues the job)', () => {
+    const videoRow = {
+      data: { id: 'sub-1', video_url: 'https://cdn/v.mp4', video_gs_uri: 'gs://b/u/v.mp4', status: 'queued' },
+      error: null,
+    };
+
+    it('enqueues instead of generating inline, and returns the job id', async () => {
+      await build({ subtitle_jobs: chain(videoRow) });
+      const res = await service.create({ subtitleId: 'sub-1', language: 'en', targetLanguage: 'es' } as any, USER);
+
+      expect(res).toMatchObject({ success: true, jobId: expect.stringContaining('sub-') });
+      expect(queue.add).toHaveBeenCalledWith(
+        'generate-subtitles',
+        expect.objectContaining({ videoGsUri: 'gs://b/u/v.mp4', language: 'en', targetLanguage: 'es' }),
+        expect.objectContaining({ jobId: res.jobId }),
+      );
+    });
+
+    it('defaults a missing language to auto-detect and no translation', async () => {
+      await build({ subtitle_jobs: chain(videoRow) });
+      await service.create({ subtitleId: 'sub-1' } as any, USER);
+      expect(queue.add).toHaveBeenCalledWith(
+        'generate-subtitles',
+        expect.objectContaining({ language: 'auto', targetLanguage: 'same' }),
+        expect.anything(),
+      );
+    });
+
+    it('refuses a second run while one is already processing', async () => {
+      await build({ subtitle_jobs: chain({ data: { ...videoRow.data, status: 'processing' }, error: null }) });
+      await expect(service.create({ subtitleId: 'sub-1' } as any, USER)).rejects.toThrow(ConflictException);
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    it('checks the credit floor before queueing anything', async () => {
+      await build({
+        profiles: chain({ data: { credits: 0 }, error: null }),
+        subtitle_jobs: chain(videoRow),
+      });
+      await expect(service.create({ subtitleId: 'sub-1' } as any, USER)).rejects.toThrow(ForbiddenException);
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    it('404s when the row has no uploaded video', async () => {
+      await build({ subtitle_jobs: chain({ data: { id: 'sub-1', video_gs_uri: null }, error: null }) });
+      await expect(service.create({ subtitleId: 'sub-1' } as any, USER)).rejects.toThrow(NotFoundException);
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+  });
 
   describe('getUploadLimit (plan tiers)', () => {
     it('throttles a user with no subscription to the free caps', async () => {

@@ -1,7 +1,7 @@
 "use client"
 
 import { supportedLanguages } from "@repo/validation"
-import { DubLanguagePicker } from "@/components/dashboard/dubbing/DubLanguagePicker"
+import { LanguagePicker } from "@/components/dashboard/common/LanguagePicker"
 
 const DETECT = "auto"
 
@@ -22,7 +22,7 @@ export function DubSourceLanguage({
   disabled?: boolean
 }) {
   return (
-    <DubLanguagePicker
+    <LanguagePicker
       value={value ?? DETECT}
       onChange={(v) => onChange(v === DETECT ? null : v)}
       options={[

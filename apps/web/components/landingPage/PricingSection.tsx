@@ -8,7 +8,7 @@ import { WobbleCard } from "@repo/ui/wobble-card";
 import * as motion from "motion/react-m";
 import { Check } from "lucide-react";
 import { useSupabase } from "../supabase-provider";
-import { MARKETING_PLANS, SHARED_PLAN_FEATURES, type MarketingPlan } from "@/lib/pricing-plans"
+import { MARKETING_PLANS, type MarketingPlan } from "@/lib/pricing-plans"
 import { trackFunnel } from "@/lib/funnel"
 
 const containerVariants = {
@@ -131,8 +131,14 @@ function PlanCard({ plan, annual, href }: { plan: MarketingPlan; annual: boolean
     const displayPrice = showAnnual ? plan.priceAnnualMonthly! : plan.priceMonthly
 
     return (
-        <motion.div variants={itemVariants}>
+        // h-full so every card fills the grid row: without it a longer tagline makes one
+        // card taller and its CTA sits lower than the others.
+        <motion.div variants={itemVariants} className="h-full">
             <WobbleCard
+                // h-full has to reach WobbleCard's OUTER section (className lands on its
+                // inner div), or a card with a longer tagline grows and its CTA drops
+                // below the others in the row.
+                containerClassName="h-full"
                 className={cn(
                     "flex flex-col h-full p-6 sm:p-8 md:p-9 relative",
                     isPopular ? "bg-slate-50 dark:bg-slate-700" : "bg-white dark:bg-slate-800",
@@ -170,17 +176,24 @@ function PlanCard({ plan, annual, href }: { plan: MarketingPlan; annual: boolean
                     {plan.tagline}
                 </p>
 
-                <ul className="space-y-2 mb-6 flex-1">
-                    {[...plan.features, ...SHARED_PLAN_FEATURES].map((f, i) => (
-                        <li
-                            key={i}
-                            className="flex items-start text-sm sm:text-base text-slate-600 dark:text-slate-400"
-                        >
-                            <Check className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
-                            {f}
-                        </li>
-                    ))}
-                </ul>
+                <div className="mb-6 flex-1">
+                    {plan.inheritsFrom && (
+                        <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-200">
+                            Everything in {plan.inheritsFrom}, plus:
+                        </p>
+                    )}
+                    <ul className="space-y-2">
+                        {plan.features.map((f, i) => (
+                            <li
+                                key={i}
+                                className="flex items-start text-sm sm:text-base text-slate-600 dark:text-slate-400"
+                            >
+                                <Check className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-500 flex-shrink-0 mt-0.5" />
+                                {f}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
 
                 <Button
                     asChild

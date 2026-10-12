@@ -28,7 +28,7 @@ export function AISetupModal({
 
   const steps = [
     { key: "connect", label: "Connect your YouTube channel", icon: Youtube, done: connected },
-    { key: "train", label: "Train your personal AI model", icon: Brain, done: trained },
+    { key: "train", label: "Build your AI memory", icon: Brain, done: trained },
   ];
 
   const handleConnect = () =>
@@ -52,8 +52,8 @@ export function AISetupModal({
             </div>
             <h3 className="text-2xl font-bold mb-3">Finish setting up your AI</h3>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
-              This feature is powered by your personalized AI. Connect your channel and train your
-              model to start generating content tailored to your unique style.
+              This feature is powered by your personalized AI. Connect your channel and build your
+              AI memory to start generating content tailored to your unique style.
             </p>
 
             <ul className="space-y-3 mb-8">
@@ -92,7 +92,7 @@ export function AISetupModal({
                 onClick={goTrain}
                 className="w-full flex items-center justify-center gap-2 bg-white text-slate-900 font-bold py-4 rounded-2xl hover:bg-slate-50 transition-all active:scale-[0.98]"
               >
-                Go to AI Training <ArrowUpRight className="h-4 w-4" />
+                Go to AI Memory <ArrowUpRight className="h-4 w-4" />
               </button>
             )}
           </div>

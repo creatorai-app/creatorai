@@ -147,7 +147,7 @@ export default function ChannelStatsPage() {
                 )}
                 {profile?.ai_trained && (
                   <span className="inline-flex items-center gap-1 text-[11px] bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 px-2.5 py-1 rounded-full font-medium">
-                    <Brain className="w-3 h-3" /> AI Trained
+                    <Brain className="w-3 h-3" /> AI Memory Built
                   </span>
                 )}
               </div>

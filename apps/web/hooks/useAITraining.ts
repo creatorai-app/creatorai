@@ -14,9 +14,9 @@ interface TrainAiResponse {
 }
 
 const STATUS_MESSAGES = (p: number, state: string): string => {
-  if (state === "waiting" && p === 0) return "Preparing your training job..."
+  if (state === "waiting" && p === 0) return "Preparing your AI memory..."
   if (p > 0 && p < 30) return "Analyzing your videos..."
-  if (p >= 30 && p < 70) return "Processing content and training model..."
+  if (p >= 30 && p < 70) return "Processing content and building AI memory..."
   if (p >= 70 && p < 100) return "Finalizing your model..."
   return "Processing..."
 }
@@ -50,7 +50,7 @@ export function useAITraining() {
     endpoint: "/api/v1/train-ai/status",
     getStatusMessages: STATUS_MESSAGES,
     onComplete: () => {
-      toast.success("Model Training Complete!")
+      toast.success("AI Memory Built!")
       setShowModal(true)
       fetchUserProfile(user?.id || "")
     },
@@ -66,7 +66,7 @@ export function useAITraining() {
         setOutOfCreditsMessage(errorMessage.replace(/^insufficient credits\.\s*/i, ""))
         return
       }
-      toast.error("Training Failed", { description: errorMessage })
+      toast.error("AI Memory Build Failed", { description: errorMessage })
     },
     onFinished: () => {
       setIsTraining(false)
@@ -83,9 +83,9 @@ export function useAITraining() {
       setIsTraining(false)
       setUploading(false)
       setJobId(null)
-      toast.info("Training stopped")
+      toast.info("AI memory build stopped")
     } catch (error) {
-      toast.error("Failed to stop training", {
+      toast.error("Failed to stop the AI memory build", {
         description: getApiErrorMessage(error, "Please try again."),
       })
     }
@@ -129,10 +129,10 @@ export function useAITraining() {
       })
 
       setJobId(jobId)
-      toast.success("Training started! Analyzing your videos...")
+      toast.success("Building your AI memory! Analyzing your videos...")
     } catch (error: unknown) {
-      toast.error("Training Failed to Start", {
-        description: getApiErrorMessage(error, "Failed to start training."),
+      toast.error("AI Memory Build Failed to Start", {
+        description: getApiErrorMessage(error, "Failed to start building AI memory."),
       })
       setIsTraining(false)
       setUploading(false)

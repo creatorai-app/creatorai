@@ -3,44 +3,39 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from "@repo/ui/button";
 import { Label } from "@repo/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/select";
 import { Loader2, Sparkles, Clock, Zap, Globe, Languages } from 'lucide-react';
 import { toast } from 'sonner';
+import { subtitleLanguages, SUBTITLE_AUTO_DETECT, SUBTITLE_NO_TRANSLATION } from "@repo/validation";
+import { LanguagePicker } from "@/components/dashboard/common/LanguagePicker";
 
 type GenerateSubtitlesFormProps = {
     isGenerating: boolean;
     videoDuration: number | null;
     onGenerate: (sourceLanguage: string, targetLanguage: string) => void;
+    /** Live job progress from the worker, 0-100. */
+    progress?: number;
+    statusMessage?: string;
 };
 
 const sourceLanguages = [
-    { value: 'auto', label: 'Auto Detect (Recommended)' },
-    { value: 'English', label: 'English' },
-    { value: 'Spanish', label: 'Spanish' },
-    { value: 'French', label: 'French' },
-    { value: 'German', label: 'German' },
-    { value: 'Hindi', label: 'Hindi' },
-    { value: 'Japanese', label: 'Japanese' },
-    { value: 'Portuguese', label: 'Portuguese' },
-    { value: 'Chinese', label: 'Chinese' },
-    { value: 'Arabic', label: 'Arabic' },
-    { value: 'Russian', label: 'Russian' },
-    { value: 'Italian', label: 'Italian' },
-    { value: 'Korean', label: 'Korean' },
+    { value: SUBTITLE_AUTO_DETECT, label: 'Auto Detect (Recommended)' },
+    ...subtitleLanguages,
 ];
 
 const targetLanguages = [
-    { value: 'same', label: 'Same as Source (No Translation)' },
-    ...sourceLanguages.filter(lang => lang.value !== 'auto')
+    { value: SUBTITLE_NO_TRANSLATION, label: 'Same as Source (No Translation)' },
+    ...subtitleLanguages,
 ];
 
 export function GenerateSubtitlesForm({
     isGenerating,
     videoDuration,
-    onGenerate
+    onGenerate,
+    progress = 0,
+    statusMessage,
 }: GenerateSubtitlesFormProps) {
-    const [sourceLanguage, setSourceLanguage] = useState('auto');
-    const [targetLanguage, setTargetLanguage] = useState('same');
+    const [sourceLanguage, setSourceLanguage] = useState(SUBTITLE_AUTO_DETECT);
+    const [targetLanguage, setTargetLanguage] = useState(SUBTITLE_NO_TRANSLATION);
 
     // Calculate estimates
     const getEstimatedTime = () => {
@@ -50,13 +45,13 @@ export function GenerateSubtitlesForm({
     };
 
     const estimatedTime = getEstimatedTime();
-    const isTranslating = targetLanguage !== 'same';
+    const isTranslating = targetLanguage !== SUBTITLE_NO_TRANSLATION;
 
     // Smart logic for language hints
     useEffect(() => {
-        if (sourceLanguage !== 'auto' && targetLanguage !== 'same' && sourceLanguage === targetLanguage) {
+        if (sourceLanguage !== SUBTITLE_AUTO_DETECT && targetLanguage !== SUBTITLE_NO_TRANSLATION && sourceLanguage === targetLanguage) {
             toast.info("Tip: You selected the same language for Source and Target. Switched to 'Same as Source' for better accuracy.");
-            setTargetLanguage('same');
+            setTargetLanguage(SUBTITLE_NO_TRANSLATION);
         }
     }, [sourceLanguage, targetLanguage]);
 
@@ -83,22 +78,15 @@ export function GenerateSubtitlesForm({
                         <Globe className="w-3.5 h-3.5 text-slate-400" />
                         Video Language
                     </Label>
-                    <Select
+                    <LanguagePicker
                         value={sourceLanguage}
-                        onValueChange={setSourceLanguage}
+                        onChange={setSourceLanguage}
+                        options={sourceLanguages}
+                        placeholder="Select video language"
+                        ariaLabel="Video language"
                         disabled={isGenerating}
-                    >
-                        <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-800 border-0 focus:ring-2 focus:ring-violet-500 rounded-xl text-slate-900 dark:text-white shadow-sm font-medium">
-                            <SelectValue placeholder="Select video language" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                            {sourceLanguages.map((lang) => (
-                                <SelectItem key={lang.value} value={lang.value}>
-                                    {lang.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        className="h-12 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl shadow-sm font-medium"
+                    />
                 </div>
 
                 {/* 2. Subtitle Language */}
@@ -107,22 +95,15 @@ export function GenerateSubtitlesForm({
                         <Languages className="w-3.5 h-3.5 text-slate-400" />
                         Subtitle Language
                     </Label>
-                    <Select
+                    <LanguagePicker
                         value={targetLanguage}
-                        onValueChange={setTargetLanguage}
+                        onChange={setTargetLanguage}
+                        options={targetLanguages}
+                        placeholder="Select subtitle language"
+                        ariaLabel="Subtitle language"
                         disabled={isGenerating}
-                    >
-                        <SelectTrigger className="h-12 bg-slate-50 dark:bg-slate-800 border-0 focus:ring-2 focus:ring-violet-500 rounded-xl text-slate-900 dark:text-white shadow-sm font-medium">
-                            <SelectValue placeholder="Select subtitle language" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px]">
-                            {targetLanguages.map((lang) => (
-                                <SelectItem key={lang.value} value={lang.value}>
-                                    {lang.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        className="h-12 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl shadow-sm font-medium"
+                    />
                 </div>
             </div>
 
@@ -160,9 +141,24 @@ export function GenerateSubtitlesForm({
                 </Button>
 
                 {isGenerating && (
-                    <p className="mt-3 text-xs text-center text-slate-400 animate-pulse">
-                        This usually takes about {estimatedTime || 1} minute(s).
-                    </p>
+                    <div className="mt-3 space-y-2">
+                        <div
+                            className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+                            role="progressbar"
+                            aria-valuenow={progress}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label="Subtitle generation progress"
+                        >
+                            <div
+                                className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                                style={{ width: `${Math.max(progress, 5)}%` }}
+                            />
+                        </div>
+                        <p className="text-xs text-center text-slate-400">
+                            {statusMessage || `This usually takes about ${estimatedTime || 1} minute(s).`}
+                        </p>
+                    </div>
                 )}
             </div>
         </div>

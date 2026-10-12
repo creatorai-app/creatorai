@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: "How does the AI learn my style?",
-    a: "You connect your YouTube channel and select 3-5 of your videos. The AI analyzes your speaking style, tone, vocabulary, and pacing to build a custom model. After that, everything it creates sounds like you.",
+    a: "You connect your YouTube channel and select 3-5 of your videos. The AI analyzes your speaking style, tone, vocabulary, and pacing to build your AI memory. After that, everything it creates sounds like you.",
   },
   {
     q: "What can I create with it?",
@@ -36,11 +36,11 @@ const faqs = [
   },
   {
     q: "Is there a free plan?",
-    a: "Yes! The Starter plan is completely free with 500 credits per month and no credit card required. AI voice training, script generation, ideation, thumbnails, subtitles, story builder and dubbing are all included on the free plan. Paid plans give you more credits, and video generation starts on Pro.",
+    a: "Yes! The Starter plan is completely free with 500 credits per month and no credit card required. Building AI memory on your voice, script generation, ideation, thumbnails, subtitles, story builder and dubbing are all included on the free plan, with 1 video idea and 1 thumbnail per run. Paid plans give you more credits, up to 3 ideas (Creator) or 10 ideas (Pro and above) per run, 3 thumbnail variations, and video generation starts on Pro.",
   },
   {
     q: "Can I export my content?",
-    a: "Absolutely. You can export scripts, download generated thumbnails, export subtitles as SRT or VTT files, and save your video ideas as PDFs.",
+    a: "Absolutely. You can export scripts, download generated thumbnails, export subtitles as SRT or VTT files in any of 70+ languages, and save your video ideas as PDFs.",
   },
 ]
 

@@ -3447,7 +3447,7 @@ Here is what actually happens when you hit generate:
 
 Each idea carries an opportunity score from 0 to 100 combining trend momentum, competition gap and channel fit, plus a rising, stable or declining momentum label. You also get a channel-fit summary listing your best formats, your content gaps and the title patterns that suit your channel. Results export as PDF or JSON, so a shortlist can go straight into your production board.
 
-Every plan gets the same ideation capability, up to 20 ideas per run, with usage bounded by credits rather than feature locks. See [what is included](/features) or [compare plans](/pricing).
+Starter gets 1 idea per run, Creator up to 3, and Pro and above up to 10, with a comparison matrix on paid plans. See [what is included](/features) or [compare plans](/pricing).
 
 ## A YouTube Video Ideation Checklist You Can Steal
 

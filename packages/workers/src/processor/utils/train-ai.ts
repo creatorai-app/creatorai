@@ -31,7 +31,7 @@ import { calculateRetryDelay, logError, shouldRetry } from "./error-handler";
 export async function validateInputs(userId: string, videoUrls: string[]): Promise<void> {
   if (!userId) throw new Error('We could not identify your account. Please sign in again.');
   if (!Array.isArray(videoUrls) || videoUrls.length < 3) {
-    throw new Error('Please select at least 3 videos from your channel to train on.');
+    throw new Error('Please select at least 3 videos from your channel to build your AI memory.');
   }
   const invalid = videoUrls.filter((url) => !extractYouTubeVideoId(url));
   if (invalid.length) {
@@ -46,7 +46,7 @@ export async function validateEnvironment(): Promise<void> {
       oauth: envValidation.isValid,
       project: Boolean(process.env.GOOGLE_CLOUD_PROJECT),
     });
-    throw new Error('Training is temporarily unavailable. Our team has been notified — please try again shortly.');
+    throw new Error('Building AI memory is temporarily unavailable. Our team has been notified — please try again shortly.');
   }
 }
 
@@ -148,11 +148,11 @@ export async function fetchVideoData(
     throw new Error(`${missing} of the selected videos could not be loaded — they may be private or deleted. Please pick different videos.`);
   }
   if (videos.length < 3) {
-    throw new Error('Please select at least 3 videos from your channel to train on.');
+    throw new Error('Please select at least 3 videos from your channel to build your AI memory.');
   }
   for (const video of videos) {
     if (video.snippet.channelId !== channelId) {
-      throw new Error(`"${video.snippet.title}" is not from your connected channel. You can only train on your own videos.`);
+      throw new Error(`"${video.snippet.title}" is not from your connected channel. You can only build AI memory from your own videos.`);
     }
   }
 

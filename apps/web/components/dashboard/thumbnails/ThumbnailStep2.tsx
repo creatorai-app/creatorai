@@ -72,7 +72,7 @@ export default function ThumbnailStep2({
         <div className="space-y-0.5">
           <Label className="text-base">Personalized to your style</Label>
           <p className="text-sm text-muted-foreground">
-            If AI Studio training is complete, thumbnails will match your channel's
+            If your AI memory is built, thumbnails will match your channel's
             visual identity and past thumbnail style automatically.
           </p>
         </div>

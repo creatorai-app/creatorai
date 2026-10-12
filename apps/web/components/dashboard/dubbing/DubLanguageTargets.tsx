@@ -4,7 +4,7 @@ import { Plus, X } from "lucide-react"
 import { Button } from "@repo/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/select"
 import { accentsFor, DUB_ENGINE_INFO, DUB_ENGINES, dubbableLanguagesFor, type DubEngine, type DubTarget } from "@repo/validation"
-import { DubLanguagePicker } from "@/components/dashboard/dubbing/DubLanguagePicker"
+import { LanguagePicker } from "@/components/dashboard/common/LanguagePicker"
 
 /**
  * The languages to dub into, one output each, up to the plan's `max`. Each row picks a
@@ -42,7 +42,7 @@ export function DubLanguageTargets({
         const taken = new Set([...rows.filter((_, i) => i !== index).map((r) => r.language), ...(sourceLanguage ? [sourceLanguage] : [])])
         return (
           <div key={index} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <DubLanguagePicker
+            <LanguagePicker
               value={row.language}
               // A new language clears the dialect: it belonged to the old one.
               onChange={(language) => setRow(index, { language })}

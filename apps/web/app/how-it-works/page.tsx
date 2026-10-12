@@ -51,12 +51,12 @@ const STEPS = [
   },
   {
     n: "02",
-    title: "Train the AI on your best videos",
-    text: "Pick three to five videos that sound most like you. The model watches them, the actual footage rather than the titles and descriptions, and builds a style profile of your tone, pacing, vocabulary and the way you open a video.",
+    title: "Build AI memory from your best videos",
+    text: "Pick three to five videos that sound most like you. The model watches them, the actual footage rather than the titles and descriptions, and builds an AI memory of your tone, pacing, vocabulary and the way you open a video.",
     bullets: [
       "Choose the videos that represent you best",
       "Learns tone, pacing, humour and vocabulary",
-      "Retrain whenever your style moves on",
+      "Rebuild whenever your style moves on",
     ],
     image: "/how-it-works/camera-rig.webp",
     alt: "A professional video camera recording a performance",
@@ -64,7 +64,7 @@ const STEPS = [
   {
     n: "03",
     title: "Create in your own voice",
-    text: "Ask for a script, a set of video ideas, a story structure, a thumbnail or subtitles. Every generation is conditioned on your style profile, so the draft arrives sounding like your channel rather than like an AI.",
+    text: "Ask for a script, a set of video ideas, a story structure, a thumbnail or subtitles. Every generation is conditioned on your AI memory, so the draft arrives sounding like your channel rather than like an AI.",
     bullets: [
       "Scripts with a real hook, sections and a closing CTA",
       "Ideas scored for opportunity in your niche",
@@ -91,7 +91,7 @@ const UNDER_THE_HOOD = [
   {
     icon: Wand2,
     title: "Your style is an input, not a prompt",
-    text: "The profile built during training is attached to every generation. That is the difference between asking a chatbot to \"write like a YouTuber\" and having a model that has watched your videos.",
+    text: "The AI memory built from your videos is attached to every generation. That is the difference between asking a chatbot to \"write like a YouTuber\" and having a model that has watched your videos.",
   },
   {
     icon: Sparkles,
@@ -107,28 +107,28 @@ const UNDER_THE_HOOD = [
 
 const FIRST_TEN_MINUTES = [
   { at: "0:00", label: "Sign in with Google and connect your channel" },
-  { at: "0:30", label: "Pick 3-5 videos and start training" },
-  { at: "~5:00", label: "Training finishes, your style profile is ready" },
+  { at: "0:30", label: "Pick 3-5 videos and start building AI memory" },
+  { at: "~5:00", label: "Your AI memory is ready" },
   { at: "6:00", label: "Generate your first script in your own voice" },
   { at: "8:00", label: "Tweak the hook, export, and start filming" },
 ]
 
 const FAQS = [
   {
-    q: "How long does training take?",
-    a: "A few minutes for three to five videos. You only do it once. After that every script, idea and story structure uses the profile it built, and you can retrain whenever your style changes.",
+    q: "How long does building AI memory take?",
+    a: "A few minutes for three to five videos. You only do it once. After that every script, idea and story structure uses the memory it built, and you can rebuild it whenever your style changes.",
   },
   {
     q: "Do I need a YouTube channel to start?",
-    a: "You can use the free tools with no account at all, and features like subtitles work without connecting a channel. But training is what makes the output sound like you, so a connected channel is where Creator AI earns its keep.",
+    a: "You can use the free tools with no account at all, and features like subtitles work without connecting a channel. But AI memory is what makes the output sound like you, so a connected channel is where Creator AI earns its keep.",
   },
   {
     q: "What does the free plan actually include?",
-    a: "The Starter plan is free, needs no card, and gives you 500 credits a month. That covers AI training, scripts, ideation, story structures, thumbnails and subtitles. Dubbing is available on every plan, with videos up to 45 minutes on Starter. Video generation needs a Pro plan or above.",
+    a: "The Starter plan is free, needs no card, and gives you 500 credits a month. That covers building AI memory, scripts, ideation (1 idea per run), story structures, thumbnails (1 per run) and subtitles. Dubbing is available on every plan, with videos up to 45 minutes on Starter. Video generation needs a Pro plan or above.",
   },
   {
     q: "Will the scripts sound like AI wrote them?",
-    a: "That is the problem the training step exists to solve. The model is conditioned on your own delivery, so the draft comes back in your vocabulary and pacing. Most creators record straight from it with light edits.",
+    a: "That is the problem AI memory exists to solve. The model is conditioned on your own delivery, so the draft comes back in your vocabulary and pacing. Most creators record straight from it with light edits.",
   },
   {
     q: "Can I try it before signing up?",
@@ -141,7 +141,7 @@ const howToJsonLd = {
   "@type": "HowTo",
   name: "How to use Creator AI",
   description:
-    "Connect your YouTube channel, train the AI on your own videos, and generate scripts, thumbnails, subtitles and dubs in your own voice.",
+    "Connect your YouTube channel, build AI memory from your own videos, and generate scripts, thumbnails, subtitles and dubs in your own voice.",
   totalTime: "PT10M",
   step: STEPS.map((s, i) => ({
     "@type": "HowToStep",
@@ -447,7 +447,7 @@ export default function HowItWorksPage() {
         {/* CTA */}
         <section className="bg-slate-900 py-20 text-white">
           <div className="mx-auto max-w-3xl px-6 text-center">
-            <h2 className="text-3xl font-bold md:text-4xl">Train it on your channel tonight</h2>
+            <h2 className="text-3xl font-bold md:text-4xl">Build your AI memory tonight</h2>
             <p className="mx-auto mt-4 max-w-xl text-slate-300 md:text-lg">
               Connect YouTube, pick a few videos, and every script after that sounds like you
               wrote it. 500 free credits a month, no card required.

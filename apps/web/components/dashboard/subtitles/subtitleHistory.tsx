@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { dubLanguageLabel } from "@repo/validation";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import * as motion from "motion/react-m";
@@ -106,13 +107,13 @@ function Row({ item, onDelete }: { item: SubtitleResponse, onDelete: () => void 
                     />
                     <div className="flex flex-col">
                         <span className="truncate max-w-[150px] md:max-w-xs font-semibold text-gray-900">{item.filename}</span>
-                        <span className="md:hidden text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString()} • {item.language}</span>
+                        <span className="md:hidden text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString()} • {dubLanguageLabel(item.language)}</span>
                     </div>
                 </div>
             </TableCell>
             <TableCell className="hidden md:table-cell text-gray-500">{new Date(item.created_at).toLocaleDateString()}</TableCell>
             <TableCell><StatusBadge status={item.status} /></TableCell>
-            <TableCell className="hidden md:table-cell uppercase text-xs font-bold text-gray-500">{item.language}</TableCell>
+            <TableCell className="hidden md:table-cell text-xs font-bold text-gray-500">{dubLanguageLabel(item.language)}</TableCell>
             <TableCell className="text-right">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>

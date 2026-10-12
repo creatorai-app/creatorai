@@ -79,8 +79,27 @@ describe('IdeationService', () => {
     });
 
     it('honors an explicit count within the plan allowance', async () => {
+      await build({}, 'Pro');
       await service.createJob(USER, { ideaCount: 7 });
       expect(queue.add.mock.calls[0][1]).toMatchObject({ ideaCount: 7 });
+    });
+
+    it.each([
+      ['Starter', 1],
+      ['Creator', 3],
+      ['Pro', 10],
+      ['Scale', 10],
+    ])('caps %s at %i ideas per run', async (plan, max) => {
+      await build({}, plan);
+      await expect(service.createJob(USER, { ideaCount: max + 1 })).rejects.toThrow(ForbiddenException);
+      await service.createJob(USER, { ideaCount: max });
+      expect(queue.add.mock.calls[0][1]).toMatchObject({ ideaCount: max });
+    });
+
+    it('defaults Starter to its single idea', async () => {
+      await build({}, 'Starter');
+      await service.createJob(USER, {});
+      expect(queue.add.mock.calls[0][1]).toMatchObject({ ideaCount: 1 });
     });
 
     it('refuses a count above the allowance instead of silently clamping it', async () => {
