@@ -9,7 +9,7 @@ export const BRAND_URL = 'https://trycreatorai.com';
 // black box the old asset had.
 export const LOGO_URL = 'https://trycreatorai.com/lighter%20email%20logo.png';
 
-const FONT_STACK =
+export const FONT_STACK =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
 
 export const COLORS = {
@@ -73,16 +73,7 @@ export function renderEmailLayout({
         </td>
       </tr>`;
 
-  const ctaBlock = cta
-    ? `
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 0;">
-            <tr>
-              <td style="background:${COLORS.accent};border-radius:26px;">
-                <a href="${cta.url}" style="display:inline-block;padding:13px 30px;color:#ffffff;text-decoration:none;font-family:${FONT_STACK};font-size:15px;font-weight:600;">${cta.label}</a>
-              </td>
-            </tr>
-          </table>`
-    : '';
+  const ctaBlock = cta ? button(cta.label, cta.url) : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -117,6 +108,18 @@ ${ctaBlock}
   </table>
 </body>
 </html>`;
+}
+
+/** Pill CTA button. Templates that need it mid-body use this instead of `cta`. */
+export function button(label: string, url: string): string {
+  return `
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 0;">
+            <tr>
+              <td style="background:${COLORS.accent};border-radius:26px;">
+                <a href="${url}" style="display:inline-block;padding:13px 30px;color:#ffffff;text-decoration:none;font-family:${FONT_STACK};font-size:15px;font-weight:600;">${label}</a>
+              </td>
+            </tr>
+          </table>`;
 }
 
 /** Standard body paragraph, so spacing stays consistent between templates. */

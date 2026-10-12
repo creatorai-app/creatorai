@@ -119,6 +119,7 @@ describe('Swagger / OpenAPI Specification', () => {
         { provide: getQueueToken('script'), useValue: mockQueue },
         { provide: getQueueToken('ideation'), useValue: mockQueue },
         { provide: getQueueToken('story-builder'), useValue: mockQueue },
+        { provide: getQueueToken('subtitle'), useValue: mockQueue },
         { provide: getQueueToken('thumbnail'), useValue: mockQueue },
         { provide: getQueueToken('dubbing'), useValue: mockQueue },
         { provide: getQueueToken('video-generation'), useValue: mockQueue },
@@ -419,6 +420,8 @@ describe('Swagger / OpenAPI Specification', () => {
       ['delete', '{id}'],
       ['patch', '{id}'],
       ['post', 'burn'],
+      ['post', 'cancel/{jobId}'],
+      ['get', 'status/{jobId}'],
     ])('%s /%s', (method, path) => {
       const full = path ? `${base}/${path}` : base;
       expect((spec.paths[full] as any)?.[method]).toBeDefined();
@@ -723,6 +726,8 @@ describe('Swagger / OpenAPI Specification', () => {
       ['post', '/api/v1/subtitle'],
       ['patch', '/api/v1/subtitle'],
       ['post', '/api/v1/subtitle/burn'],
+      ['post', '/api/v1/subtitle/cancel/{jobId}'],
+      ['get', '/api/v1/subtitle/status/{jobId}'],
       ['post', '/api/v1/subtitle/from-dub'],
       ['post', '/api/v1/subtitle/upload/finalize'],
       ['get', '/api/v1/subtitle/upload/limit'],

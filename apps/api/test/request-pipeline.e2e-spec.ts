@@ -69,6 +69,7 @@ describe('Request pipeline (e2e)', () => {
         { provide: SupabaseService, useValue: supabaseDouble() },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: 'BullQueue_story-builder', useValue: { add: jest.fn(), getJob: jest.fn() } },
+        { provide: 'BullQueue_subtitle', useValue: { add: jest.fn(), getJob: jest.fn() } },
       ],
     }).compile();
 
