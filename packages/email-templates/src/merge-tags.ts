@@ -13,10 +13,11 @@ export interface RecipientMergeData {
   unsubscribeUrl?: string;
 }
 
-// firstName is derived from fullName (profiles has no first/last split).
-function firstNameOf(fullName: string | null): string {
+// firstName is derived from fullName (profiles has no first/last split). Signup
+// stores the email as full_name when there is no name, which must not read as one.
+export function firstNameOf(fullName: string | null): string {
   const first = (fullName ?? '').trim().split(/\s+/)[0];
-  return first || 'there';
+  return first && !first.includes('@') ? first : 'there';
 }
 
 // The tags an author can use in a template, with their fallbacks. Rendered as a
