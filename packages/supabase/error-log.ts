@@ -19,8 +19,8 @@ const ALERT_COOLDOWN_MINUTES = 30;
 const MAX_STACK = 8000;
 const MAX_MESSAGE = 2000;
 
-/** Same knob and same default the affiliate notifications already use. */
-function alertRecipient(): string {
+/** Same knob and same default the affiliate notifications already use. Also receives dashboard feedback. */
+export function alertRecipient(): string {
   return process.env.ADMIN_NOTIFICATION_EMAIL || 'afrinxnahar@gmail.com';
 }
 

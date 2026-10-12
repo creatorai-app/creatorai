@@ -7,7 +7,9 @@ import { IconMenu2, IconX, IconLock } from "@tabler/icons-react";
 
 interface Links {
     label: string;
-    href: string;
+    /** Navigates when set; otherwise pass onClick and it renders as a button. */
+    href?: string;
+    onClick?: () => void;
     icon: React.JSX.Element | React.ReactNode;
     badge?: string;
     locked?: boolean;
@@ -169,11 +171,12 @@ export const SidebarLink = ({
     className?: string;
 }) => {
     const { open, animate } = useSidebar();
-    const Comp = link.locked ? "div" : "a";
+    const Comp = link.locked ? "div" : link.href ? "a" : "button";
 
     return (
         <Comp
-            {...(!link.locked && { href: link.href })}
+            {...(Comp === "a" && { href: link.href })}
+            {...(Comp === "button" && { type: "button" as const, onClick: link.onClick })}
             className={cn(
                 "flex items-center gap-2 group/sidebar relative",
                 link.locked && "opacity-50 cursor-not-allowed pointer-events-none",
