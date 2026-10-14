@@ -1,7 +1,11 @@
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import { alertRecipient } from '@repo/supabase';
 import { SupabaseService } from '../supabase/supabase.service';
+
+const MAX_SUBJECT = 200;
+const MAX_BODY = 5000;
 
 function escapeHtml(str: string): string {
   return str
@@ -28,6 +32,9 @@ export class SupportService {
     if (!subject || !email || !body) {
       throw new BadRequestException('Missing required fields');
     }
+    if (subject.length > MAX_SUBJECT || body.length > MAX_BODY) {
+      throw new BadRequestException(`Keep the message under ${MAX_BODY} characters`);
+    }
     if (!this.resend) throw new InternalServerErrorException('Email service not configured');
 
     // Persist to admin dashboard first — delivery independent of email provider outage.
@@ -45,7 +52,7 @@ export class SupportService {
 
     const { data, error } = await this.resend.emails.send({
       from: 'Creator AI <notifications@trycreatorai.com>',
-      to: 'support@trycreatorai.com',
+      to: ['support@trycreatorai.com', alertRecipient()],
       replyTo: email,
       subject,
       html: `<div style="font-family: Arial, sans-serif; color: #333; background: #f9f9f9; padding: 20px;">

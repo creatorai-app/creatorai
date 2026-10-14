@@ -64,5 +64,37 @@ describe('SupportService', () => {
         service.reportIssue('Subject', 'user@test.com', '')
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('should throw BadRequestException when body is too long', async () => {
+      await expect(
+        service.reportIssue('Subject', 'user@test.com', 'x'.repeat(5001))
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('delivery', () => {
+    it('emails support and the admin notification address', async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          SupportService,
+          { provide: ConfigService, useValue: { get: () => undefined } },
+          { provide: SupabaseService, useValue: mockSupabaseService },
+        ],
+      }).compile();
+      service = module.get<SupportService>(SupportService);
+      const sendMock = jest.fn().mockResolvedValue({ data: { id: 'e1' }, error: null });
+      (service as any).resend = { emails: { send: sendMock } };
+      process.env.ADMIN_NOTIFICATION_EMAIL = 'admin@test.com';
+
+      await service.reportIssue('Feedback: Other', 'user@test.com', 'Love it');
+
+      expect(sendMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: ['support@trycreatorai.com', 'admin@test.com'],
+          replyTo: 'user@test.com',
+        }),
+      );
+      delete process.env.ADMIN_NOTIFICATION_EMAIL;
+    });
   });
 });

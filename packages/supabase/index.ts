@@ -36,7 +36,7 @@ export const getSupabaseServiceEnv = () => ({
 
 export type { SupabaseClient };
 
-export { reportError } from './error-log';
+export { reportError, alertRecipient } from './error-log';
 export type { ErrorReport } from './error-log';
 
 // Single shared ioredis connection for BullMQ across the API and workers (was

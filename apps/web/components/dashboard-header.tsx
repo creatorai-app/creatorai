@@ -7,8 +7,9 @@ import { Button } from "@repo/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@repo/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@repo/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/avatar";
-import { LogOut, Settings, UserPlus, Coins, BarChart3, Gift, Handshake } from "lucide-react";
+import { LogOut, Settings, UserPlus, Coins, BarChart3, Gift, Handshake, MessageSquareHeart } from "lucide-react";
 import { useSupabase } from "@/components/supabase-provider";
+import { FeedbackDialog } from "@/components/dashboard/common/FeedbackDialog";
 import { toast } from "sonner";
 import { Separator } from "@repo/ui/separator";
 
@@ -29,6 +30,7 @@ export default function DashboardHeader() {
   const [pageTitle, setPageTitle] = useState("");
   const [profile, setProfile] = useState(initialProfile);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,15 +71,31 @@ export default function DashboardHeader() {
         <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/dashboard/referrals">
-                <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20">
-                  <Gift className="h-3.5 w-3.5" />
-                  Refer & Earn 1,000 Credits
-                </Button>
-                <Button variant="outline" size="icon" className="sm:hidden border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Send feedback"
+                onClick={() => setFeedbackOpen(true)}
+                className="h-9 w-9 border-rose-300 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950/20"
+              >
+                <MessageSquareHeart className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Send feedback</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20"
+              >
+                <Link href="/dashboard/referrals" aria-label="Refer and earn 1,000 credits">
                   <Gift className="h-4 w-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-center">
               Earn 1,000 credits when a friend subscribes to a paid plan using
@@ -86,6 +104,7 @@ export default function DashboardHeader() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+        <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
 
         <Link href="/dashboard/settings?tab=usage">
           <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-500/10 to-indigo-500/10 dark:from-purple-500/20 dark:to-indigo-500/20 px-3.5 py-1.5 text-sm ring-1 ring-purple-500/20 dark:ring-purple-400/20 cursor-pointer hover:ring-purple-500/40 dark:hover:ring-purple-400/40 transition-all">
