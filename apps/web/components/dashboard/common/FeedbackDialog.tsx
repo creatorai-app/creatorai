@@ -3,17 +3,11 @@
 import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { toast } from "sonner"
-import { MessageSquareHeart } from "lucide-react"
+import { MessageSquareHeart, Send } from "lucide-react"
 import { Button } from "@repo/ui/button"
+import { Label } from "@repo/ui/label"
 import { Textarea } from "@repo/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@repo/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@repo/ui/dialog"
 import { issueTypes } from "../../../../../packages/ui/src/utils/data"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api-client"
@@ -61,65 +55,71 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <DialogHeader className="items-center gap-3 text-center sm:items-start sm:text-left">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
-              <MessageSquareHeart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+      <DialogContent className="overflow-hidden p-0 sm:max-w-lg [&>button]:top-5 [&>button]:text-white [&>button]:opacity-80 [&>button:hover]:opacity-100">
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 px-6 py-5 pr-12 text-white">
+          <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative flex items-start gap-2.5 pr-8">
+            <div className="rounded-lg bg-white/15 p-2">
+              <MessageSquareHeart className="h-5 w-5" />
             </div>
-            <DialogTitle className="text-xl font-bold">Send feedback</DialogTitle>
-            <DialogDescription>
-              Found a bug or have an idea? It goes straight to the team. Replies go to {user?.email ?? "your email"}.
-            </DialogDescription>
-          </DialogHeader>
+            <div className="min-w-0">
+              <DialogTitle className="text-lg font-bold text-white">Send feedback</DialogTitle>
+              <DialogDescription className="mt-2 text-sm text-purple-100">
+                Found a bug or have an idea? It goes straight to the team.
+              </DialogDescription>
+            </div>
+          </div>
+        </div>
 
-          <div role="group" aria-label="Feedback type" className="grid grid-cols-3 gap-2">
-            {issueTypes.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                aria-pressed={type === t.value}
-                onClick={() => setType(t.value)}
-                className={cn(
-                  "rounded-md border px-2 py-2 text-xs font-medium transition-colors sm:text-sm",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
-                  type === t.value
-                    ? "border-purple-600 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                    : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6 pt-5">
+          <div className="space-y-2">
+            <Label id="feedback-type" className="text-sm font-medium">
+              What kind of feedback?
+            </Label>
+            <div role="group" aria-labelledby="feedback-type" className="grid grid-cols-3 gap-2">
+              {issueTypes.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  aria-pressed={type === t.value}
+                  onClick={() => setType(t.value)}
+                  className={cn(
+                    "rounded-xl border px-2 py-2 text-xs font-medium transition-colors focus-visible:outline-none sm:text-sm",
+                    type === t.value
+                      ? "border-purple-500 bg-purple-50/70 text-purple-700 ring-1 ring-purple-500 dark:bg-purple-900/20 dark:text-purple-300"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-purple-300 focus-visible:border-purple-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-purple-700",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="feedback-message" className="sr-only">
+          <div className="space-y-2">
+            <Label htmlFor="feedback-message" className="text-sm font-medium">
               Your feedback
-            </label>
+            </Label>
             <Textarea
               id="feedback-message"
               required
               maxLength={MAX_MESSAGE}
-              className="min-h-36"
+              rows={5}
+              className="resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-purple-400"
               placeholder="Tell us what happened or what you'd like to see"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
           </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={sending || !message.trim() || !user?.email}
-              className="w-full bg-purple-600 text-white hover:bg-purple-700 sm:w-auto"
-            >
-              {sending ? "Sending..." : "Send feedback"}
-            </Button>
-          </DialogFooter>
+          <Button
+            type="submit"
+            disabled={sending || !message.trim() || !user?.email}
+            className="w-full gap-1.5 border-0 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:from-purple-700 hover:to-indigo-700"
+          >
+            <Send className="h-4 w-4" />
+            {sending ? "Sending..." : "Send feedback"}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

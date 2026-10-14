@@ -23,8 +23,7 @@ import ImageIcon from "./icons/ImageIcon";
 import MessageSquareIcon from "./icons/MessageSquareIcon";
 import BookOpenIcon from "./icons/BookopenIcon";
 import MicIcon from "./icons/MicIcon";
-import { Clapperboard, MessageSquareHeart, Video } from "lucide-react"
-import { FeedbackDialog } from "@/components/dashboard/common/FeedbackDialog"
+import { Clapperboard, Video } from "lucide-react"
 
 interface NavLink {
   label: string
@@ -146,7 +145,6 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }: DashboardSidebarProps) {
   const [open, setOpen] = useState(false)
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const isMobile = useMobile()
   // Must run before the mobile early return so the hook order never changes
   // when the viewport crosses the md breakpoint.
@@ -187,7 +185,7 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
           <span className="sr-only">Toggle sidebar</span>
         </Button>
         <Sheet open={collapsed} onOpenChange={setCollapsed}>
-          <SheetContent side="left" className="flex w-64 flex-col p-0">
+          <SheetContent side="left" className="w-64 p-0">
           <div className="flex h-14 items-center border-b px-4">
             <Link href="/dashboard">
               <Logo />
@@ -196,22 +194,8 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
           <div className="p-2">
             <Nav links={links} onLinkClick={() => setCollapsed(false)} />
           </div>
-          <div className="mt-auto border-t p-2">
-            <button
-              type="button"
-              onClick={() => {
-                setCollapsed(false)
-                setFeedbackOpen(true)
-              }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-slate-800 transition-all hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-white"
-            >
-              <MessageSquareHeart className="h-4 w-4" />
-              Send feedback
-            </button>
-          </div>
           </SheetContent>
         </Sheet>
-        <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
       </>
     )
   }
@@ -262,21 +246,9 @@ export function DashboardSidebar({ collapsed, setCollapsed, pinned, setPinned }:
             })}
           </div>
         </div>
-        <SidebarLink
-          link={{
-            label: "Send feedback",
-            icon: <MessageSquareHeart className="h-4 w-4" />,
-            onClick: () => setFeedbackOpen(true),
-          }}
-          className={cn(
-            "w-full py-2 px-4 justify-start font-medium rounded-md transition-colors duration-150",
-            "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
-          )}
-        />
+        <div />
       </SidebarBody>
     </Sidebar>
-    <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
   )
 }
