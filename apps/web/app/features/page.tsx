@@ -11,7 +11,6 @@ import { ArrowRight } from "lucide-react";
 import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 import {
   CORE_FEATURES as coreFeatures,
-  COMING_SOON_FEATURES as comingSoonFeatures,
   EXTRA_FEATURES as extraFeatures,
 } from "@/lib/product-features"
 
@@ -111,48 +110,6 @@ export default function FeaturesPage() {
             </div>
           </section>
         ))}
-
-        {/* Coming Soon */}
-        <section className="py-20 bg-white">
-          <div className="container max-w-5xl mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                Coming Soon
-              </h2>
-              <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-                We're building even more tools to help you create better content.
-              </p>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {comingSoonFeatures.map((feature, i) => (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="flex flex-col items-center text-center gap-4 p-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 hover:border-purple-300 transition-colors"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                    <feature.icon className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <h3 className="font-semibold text-lg text-slate-800">{feature.title}</h3>
-                  <p className="text-sm text-slate-600">{feature.description}</p>
-                  <span className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-                    Coming Soon
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
 
         {/* Extra Features */}
         <section className="py-20 bg-slate-50">

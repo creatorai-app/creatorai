@@ -6,7 +6,6 @@ import {
   Clapperboard,
   ImageIcon,
   MessageSquare,
-  BookOpen,
   BarChart3,
   Gift,
   Handshake,
@@ -977,16 +976,6 @@ export const CORE_FEATURES: ProductFeature[] = [
         title: "9 Best AI Tools to Turn Long Videos Into YouTube Shorts",
       },
     ],
-  },
-]
-
-export const COMING_SOON_FEATURES: SimpleFeature[] = [
-  {
-    title: "Course Builder",
-    description: "Break down complex topics into structured video courses with organized outlines and scripts.",
-    cardDescription:
-      "Break a complex topic into a structured video course with organized outlines and a script per lesson.",
-    icon: BookOpen,
   },
 ]
 

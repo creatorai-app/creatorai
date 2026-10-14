@@ -17,7 +17,6 @@ CORE FEATURES (each consumes credits; all are personalized once AI memory is bui
 - Subtitles — Auto-transcription in 70+ languages, with optional translation into a second language, an inline editor and video player; style them; export SRT or VTT. Open: /dashboard/subtitles · Learn more: /features#subtitles
 - Video Generation — Text-to-video and image-to-video clips with native audio. Available on the Pro, Business and Scale plans. Open: /dashboard/video-generation
 - Audio Dubbing — Dub audio or video into other languages, each speaker in their own cloned voice. Pick Cypher (in-house dubbing) or ElevenLabs; Creator and Pro dub into 2 languages at once, Business and Scale into 3. Open: /dashboard/dubbing
-- Course Builder — Turn a topic into a structured video course. Coming soon.
 
 EXTRAS:
 - Channel Stats — Your YouTube overview (subscribers, views, video count) in the dashboard. Open: /dashboard/channel-stats

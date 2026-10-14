@@ -16,7 +16,6 @@ import { ThumbnailModule } from './thumbnail/thumbnail.module';
 import { StoryBuilderModule } from './story-builder/story-builder.module';
 import { ReferralModule } from './referral/referral.module';
 import { ScriptModule } from './script/script.module';
-import { CourseModule } from './course/course.module';
 import { YoutubeModule } from './youtube/youtube.module';
 import { UploadModule } from './upload/upload.module';
 import { SupportModule } from './support/support.module';
@@ -62,7 +61,6 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
     StoryBuilderModule,
     ReferralModule,
     ScriptModule,
-    CourseModule,
     YoutubeModule,
     UploadModule,
     SupportModule,

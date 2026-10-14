@@ -16,8 +16,6 @@ import { AdminController } from '../src/admin/admin.controller';
 import { AdminService } from '../src/admin/admin.service';
 import { AffiliateController } from '../src/affiliate/affiliate.controller';
 import { AffiliateService } from '../src/affiliate/affiliate.service';
-import { CourseController } from '../src/course/course.controller';
-import { CourseService } from '../src/course/course.service';
 import { DubbingController } from '../src/dubbing/dubbing.controller';
 import { EmailCampaignController } from '../src/email-campaign/email-campaign.controller';
 import { EmailCampaignService } from '../src/email-campaign/email-campaign.service';
@@ -75,7 +73,6 @@ describe('Swagger / OpenAPI Specification', () => {
         LemonSqueezyWebhookController,
         AdminController,
         AffiliateController,
-        CourseController,
         DubbingController,
         EmailCampaignController,
         FreeToolsController,
@@ -99,7 +96,6 @@ describe('Swagger / OpenAPI Specification', () => {
         { provide: BillingService, useValue: stub(['getPlans', 'getBillingInfo', 'getUsageHistory', 'createCheckoutSession', 'getCustomerPortalUrl', 'cancelActiveSubscription', 'verifyWebhookSignature', 'handleSubscriptionCreated', 'handleSubscriptionUpdated', 'handleSubscriptionCancelled', 'handleSubscriptionExpired', 'handleSubscriptionPaymentSuccess']) },
         { provide: AdminService, useValue: stub(['getDashboardStats', 'getUsers', 'getUser', 'updateUser', 'deleteUser', 'getBlogs', 'getBlog', 'createBlog', 'updateBlog', 'deleteBlog', 'getActivityFeed', 'getMails', 'getMail', 'replyToMail', 'updateMailStatus', 'getAllSubscriptions', 'getJobPosts', 'getJobPost', 'createJobPost', 'updateJobPost', 'deleteJobPost', 'getApplications', 'getApplication', 'updateApplicationStatus', 'deleteApplication', 'getAllAffiliateLinks', 'getAllAffiliateSales', 'updateAffiliateLink', 'updateAffiliateSaleStatus']) },
         { provide: AffiliateService, useValue: stub(['submitRequest', 'getRequestStatus', 'getRequests', 'reviewRequest', 'createAffiliateLinkForRep', 'getLsAffiliates', 'getLsAffiliateSignupUrl', 'getHubStats', 'getUserLinks', 'createUserLink', 'updateUserLink', 'deleteUserLink', 'getUserPromoCodes', 'getUserSales', 'getPayoutMethod', 'upsertPayoutMethod', 'getUserWithdrawals', 'requestWithdrawal', 'getPromoCodes', 'createPromoCode', 'updatePromoCode', 'getLsDiscounts', 'getWithdrawals', 'updateWithdrawal']) },
-        { provide: CourseService, useValue: stub(['generate']) },
         { provide: DubbingService, useValue: stub(['createDub', 'streamDubbingStatus', 'listDubs', 'getDub', 'deleteDub']) },
         { provide: IdeationService, useValue: stub(['createJob', 'listJobs', 'getProfileStatus', 'getJob', 'deleteJob', 'exportPdf', 'exportJson']) },
         { provide: ReferralService, useValue: stub(['getReferralData', 'generateReferralCode', 'trackReferral']) },
@@ -299,14 +295,6 @@ describe('Swagger / OpenAPI Specification', () => {
       ['put', 'admin/withdrawals/{id}'],
     ])('%s /%s', (method, path) => {
       expect((spec.paths[`${base}/${path}`] as any)?.[method]).toBeDefined();
-    });
-  });
-
-  // ─── Course ───
-
-  describe('Course', () => {
-    it('POST /generate', () => {
-      expect(spec.paths['/api/v1/course/generate']?.post).toBeDefined();
     });
   });
 
@@ -562,7 +550,7 @@ describe('Swagger / OpenAPI Specification', () => {
 
   describe('Tag coverage', () => {
     const expectedTags = [
-      'health', 'auth', 'billing', 'admin', 'course', 'dubbing',
+      'health', 'auth', 'billing', 'admin', 'dubbing',
       'ideation', 'referral', 'script', 'story-builder',
       'subtitle', 'support', 'thumbnail', 'train-ai', 'upload', 'youtube', 'app',
       'affiliate', 'free-tools', 'hannah', 'video-generation',
@@ -672,7 +660,6 @@ describe('Swagger / OpenAPI Specification', () => {
       ['get', '/api/v1/billing/plans'],
       ['post', '/api/v1/billing/portal'],
       ['get', '/api/v1/billing/usage'],
-      ['post', '/api/v1/course/generate'],
       ['get', '/api/v1/dubbing'],
       ['get', '/api/v1/dubbing/access'],
       ['post', '/api/v1/dubbing/uploads'],

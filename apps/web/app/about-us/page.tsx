@@ -11,7 +11,7 @@ import { MButton } from "@repo/ui/moving-border";
 import Link from "next/link";
 import {
   Zap, Heart, Users, TrendingUp, Lightbulb,
-  Video, PenTool, Search, ImageIcon, BookOpen,
+  Video, PenTool, Search, ImageIcon,
   FileText, Volume2, Gift, ArrowRight,
   Globe, MessageSquare, Settings, Sparkles,
 } from "lucide-react";
@@ -70,7 +70,6 @@ const features = [
 ]
 
 const futureFeatures = [
-  { title: "Course Module", description: "Dedicated feature for educators to create complete course modules and playlists.", icon: BookOpen },
   { title: "Multi-Platform Support", description: "Expand features for TikTok, Instagram Reels, and podcasts.", icon: Globe },
   { title: "Collaboration Mode", description: "Real-time collaboration for teams.", icon: MessageSquare },
   { title: "Advanced Personalization", description: "Build AI memory with custom fine-tuned models.", icon: Settings },

@@ -6,7 +6,6 @@ import FeatureCard from "../feature-card"
 import {
   CORE_FEATURES,
   EXTRA_FEATURES,
-  COMING_SOON_FEATURES,
 } from "@/lib/product-features"
 
 // This section used to keep its own hand-written list, which is how the landing
@@ -27,13 +26,6 @@ const features = [
     title: f.title,
     icon: f.icon,
     description: f.cardDescription,
-  })),
-  ...COMING_SOON_FEATURES.map((f) => ({
-    key: f.title,
-    href: "/features",
-    title: f.title,
-    icon: f.icon,
-    description: `${f.cardDescription} Coming soon.`,
   })),
 ]
 
