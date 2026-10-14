@@ -26,7 +26,6 @@ Next.js 15 frontend for Creator AI. App Router, React 19, TypeScript, Tailwind C
 | `/dashboard/referrals` | Done | Referral code, stats, history |
 | `/dashboard/dubbing` | Coming soon | Dubbing project list |
 | `/dashboard/thumbnails` | Coming soon | Thumbnail generator |
-| `/dashboard/courses` | Coming soon | Course module builder |
 | `/dashboard/video-generation` | Coming soon | AI video generator |
 
 ## Key Hooks

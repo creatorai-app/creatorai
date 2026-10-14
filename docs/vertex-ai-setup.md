@@ -138,7 +138,7 @@ A successful run prints something like:
 🎉 Vertex AI is wired up correctly.
 ```
 
-Then start the app as usual and try each feature: script generation, ideation, course modules,
+Then start the app as usual and try each feature: script generation, ideation,
 story builder, AI training, thumbnails, subtitles, and dubbing.
 
 ---

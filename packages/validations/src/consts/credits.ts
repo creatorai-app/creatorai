@@ -153,7 +153,6 @@ export const FeatureType = {
   THUMBNAIL_CREATION: 'thumbnail_creation',
   SUBTITLE_GENERATION: 'subtitle_generation',
   RESEARCH_TOPIC: 'research_topic',
-  COURSE_MODULE: 'course_module',
   DUBBING: 'dubbing',
   AI_TRAINING: 'ai_training',
   STORY_BUILDER: 'story_builder',

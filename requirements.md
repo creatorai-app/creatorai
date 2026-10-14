@@ -96,12 +96,6 @@ A personalized AI tool for YouTube creators. It learns your unique style from yo
 - AI generates a thumbnail description
 - Backend route exists; frontend marked as coming soon
 
-### Course Module Builder
-
-- Provide topic, difficulty, and video count
-- AI generates a structured course outline
-- Backend route exists; frontend marked as coming soon
-
 ### AI Video Generator
 
 - Page placeholder exists (`/dashboard/video-gen`)

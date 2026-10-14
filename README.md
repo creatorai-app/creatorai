@@ -27,10 +27,6 @@
 - **Auth** — Email/password and Google OAuth, OTP-based password reset, email verification via Supabase Auth
 - **Profile & Settings** — Avatar upload, notification preferences, billing info
 
-### Coming Soon
-
-- **Course Module Builder** — Structured course outlines from a topic (backend ready)
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -64,7 +60,6 @@ creatorai/
 │   │   │   │   ├── dubbing/          # Audio/video dubbing
 │   │   │   │   ├── video-generation/ # AI video generation
 │   │   │   │   ├── thumbnails/       # Thumbnail generation
-│   │   │   │   ├── courses/          # Course builder (coming soon)
 │   │   │   │   ├── admin/            # Admin: users, blogs, emails, errors, jobs…
 │   │   │   │   ├── affiliate/        # Affiliate program
 │   │   │   │   ├── referrals/        # Referral program
@@ -88,7 +83,6 @@ creatorai/
 │           ├── train-ai/             # AI training job queue
 │           ├── hannah/               # Guide chatbot
 │           ├── channel-stats/        # YouTube channel metrics
-│           ├── course/               # Course module builder
 │           ├── admin/                # Admin APIs incl. blog CMS
 │           ├── affiliate/            # Affiliate program
 │           ├── referral/             # Referral system

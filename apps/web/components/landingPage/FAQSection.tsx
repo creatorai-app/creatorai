@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: "What can I create with it?",
-    a: "You can generate video scripts, brainstorm video ideas based on trends, create eye-catching thumbnails, auto-generate subtitles from your videos, build structured story outlines with retention scoring, generate short AI video clips with audio from a prompt or an image, and dub finished videos into other languages in a clone of your own voice. Course building is coming soon.",
+    a: "You can generate video scripts, brainstorm video ideas based on trends, create eye-catching thumbnails, auto-generate subtitles from your videos, build structured story outlines with retention scoring, generate short AI video clips with audio from a prompt or an image, and dub finished videos into other languages in a clone of your own voice.",
   },
   {
     q: "Can I try it without signing up?",
