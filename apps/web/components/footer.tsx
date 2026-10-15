@@ -8,9 +8,8 @@ import * as motion from "motion/react-m";
 import { IconBrandDiscordFilled as Discord, IconBrandLinkedin as Linkedin, IconBrandX as Twitter, IconBrandGithub as Github, IconBrandFacebook as Facebook, IconBrandYoutube as Youtube } from '@tabler/icons-react';
 import { footerItems } from '@repo/ui';
 import { FloatingDock } from "@repo/ui/floating-dock";
-// One footer link that opens a form, but it reaches the API client and the
-// shared validation package — axios + zod, ~90kB — which landed in the
-// first-load JS of every marketing page. Split it out; it loads after hydration.
+// One footer link that opens a form; its popover and select code does not
+// belong in the first-load JS of every marketing page. Loads after hydration.
 const ReportIssue = dynamic(() => import('./issue/report-an-issue'), {
   ssr: false,
   loading: () => <span className="block h-5" aria-hidden />,

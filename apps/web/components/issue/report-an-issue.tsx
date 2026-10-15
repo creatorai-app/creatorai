@@ -8,7 +8,6 @@ import { Textarea } from "@repo/ui/textarea";
 import { toast } from "sonner";
 import { Input } from "@repo/ui/input";
 import { IconBugFilled } from "@tabler/icons-react";
-import { api } from "@/lib/api-client";
 
 const ReportIssue = ({ useIcon }: { useIcon: boolean }) => {
   const [subject, setSubject] = React.useState("");
@@ -21,11 +20,19 @@ const ReportIssue = ({ useIcon }: { useIcon: boolean }) => {
     setSendingMail(true);
 
     try {
-      await api.post("/api/v1/support/report-issue", {
-        subject,
-        email: email || "",
-        body,
-      }, { requireAuth: true });
+      const res = await fetch("/api/contact-us", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: subject ? `Issue report (${subject})` : "Issue report",
+          email,
+          message: body,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to send issue report");
+      }
 
       toast.success("Issue reported successfully!", {
         description: "Thank you for letting us know. We'll look into it soon.",
@@ -94,6 +101,7 @@ const ReportIssue = ({ useIcon }: { useIcon: boolean }) => {
             <p className="text-sm dark:text-slate-100 text-purple-500 mb-2">Your Email</p>
             <Input
               type="email"
+              required
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -104,6 +112,7 @@ const ReportIssue = ({ useIcon }: { useIcon: boolean }) => {
             <p className="text-sm dark:text-slate-100 text-purple-500 mb-2">Your Feedback</p>
             <Textarea
               className="min-h-[10rem] sm:min-h-[12rem] md:min-h-[14rem]"
+              required
               placeholder="Describe any feedback issue you have"
               value={body}
               onChange={(e) => setBody(e.target.value)}
