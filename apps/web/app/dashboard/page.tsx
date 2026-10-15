@@ -141,8 +141,8 @@ export default function Dashboard() {
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-left">
                 <p>
-                  Disconnecting also deletes the AI style profile we trained on your channel —
-                  your tone, pacing, humour, structure and the video analysis behind them.
+                  Disconnecting also deletes the AI memory we built from your channel: your
+                  tone, pacing, humour, structure and the video analysis behind it.
                   This cannot be undone.
                 </p>
                 <p>

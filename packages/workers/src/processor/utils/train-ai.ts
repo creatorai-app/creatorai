@@ -263,7 +263,7 @@ export function assertStyleAnalysisComplete(styleAnalysis: StyleAnalysis): void 
   if (missing.length) {
     logError('train-ai-incomplete-style', new Error('Incomplete style analysis'), { missing });
     throw new Error(
-      `The style analysis came back missing ${missing.join(', ')}. Nothing was saved — please train again.`,
+      `The style analysis came back missing ${missing.join(', ')}. Nothing was saved. Please build your AI memory again.`,
     );
   }
 }
@@ -282,7 +282,7 @@ export function assertVideoWasActuallyRead(transcripts: Transcript[]): void {
       videos: transcripts.length,
     });
     throw new Error(
-      'We could not hear any speech in the selected videos, so the style profile would not reflect how you actually talk. Nothing was saved — pick videos where you speak on camera and train again.',
+      'We could not hear any speech in the selected videos, so your AI memory would not reflect how you actually talk. Nothing was saved. Pick videos where you speak on camera and build your AI memory again.',
     );
   }
 }
@@ -476,7 +476,7 @@ Video ${i + 1}:
     return url ? buildVideoParts(url, parseIsoDurationSeconds(video.duration)) : [];
   });
 
-  if (!videoParts.length) throw new Error('No analysable videos were selected for training.');
+  if (!videoParts.length) throw new Error('No analysable videos were selected for your AI memory.');
 
   let parsed: Record<string, any> | null = null;
   let totalStyleTokens = 0;
@@ -517,7 +517,7 @@ Video ${i + 1}:
         // built on no video at all and reported the job as complete. Failing is the
         // honest outcome: the profile is the product.
         throw new Error(
-          'Could not analyse your videos. They must be public or unlisted on your channel — private or deleted videos cannot be read. Please pick different videos and train again.',
+          'Could not analyse your videos. They must be public or unlisted on your channel, since private or deleted videos cannot be read. Please pick different videos and build your AI memory again.',
         );
       }
       await new Promise(res => setTimeout(res, 2000));
@@ -726,7 +726,7 @@ export async function resolveTrainingCharge(
 
   if (error || !profile) {
     logError('train-ai-profile-fetch', error, { userId });
-    throw new Error('Could not load your account to charge for training.');
+    throw new Error('Could not load your account to charge for your AI memory build.');
   }
 
   const isFirstTraining = isTrainingFree(profile);
@@ -740,7 +740,7 @@ export async function resolveTrainingCharge(
   // processors — the dashboard keys its out-of-credits dialog off that prefix.
   if (credits < required) {
     throw new Error(
-      `Insufficient credits. Retraining needs about ${required} credits but you have ${credits}. Please upgrade your plan and train again.`,
+      `Insufficient credits. Rebuilding your AI memory needs about ${required} credits but you have ${credits}. Please upgrade your plan and try again.`,
     );
   }
 
@@ -782,7 +782,7 @@ export async function saveStyleData(
     .single();
   if (profileError || !profile) {
     logError('train-ai-profile-fetch', profileError, { userId });
-    throw new Error('Could not load your account to charge for training.');
+    throw new Error('Could not load your account to charge for your AI memory build.');
   }
 
   const credits = profile.credits ?? 0;

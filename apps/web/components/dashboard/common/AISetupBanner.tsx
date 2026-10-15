@@ -62,7 +62,7 @@ export function AISetupBanner({ step }: { step: SetupStep }) {
           {!isConnect && !profile?.free_training_used && (
             <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-green-700 dark:text-green-400">
               <Sparkles className="h-3.5 w-3.5" />
-              Your first training is free. No credits charged.
+              Your first memory build is free. No credits charged.
             </p>
           )}
         </div>

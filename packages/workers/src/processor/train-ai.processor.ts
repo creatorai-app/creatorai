@@ -24,7 +24,7 @@ const CANCEL_PREFIX = 'train-ai:cancel:';
 
 class TrainingCancelledError extends Error {
   constructor() {
-    super('Training cancelled by user');
+    super('AI memory build cancelled by user');
     this.name = 'TrainingCancelledError';
   }
 }
@@ -97,8 +97,8 @@ export class TrainAiProcessor extends WorkerHost {
       const charge = await resolveTrainingCharge(this.supabase, userId, videoData.length);
       await job.log(
         charge.isFirstTraining
-          ? 'First training is free — no credits will be charged.'
-          : 'Credits reserved for retraining.',
+          ? 'Your first memory build is free. No credits will be charged.'
+          : 'Credits reserved for rebuilding your AI memory.',
       );
 
       await this.throwIfCancelled(job.id!);
@@ -161,7 +161,7 @@ export class TrainAiProcessor extends WorkerHost {
       const isCancelled = error instanceof TrainingCancelledError;
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
-      await job.log(isCancelled ? 'Training cancelled by user' : `Error: ${errorMessage}`);
+      await job.log(isCancelled ? 'AI memory build cancelled by user' : `Error: ${errorMessage}`);
       this.logger.warn(`Job ${job.id} ${isCancelled ? 'cancelled' : 'failed'}: ${errorMessage}`, errorStack);
 
       if (!isCancelled) {

@@ -182,7 +182,7 @@ export default function NewStoryBuilderPage() {
                         <span>&#10024;</span> Powered by your style
                       </h3>
                       <p className="text-xs text-purple-600 dark:text-purple-400">
-                        Your AI is trained! Blueprints adapt to your channel&apos;s pacing, humor frequency,
+                        Your AI memory is built! Blueprints adapt to your channel&apos;s pacing, humor frequency,
                         direct address style, stats usage, and emotional tone patterns.
                       </p>
                     </div>

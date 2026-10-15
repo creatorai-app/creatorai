@@ -133,7 +133,7 @@ describe('Request pipeline (e2e)', () => {
     });
 
     it.each([
-      [{ ai_trained: false, youtube_connected: true }, /AI training/],
+      [{ ai_trained: false, youtube_connected: true }, /your AI memory/],
       [{ ai_trained: true, youtube_connected: false }, /connected YouTube channel/],
     ])('names the missing prerequisite %#', async (p, message) => {
       profile = p;
@@ -145,7 +145,7 @@ describe('Request pipeline (e2e)', () => {
     it('lists both prerequisites when neither is met', async () => {
       profile = { ai_trained: false, youtube_connected: false };
       const res = await signUpload().expect(403);
-      expect(res.body.message).toMatch(/AI training and a connected YouTube channel/);
+      expect(res.body.message).toMatch(/your AI memory and a connected YouTube channel/);
     });
 
     it('leaves read-only routes ungated, so a new user can still see an empty list', async () => {

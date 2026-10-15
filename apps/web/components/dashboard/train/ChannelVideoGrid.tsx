@@ -208,7 +208,7 @@ export function ChannelVideoGrid({
           <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
             <div className="text-center space-y-4 px-6">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                Training Locked
+                AI Memory Locked
               </h2>
               <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                 Please connect your YouTube account

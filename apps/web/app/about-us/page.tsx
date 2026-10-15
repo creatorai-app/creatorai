@@ -22,7 +22,7 @@ import { useSmoothScroll } from "@/hooks/useSmoothScroll"
 const benefits = [
   {
     title: "Truly Personalized Output",
-    description: "Unlike generic AI, Creator AI trains on your past videos. Every output reflects your unique voice, tone, and style.",
+    description: "Unlike generic AI, Creator AI builds an AI memory from your past videos. Every output reflects your unique voice, tone, and style.",
     icon: Sparkles,
     gradient: "from-purple-500 to-indigo-500",
   },
@@ -114,7 +114,7 @@ export default function AboutPage() {
                 </span>
               </h1>
               <h2 className="text-xl md:text-2xl text-slate-600 mb-8">
-                Not just another generic tool, a content partner trained on you.
+                Not just another generic tool, a content partner built on your AI memory.
               </h2>
             </motion.div>
             <motion.div
@@ -123,7 +123,7 @@ export default function AboutPage() {
               transition={{ delay: 0.4, duration: 0.8 }}
             >
               <TextGenerateEffect
-                words="Creator AI trains on your past videos, learns your tone, style, and language, then generates scripts, thumbnails, and subtitles that actually sound like you. Not generic. Personal."
+                words="Creator AI builds an AI memory from your past videos, learns your tone, style, and language, then generates scripts, thumbnails, and subtitles that actually sound like you. Not generic. Personal."
                 className="!text-slate-500 max-w-2xl mx-auto"
               />
             </motion.div>
@@ -339,7 +339,7 @@ export default function AboutPage() {
                 Every Feature, Personalized
               </h2>
               <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-                Scripts, thumbnails, subtitles, dubbing, each powered by an AI model trained on your content, not generic templates.
+                Scripts, thumbnails, subtitles, dubbing, each powered by an AI memory built from your content, not generic templates.
               </p>
             </motion.div>
 
