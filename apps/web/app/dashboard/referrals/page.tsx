@@ -167,7 +167,7 @@ export default function Referrals() {
           <p className="mt-1 text-amber-800/90 dark:text-amber-200/80">
             When someone subscribes to a paid plan using your referral link, you
             get <strong>1,000 credits</strong>, and they get <strong>1,000 bonus credits</strong> too.
-            Rewards are granted on their first purchase only. There is no sign-up bonus.
+            Rewards are granted on their first purchase only.
           </p>
         </div>
       </div>
