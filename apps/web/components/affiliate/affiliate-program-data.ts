@@ -20,7 +20,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: "How much can I earn with the Creator AI affiliate program?",
     answer:
-      "You earn 20% recurring commission on every payment made by customers you refer. For example, a customer on the $24/month Creator plan earns you $4.80 every month they stay subscribed, for up to 12 billing cycles.",
+      "You earn 20% recurring commission on every payment made by customers you refer. For example, a customer on the $20/month Creator plan earns you $4.00 every month they stay subscribed, for up to 12 billing cycles.",
   },
   {
     question: "Is the commission recurring?",

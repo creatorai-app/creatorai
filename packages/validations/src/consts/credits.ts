@@ -9,8 +9,8 @@ export const TOKENS_PER_CREDIT = 1000;
 // MAX_COGS_PER_CREDIT_USD in vendor spend.
 //
 // What a credit actually sells for, per plan:
-//   Creator          $24 / 3,000   = $0.00800
-//   Creator annual   $19 / 3,000   = $0.00633
+//   Creator          $20 / 3,000   = $0.00667
+//   Creator annual   $16 / 3,000   = $0.00533
 //   Pro              $49 / 8,000   = $0.006125
 //   Pro annual       $39 / 8,000   = $0.004875  ← the floor
 //   Business        $299 / 50,000  = $0.00598
@@ -80,15 +80,15 @@ export const VIDEO_GENERATION_CREDIT_MULTIPLIER = 85;
 //   Scale   100,000 cr → 166 h 40 m
 //
 // GRANT-FUNDED PROMO — NOT sustainable at ElevenLabs list prices. 5 hours costs $72
-// against Creator's $24, i.e. -200% margin. This is affordable only while the account
+// against Creator's $20, i.e. -260% margin. This is affordable only while the account
 // sits on the ElevenLabs startup grant (~33M credits ≈ 16,500 min ≈ 275 h), where
 // marginal COGS is $0. The grant is the budget: ~55 Creator users, or ~3 Business
 // users, at FULL utilisation drain it entirely.
 //
 // Hard-coded, no env override, until the grant ends. Then raise it: 5/sec (300/min)
 // clears 80% on ElevenLabs at the Pro annual floor, 1.6667/sec (100/min) clears 50%.
-// Or move dubbing to the in-house pipeline, which has to land under ~$0.016/min for
-// 5 hours to hold 80% margin at $24.
+// Or move dubbing to the in-house pipeline, which has to land under ~$0.013/min for
+// 5 hours to hold 80% margin at $20.
 export const DUBBING_CREDIT_MULTIPLIER = 1 / 6;
 
 // Cypher (in-house: Gemini + Chatterbox on Modal) costs ~$0.054 per source minute,

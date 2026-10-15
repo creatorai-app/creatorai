@@ -27,8 +27,11 @@ How to cut a release:
 
 ## [Unreleased]
 
-### Added
-- Placeholder for upcoming features.
+### Changed
+- Creator plan lowered from $24 to $20/mo, and from $19 to $16/mo billed annually ($192/yr). Credits stay at 3,000.
+
+### Fixed
+- Logged-out visitors can report an issue from the site footer.
 
 ---
 

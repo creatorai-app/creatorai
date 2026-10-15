@@ -219,24 +219,24 @@ export default function AffiliateProgramContent() {
           >
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Example</p>
             <p className="mt-1 text-slate-700 dark:text-slate-300">
-              Refer <strong>10 creators</strong> to the Creator plan ($24/mo):
+              Refer <strong>10 creators</strong> to the Creator plan ($20/mo):
             </p>
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Per customer / month</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">$4.80</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">$4.00</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600 dark:text-slate-400">10 customers / month</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">$48.00</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">$40.00</span>
               </div>
               <div className="flex items-center justify-between border-t border-purple-200 dark:border-purple-900/50 pt-3">
                 <span className="text-slate-600 dark:text-slate-400">Over 12 months</span>
-                <span className="text-lg font-bold text-purple-700 dark:text-purple-300">$576.00</span>
+                <span className="text-lg font-bold text-purple-700 dark:text-purple-300">$480.00</span>
               </div>
             </div>
             <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              Illustrative figures based on the $24/month Creator plan and a 20% recurring rate.
+              Illustrative figures based on the $20/month Creator plan and a 20% recurring rate.
             </p>
           </motion.div>
         </div>
