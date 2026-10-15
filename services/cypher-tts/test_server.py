@@ -137,33 +137,60 @@ def test_split_text_keeps_whole_sentences(text, expected):
     assert tts_core.split_text(text) == expected
 
 
-def test_engine_joins_chunks_with_a_pause():
+class FakeTensor:
+    # Just what synthesize() calls on the model's output.
+    def __init__(self, values):
+        self.values = values
+
+    def squeeze(self, _):
+        return self
+
+    def detach(self):
+        return self
+
+    def cpu(self):
+        return self
+
+    def numpy(self):
+        return self.values
+
+
+class FakeModel:
+    sr = 1000
+
+    def __init__(self):
+        self.prepared = []
+        self.generated = []
+
+    def prepare_conditionals(self, path, exaggeration):
+        self.prepared.append((path, exaggeration))
+
+    def generate(self, chunk, **kwargs):
+        self.generated.append(kwargs)
+        return FakeTensor(np.full(100, 0.5, dtype=np.float32))
+
+
+def fake_engine():
     engine = tts_core.TtsEngine()
+    engine.model = FakeModel()
+    return engine
 
-    class Tensor:
-        # Just what synthesize() calls on the model's output.
-        def __init__(self, values):
-            self.values = values
 
-        def squeeze(self, _):
-            return self
+def test_engine_prepares_each_voice_once():
+    engine = fake_engine()
+    engine.synthesize("One.", "/tmp/a.wav", "en")
+    engine.synthesize("Two.", "/tmp/a.wav", "en", exaggeration=0.7)
+    engine.synthesize("Three.", "/tmp/b.wav", "en")
+    engine.synthesize("Four.", "/tmp/a.wav", "en")
+    assert engine.model.prepared == [("/tmp/a.wav", 0.5), ("/tmp/b.wav", 0.5), ("/tmp/a.wav", 0.5)]
+    # The sample is never handed to generate(), which would prepare it again; the
+    # exaggeration still reaches it on every call.
+    assert all("audio_prompt_path" not in call for call in engine.model.generated)
+    assert [call["exaggeration"] for call in engine.model.generated] == [0.5, 0.7, 0.5, 0.5]
 
-        def detach(self):
-            return self
 
-        def cpu(self):
-            return self
-
-        def numpy(self):
-            return self.values
-
-    class Model:
-        sr = 1000
-
-        def generate(self, chunk, **kwargs):
-            return Tensor(np.full(100, 0.5, dtype=np.float32))
-
-    engine.model = Model()
+def test_engine_joins_chunks_with_a_pause():
+    engine = fake_engine()
     wav = engine.synthesize("A" * 140 + ". " + "B" * 140 + ".", "/tmp/ref.wav", "en")
     with wave.open(io.BytesIO(wav)) as w:
         frames = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2")

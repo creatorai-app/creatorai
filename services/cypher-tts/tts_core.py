@@ -11,6 +11,7 @@ Differences from the frozen Modal app (modal/dubbing_app.py):
   - cfg_weight, exaggeration and temperature are the caller's (see chatterboxParamsFor in
     packages/validations): cfg_weight 0 drops the sample's accent for "Sound native".
   - Text split into chunks is joined with a short pause, not glued end to end.
+  - The voice sample is processed once per voice, not once per call.
   - The language is checked against what the model speaks (a wrong language_id does not
     fail in the model; it speaks nonsense), and text longer than a worker turn is refused.
 """
@@ -134,6 +135,9 @@ class TtsEngine:
         self._references: "OrderedDict[str, str]" = OrderedDict()
         self._reference_cache_size = reference_cache_size
         self._workdir = tempfile.mkdtemp(prefix="cypher-tts-")
+        # The sample the model's conditionals were last prepared from. generate() redoes
+        # them whenever it is handed a sample, so it is handed one only when the voice changes.
+        self._conditioned_on: Optional[str] = None
 
     @property
     def loaded(self) -> bool:
@@ -197,12 +201,15 @@ class TtsEngine:
         text = validate_request(text, language)
         with self._lock:
             self.load()
+            if self._conditioned_on != reference_path:
+                self._conditioned_on = None
+                self.model.prepare_conditionals(reference_path, exaggeration=exaggeration)
+                self._conditioned_on = reference_path
             pieces = []
             for i, chunk in enumerate(split_text(text)):
                 wav = self.model.generate(
                     chunk,
                     language_id=language.lower(),
-                    audio_prompt_path=reference_path,
                     exaggeration=exaggeration,
                     cfg_weight=cfg_weight,
                     temperature=temperature,
