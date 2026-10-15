@@ -23,7 +23,7 @@ referral rewards all work correctly.
 | Plan      | Monthly | Annual (per-month) | Annual (billed yearly) | Credits/mo | LS product? |
 |-----------|---------|--------------------|------------------------|-----------:|-------------|
 | Starter   | $0      | $0                 | —                      | 200        | ❌ No (free, no card) |
-| Creator   | $24     | $19                | **$228 / year**        | 3,000      | ✅ Yes (monthly + annual) |
+| Creator   | $20     | $16                | **$192 / year**        | 3,000      | ✅ Yes (monthly + annual) |
 | Pro       | $49     | $39                | **$468 / year**        | 8,000      | ✅ Yes (monthly + annual) |
 | Business  | $299    | —                  | —                      | 50,000     | ✅ Yes (monthly only) |
 | Scale     | $599    | —                  | —                      | 150,000    | ✅ Yes (monthly only) |
@@ -31,8 +31,8 @@ referral rewards all work correctly.
 Notes:
 - **Starter is free** and has no LS product. It is assigned automatically to every
   new user. Never create a $0 LS variant for it.
-- The "annual (per-month)" figure ($19, $39) is only a **display** price. In Lemon
-  Squeezy you charge the **yearly total** ($228, $468) on a yearly billing interval.
+- The "annual (per-month)" figure ($16, $39) is only a **display** price. In Lemon
+  Squeezy you charge the **yearly total** ($192, $468) on a yearly billing interval.
 - **Business and Scale are monthly-only.** Leave their `ls_variant_id_annual` empty.
 - Every feature is available on every plan — plans differ only by monthly credits.
   You do not configure features in LS; they live in the `plans.features` column.
@@ -53,11 +53,11 @@ For **each** paid plan (Creator, Pro, Business, Scale):
 4. Add the **monthly variant**:
    - Pricing model: **Subscription**
    - Interval: **Every 1 month**
-   - Price: the monthly price from the table ($24 / $49 / $299 / $599).
+   - Price: the monthly price from the table ($20 / $49 / $299 / $599).
    - Name the variant `Monthly`.
 5. For **Creator** and **Pro** only, add a second **annual variant**:
    - Interval: **Every 1 year**
-   - Price: the **yearly total** ($228 for Creator, $468 for Pro).
+   - Price: the **yearly total** ($192 for Creator, $468 for Pro).
    - Name the variant `Annual`.
 6. Save & **Publish** the product.
 
@@ -215,7 +215,7 @@ buyer's email / linked profile inside the webhook.
 - [ ] Pricing migration applied; `plans` table shows all 5 plans with correct prices/credits.
 - [ ] Creator & Pro have **both** monthly and annual variant IDs set.
 - [ ] Business & Scale have **monthly** variant IDs; annual left `NULL`.
-- [ ] LS variant prices exactly match the DB ($24/$228, $49/$468, $299, $599).
+- [ ] LS variant prices exactly match the DB ($20/$192, $49/$468, $299, $599).
 - [ ] `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET` set.
 - [ ] Webhook URL reachable and signing secret matches; required events enabled.
 - [ ] Test monthly checkout → user lands on plan, credits granted.

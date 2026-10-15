@@ -51,8 +51,8 @@ export const MARKETING_PLANS: MarketingPlan[] = [
   {
     id: "creator",
     name: "Creator",
-    priceMonthly: 24,
-    priceAnnualMonthly: 19,
+    priceMonthly: 20,
+    priceAnnualMonthly: 16,
     credits: 3000,
     tagline: "Best for weekly creators who want a steady flow of scripts, thumbnails and ideas.",
     inheritsFrom: "Starter",

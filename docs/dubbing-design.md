@@ -137,7 +137,7 @@ calibrate against a measured Modal cost-per-second once Chatterbox is loaded.)
 
 ## 4. Plan gating (all paid plans — only Starter excluded)
 
-Plans are Starter (free) · **Creator ($24)** · **Pro ($49)** · **Business ($299)** ·
+Plans are Starter (free) · **Creator ($20)** · **Pro ($49)** · **Business ($299)** ·
 **Scale ($599)**. Dubbing is included in every paid plan. Gate by plan **name**
 (there is no tier column — the active plan is the most-recent active
 `subscriptions` row):
