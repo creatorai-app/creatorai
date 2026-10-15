@@ -171,12 +171,12 @@ export function VideoUrlForm({
                         <p className="text-sm text-center w-full">
                             {isAiTrained ? (
                                 <span className="text-slate-500 dark:text-slate-400">
-                                    Re-training costs credits. Pick any
+                                    Rebuilding AI memory costs credits. Pick any
                                     videos you like;
                                 </span>
                             ) : (
                                 <span className="font-medium text-green-700 dark:text-green-400">
-                                    Your first training is free. No credits will be charged.
+                                    Your first memory build is free. No credits will be charged.
                                 </span>
                             )}
                         </p>
@@ -193,7 +193,7 @@ export function VideoUrlForm({
                             {isTraining ? (
                                 <>
                                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Training in progress...
+                                    Building AI memory...
                                 </>
                             ) : uploading ? (
                                 <>
@@ -219,7 +219,7 @@ export function VideoUrlForm({
                     <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
                         <div className="text-center space-y-4 px-6">
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                🚧 Training Locked
+                                🚧 AI Memory Locked
                             </h2>
                             <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                                 Please connect your YouTube account

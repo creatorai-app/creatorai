@@ -14,7 +14,7 @@ const sections = [
   { id: "data-collection", title: "2. Data We Collect" },
   { id: "data-usage", title: "3. How We Use Your Data" },
   { id: "youtube-data", title: "4. YouTube Channel Connection" },
-  { id: "ai-training", title: "5. AI Training & Third-Party Models" },
+  { id: "ai-training", title: "5. AI Memory & Third-Party Models" },
   { id: "no-misuse", title: "6. How We Will Not Use Your Data" },
   { id: "storage-security", title: "7. Data Storage & Security" },
   { id: "third-party", title: "8. Third-Party Processors" },
@@ -115,7 +115,7 @@ const PrivacyPage = () => {
                 </li>
                 <li>
                   <strong>YouTube channel data:</strong> Channel information and video content
-                  you choose to connect for AI training
+                  you choose to connect for building your AI memory
                 </li>
                 <li>
                   <strong>Content inputs:</strong> Prompts, context, and files you provide
@@ -190,7 +190,7 @@ const PrivacyPage = () => {
               </p>
             </PolicySection>
 
-            <PolicySection id="ai-training" title="5. AI Training & Third-Party Models">
+            <PolicySection id="ai-training" title="5. AI Memory & Third-Party Models">
               <p>
                 We do not build or host our own AI models. Creator AI runs on third-party
                 models, which means your content is sent to another company's servers to be

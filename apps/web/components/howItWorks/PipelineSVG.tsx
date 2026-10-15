@@ -40,7 +40,7 @@ export default function PipelineSVG({ className = "" }: { className?: string }) 
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       role="img"
-      aria-label="Diagram: your YouTube channel trains a personal AI voice model, which generates scripts, thumbnails, subtitles and dubs"
+      aria-label="Diagram: your YouTube channel builds a personal AI memory, which generates scripts, thumbnails, subtitles and dubs"
     >
       <defs>
         <linearGradient id="pl-core" x1="0" y1="0" x2="1" y2="1">

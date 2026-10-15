@@ -55,7 +55,7 @@ export class HannahService {
 - Name: ${p?.full_name || 'not set'}
 - Plan: ${plan}
 - Credits remaining: ${p?.credits ?? 0}
-- AI Studio trained: ${p?.ai_trained ? 'yes' : 'no — suggest /dashboard/train to unlock personalized output'}
+- AI memory built: ${p?.ai_trained ? 'yes' : 'no, suggest building it at /dashboard/train to unlock personalized output'}
 - Activity: ${scripts.count ?? 0} scripts, ${thumbs.count ?? 0} thumbnails, ${subs.count ?? 0} subtitle jobs, ${videos.count ?? 0} video generations, ${dubs.count ?? 0} dubbing projects, ${stories.count ?? 0} story blueprints, ${ideas.count ?? 0} ideation sessions
 - Recent scripts: ${recent || 'none yet'}
 Use this to personalize answers ("you have X credits left", "your last script was..."). If asked something about their account that is not listed here (billing history, invoices, exact job contents), point them to the relevant dashboard page or /contact-us instead of guessing.`;

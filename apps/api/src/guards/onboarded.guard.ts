@@ -29,7 +29,7 @@ export class OnboardedGuard implements CanActivate {
     if (error || !profile) throw new ForbiddenException('Profile not found');
 
     const missing: string[] = [];
-    if (!profile.ai_trained) missing.push('AI training');
+    if (!profile.ai_trained) missing.push('your AI memory');
     if (!profile.youtube_connected) missing.push('a connected YouTube channel');
     if (missing.length > 0) {
       throw new ForbiddenException(`This feature requires ${missing.join(' and ')}.`);

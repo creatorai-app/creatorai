@@ -29,14 +29,14 @@ describe('OnboardedGuard', () => {
   it('blocks when both are missing, and names both', async () => {
     const guard = makeGuard({ ai_trained: false, youtube_connected: false });
     await expect(guard.canActivate(ctx('u1'))).rejects.toThrow(
-      'This feature requires AI training and a connected YouTube channel.',
+      'This feature requires your AI memory and a connected YouTube channel.',
     );
   });
 
   // Requirement is AND, not OR — one of the two is not enough.
   it('blocks when only training is missing', async () => {
     const guard = makeGuard({ ai_trained: false, youtube_connected: true });
-    await expect(guard.canActivate(ctx('u1'))).rejects.toThrow('This feature requires AI training.');
+    await expect(guard.canActivate(ctx('u1'))).rejects.toThrow('This feature requires your AI memory.');
   });
 
   it('blocks when only YouTube is missing', async () => {

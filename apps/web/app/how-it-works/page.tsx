@@ -243,7 +243,7 @@ export default function HowItWorksPage() {
                 Four steps, and only one of them takes any setup
               </h2>
               <p className="mt-4 text-slate-600 md:text-lg">
-                Training is the part that makes everything else personal. You do it once.
+                Building AI memory is the part that makes everything else personal. You do it once.
               </p>
             </div>
 
@@ -346,7 +346,7 @@ export default function HowItWorksPage() {
                 Ten minutes from sign-up to a script you can film
               </h2>
               <p className="mt-4 leading-relaxed text-slate-600">
-                Nothing to install, nothing to configure. The only wait is training, and it runs
+                Nothing to install, nothing to configure. The only wait is building AI memory, and it runs
                 while you get on with something else.
               </p>
 
@@ -378,7 +378,7 @@ export default function HowItWorksPage() {
                   aria-hidden="true"
                 />
                 Already have a finished video? Skip straight to subtitles or dubbing. Neither
-                needs a trained profile.
+                needs AI memory.
               </p>
             </div>
 
