@@ -129,15 +129,6 @@ describe('DubbingService', () => {
       });
     });
 
-    it('reports voice mode on ElevenLabs, and on Cypher only once its v2 voice service is configured', async () => {
-      await build();
-      delete process.env.CYPHER_TTS_V2_URL;
-      await expect(service.getAccess(USER)).resolves.toMatchObject({ voiceModeEngines: ['elevenlabs'] });
-      process.env.CYPHER_TTS_V2_URL = 'https://tts.example';
-      await expect(service.getAccess(USER)).resolves.toMatchObject({ voiceModeEngines: ['cypher', 'elevenlabs'] });
-      delete process.env.CYPHER_TTS_V2_URL;
-    });
-
     it('prices a paid plan at the hard-coded rate, whatever the environment says', async () => {
       await build({ subscriptions: chain(planResult('Pro')) });
       process.env.DUBBING_CREDIT_MULTIPLIER = '5';

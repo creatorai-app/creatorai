@@ -2,8 +2,7 @@
 
 Chatterbox Multilingual V3 behind a small HTTP API, for Cypher dubbing. Host-agnostic:
 the same code runs on Modal, Cloud Run GPU or any Docker host with an NVIDIA GPU. The
-worker uses it when `CYPHER_TTS_V2_URL` is set, and the frozen Modal app
-(`modal/dubbing_app.py`) otherwise.
+worker calls it at `CYPHER_TTS_V2_URL`; Cypher dubbing does not run without it.
 
 | File | What it is |
 |---|---|
@@ -11,7 +10,7 @@ worker uses it when `CYPHER_TTS_V2_URL` is set, and the frozen Modal app
 | `server.py` | FastAPI app: `POST /synthesize`, `GET /health`, optional bearer token |
 | `Dockerfile` | CUDA 12.4 image running `server.py` on port 8080, weights baked in |
 | `test_server.py` | CPU-only tests of the request handling, model replaced |
-| `../../modal/dubbing_app_v2.py` | The Modal wrapper (a new app, `creator-ai-dubbing-v2`) |
+| `../../modal/dubbing_app_v2.py` | The Modal wrapper (`creator-ai-dubbing-v2`) |
 
 ## Contract
 
@@ -29,7 +28,7 @@ Authorization: Bearer <CYPHER_TTS_V2_TOKEN>      (only when the server has a tok
 GET /health -> { "ok": true, "model": "chatterbox-multilingual-v3", "loaded": true }
 ```
 
-Compared with the frozen Modal app it uses the V3 checkpoint, keeps voice samples at
+Compared with the first Modal app it replaced, it uses the V3 checkpoint, keeps voice samples at
 24 kHz, takes `cfg_weight` / `exaggeration` / `temperature`, puts 150 ms of silence
 between the chunks of a longer text, processes each voice sample once instead of on every
 call, and refuses unsupported languages and oversized
@@ -70,9 +69,6 @@ request after a cold start loads the model (about 30 s on an L4).
 CYPHER_TTS_V2_URL=<base URL, no path>   # the worker calls <base>/synthesize
 CYPHER_TTS_V2_TOKEN=<the same token>
 ```
-
-Set `CYPHER_TTS_V2_URL` on the API as well to show the voice mode on Cypher in the
-new-dub form (the API only checks that it is set).
 
 ## Tests
 

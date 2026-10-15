@@ -29,7 +29,6 @@ import {
   dubProjectPrefix,
   isSupportedDubLanguage,
   maxDubLanguagesForPlan,
-  DUB_ENGINES,
   DUBBING_CANCEL_PREFIX,
   DEFAULT_DUB_VOICE_MODE,
   DUB_JOB_STATUSES,
@@ -151,10 +150,6 @@ export class DubbingService {
   async getAccess(userId: string) {
     const planName = await this.getActivePlanName(userId);
     return {
-      // The engines where the voice mode changes anything: ElevenLabs always (cloning
-      // strength); Cypher only once its TTS v2 service is deployed, since the frozen Modal
-      // app takes no voice controls. Set CYPHER_TTS_V2_URL here too to show it on Cypher.
-      voiceModeEngines: DUB_ENGINES.filter((engine) => engine === 'elevenlabs' || !!process.env.CYPHER_TTS_V2_URL?.trim()),
       success: true,
       allowed: canDub(planName),
       plan: planName,

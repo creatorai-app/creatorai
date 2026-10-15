@@ -128,10 +128,8 @@ import {
 // dub has that (MP3) track muxed over the original once the browser has finished uploading it. Every
 // stage leaves its result behind, so a failed or cancelled run resumes where it stopped.
 //
-// The Modal app is frozen: this workspace cannot deploy GPU functions any more (Modal
-// wants a card on file), and the endpoint we call predates that rule. Cypher uses its
-// existing contract as-is (utils/cypher-tts.ts) until CYPHER_TTS_V2_URL points at the
-// v2 service (services/cypher-tts), and this worker stores, fits, places and mixes.
+// Cypher's speech comes from the TTS service (services/cypher-tts, utils/cypher-tts.ts);
+// this worker stores, fits, places and mixes it.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // The fallback voice when the analysis finds no speaker with enough clean speech.
@@ -636,7 +634,7 @@ export class DubbingProcessor extends WorkerHost {
     ctx.fullLengthTrack = analysis.stems?.status === 'done';
     await ctx.job.updateProgress(25);
     await this.updateProject(ctx.projectId, { status: 'cloning' });
-    await ctx.job.log(`Voices: ${tts.host === 'v2' ? 'Cypher TTS v2' : 'Cypher TTS'}${analysis.stems?.status === 'done' ? ', music kept under the dub' : ''}.`);
+    await ctx.job.log(`Voices: Cypher TTS${analysis.stems?.status === 'done' ? ', music kept under the dub' : ''}.`);
 
     // Languages one after another: every turn is a GPU call, and running languages side
     // by side would only start more containers.

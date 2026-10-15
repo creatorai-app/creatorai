@@ -4,7 +4,7 @@ The model code lives here and nowhere else. server.py serves it over HTTP (the D
 image runs that on any GPU host, Cloud Run GPU included) and modal/dubbing_app_v2.py
 wraps the same server for Modal. Switching hosts never touches this file.
 
-Differences from the frozen Modal app (modal/dubbing_app.py):
+Differences from the first Modal dubbing app, which this replaced:
   - Multilingual V3 (t3_model="v3"), not the older V2 checkpoint.
   - The voice sample is kept at 24 kHz (S3GEN_SR), the rate Chatterbox's decoder takes
     its prompt at, instead of being cut to 16 kHz first.
