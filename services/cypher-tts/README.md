@@ -31,7 +31,8 @@ GET /health -> { "ok": true, "model": "chatterbox-multilingual-v3", "loaded": tr
 
 Compared with the frozen Modal app it uses the V3 checkpoint, keeps voice samples at
 24 kHz, takes `cfg_weight` / `exaggeration` / `temperature`, puts 150 ms of silence
-between the chunks of a longer text, and refuses unsupported languages and oversized
+between the chunks of a longer text, processes each voice sample once instead of on every
+call, and refuses unsupported languages and oversized
 text instead of speaking them.
 
 `chatterbox-tts` is pinned to the V3 release commit
