@@ -80,7 +80,7 @@ const analysis = jest.requireMock('./utils/cypher-analysis');
 
 // ── TTS: 0.1 s of speech per character, unless a test says otherwise ──
 const synthesize = jest.fn(async ({ text }: { text: string }) => Buffer.alloc(Math.round(text.length * 0.1 * BPS / 2) * 2));
-jest.mock('./utils/cypher-tts', () => ({ cypherTtsFromEnv: () => ({ host: 'frozen', synthesize }) }));
+jest.mock('./utils/cypher-tts', () => ({ cypherTtsFromEnv: () => ({ synthesize }) }));
 
 // ── ElevenLabs audio tools ──
 jest.mock('./utils/elevenlabs-audio', () => ({
@@ -173,7 +173,6 @@ const processor = () => new DubbingProcessor({ client: Promise.resolve({ get: je
 beforeEach(() => {
   jest.clearAllMocks();
   cancelFlag = null;
-  process.env.MODAL_API_URL = 'https://modal';
   speechByPreset.mix = [{ start: 1, end: 5 }, { start: 6, end: 9 }];
   speechByPreset.vocals = [{ start: 1.2, end: 4.8 }, { start: 6.1, end: 8.9 }];
   analysis.analyzeWindow.mockResolvedValue({ speakers: [{ id: 'S1', description: 'host' }, { id: 'S2', description: 'guest' }], lines: LINES });

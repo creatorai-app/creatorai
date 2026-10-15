@@ -41,8 +41,7 @@ export function muxArgs({ audioPath, videoPath, outputPath }: { audioPath: strin
 }
 
 // Voice samples are cut at Chatterbox's own rate (S3GEN_SR, 24 kHz): the decoder prompt
-// is taken at that rate, so a 16 kHz sample would throw away what it could use. The
-// frozen Modal app downsamples to 16 kHz anyway; the v2 service keeps it.
+// is taken at that rate, so a 16 kHz sample would throw away what it could use.
 export const VOICE_SAMPLE_RATE = 24000;
 
 /**

@@ -273,7 +273,7 @@ export function isKnownDubLanguage(code: string): boolean {
 }
 
 /**
- * What Chatterbox Multilingual (the model behind modal/dubbing_app.py) actually speaks:
+ * What Chatterbox Multilingual (the model behind services/cypher-tts) actually speaks:
  * 23 languages, per Resemble AI's model card. A `language_id` outside this set is not
  * refused with an error; it synthesizes something wrong-sounding instead, which is worse,
  * so the set is enforced here rather than discovered on the GPU.
@@ -537,7 +537,7 @@ export function cloningStrengthFor({
  * them. Per Chatterbox's README: a reference in another language than the target makes
  * the output inherit the reference's accent, and cfg_weight=0 removes that, so "Sound
  * native" is cfg_weight 0. The defaults (0.5 / 0.5) are what the README recommends for
- * most prompts. Only the v2 service reads these; the frozen Modal app takes none.
+ * most prompts.
  */
 export function chatterboxParamsFor({ voiceMode }: { voiceMode: DubVoiceMode }): { cfg_weight: number; exaggeration: number } {
   return { cfg_weight: voiceMode === 'native' ? 0 : 0.5, exaggeration: 0.5 };

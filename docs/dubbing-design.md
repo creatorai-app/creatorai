@@ -70,9 +70,9 @@ Browser opens SSE  GET /dubbing/status/:jobId   (createJobSSE)
 Worker: DubbingProcessor.process()          [packages/workers]
   │   1. status='processing'  (progress 5)
   │   2. Gemini (Vertex, gs:// fileData): transcribe + translate → target text   (progress 30)
-  │   3. status='cloning'; POST Modal { text, reference_url, output_put_url }    (progress 80)
-  │        Modal clones + synthesizes, (if isVideo) muxes over the original,
-  │        and PUTs the result straight to GCS via the signed URL (worker holds no bytes)
+  │   3. status='cloning'; POST <CYPHER_TTS_V2_URL>/synthesize per turn          (progress 80)
+  │        the TTS service clones + synthesizes each turn; the worker fits, places,
+  │        mixes and stores the track (see dubbing-resumable-uploads.md)
   │   4. deduct duration-based credits; dubbed_url = the GCS public URL
   │   5. status='completed', dubbed_url persisted                               (progress 100)
   ▼
@@ -87,10 +87,9 @@ auto-retry of a paid GPU call; the user re-submits).
 
 ### The clone model (behind Modal)
 
-The endpoint contract (`POST MODAL_API_URL` with `text` + `reference` audio →
-dubbed audio) stays; only the model loaded in the Modal image changes. Modal
-gives each deployed web endpoint its own dedicated hostname — `MODAL_API_URL`
-is that exact printed URL, not a base URL with a `/dub` path appended.
+The worker calls the Cypher TTS service (`services/cypher-tts`, deployed on Modal by
+`modal/dubbing_app_v2.py`): `POST <CYPHER_TTS_V2_URL>/synthesize` with one turn's text and
+a public voice sample URL returns WAV. The contract is in `services/cypher-tts/README.md`.
 
 - **Recommended: Chatterbox Multilingual** (Resemble AI) — **MIT license**,
   23 languages, 5-second zero-shot clone, built-in watermarking (helps the
@@ -229,9 +228,8 @@ credits were charged."
 - `lib/api/getDubs.ts` — list fetch.
 
 **Env / infra**
-- `MODAL_API_URL` (already referenced) → point at the Chatterbox Modal app.
+- `CYPHER_TTS_V2_URL`, `CYPHER_TTS_V2_TOKEN` → the Cypher TTS service on Modal.
 - `GCS_DUBBING_BUCKET` (or reuse `GCS_SUBTITLE_BUCKET`), `DUBBING_CREDIT_MULTIPLIER`.
-- Modal app: load Chatterbox Multilingual, expose `POST /dub`.
 
 ## 7. Build order (each step independently compilable)
 
@@ -308,14 +306,16 @@ signed URL) — no separate output bucket to provision.
 
 ```bash
 pip install modal && modal setup
-modal deploy modal/dubbing_app.py          # prints the /dub endpoint URL
+modal secret create cypher-tts-v2 CYPHER_TTS_V2_TOKEN=<a long random string>
+modal deploy modal/dubbing_app_v2.py       # prints the service URL
 ```
 
 Root `.env`:
 
 ```
 GCS_DUBBING_BUCKET=creator-ai-dubbing
-MODAL_API_URL=https://<workspace>--creator-ai-dubbing-dub.modal.run
+CYPHER_TTS_V2_URL=https://<workspace>--creator-ai-dubbing-v2-tts-web.modal.run
+CYPHER_TTS_V2_TOKEN=<the same token>
 # DUBBING_CREDIT_MULTIPLIER=15
 ```
 
@@ -380,7 +380,7 @@ watch `GET /dubbing/status/{jobId}` (SSE) → `GET /dubbing/{id}`.
    page shows the project, detail page previews original + dubbed, delete
    removes the row and the GCS input object.
 6. Failure surfaces: stop the worker and submit → job sits queued (cancel
-   works); kill `MODAL_API_URL` → job fails at ~30% with the Modal error in
+   works); unset `CYPHER_TTS_V2_URL` → a Cypher job fails with the TTS error in
    `error_message` and a failure toast.
 
 ## 10. Out of scope for v1 (add when needed)

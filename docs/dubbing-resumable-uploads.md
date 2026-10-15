@@ -200,8 +200,7 @@ target tags in one place, `elevenLabsTargetTag`:
 (Latin-script European, Cyrillic, Arabic-script, Indic, CJK, Southeast Asian, African;
 `DUB_LANGUAGE_GROUPS`), clamps to 0..10, and makes no adjustment for an unknown source or
 a language in no group. These are starting values, to tune by ear. The form shows the
-voice mode on ElevenLabs always, and on Cypher only when `/dubbing/access` reports it
-(`CYPHER_TTS_V2_URL` set on the API), since the frozen Modal app takes no voice controls.
+voice mode on both engines.
 
 **Source language** (optional, "Detect automatically" by default) and **names and terms**
 (up to 50; each at most 50 characters and 5 words, none of `<>{}[]\`; trimmed and
@@ -334,9 +333,8 @@ failing the dub.
     `amix ... normalize=0` at 44.1 kHz stereo, limited (`alimiter`, auto-level off) and
     encoded as MP3. Without stems it is the speech alone, at the matched loudness.
 
-Speech comes from `cypherTtsFromEnv`: the Cypher TTS v2 service when `CYPHER_TTS_V2_URL`
-is set (it takes the voice mode's `cfg_weight` and `exaggeration`), otherwise the frozen
-Modal app with its old contract, unchanged.
+Speech comes from `cypherTtsFromEnv`: the Cypher TTS service at `CYPHER_TTS_V2_URL`, which
+takes the voice mode's `cfg_weight` and `exaggeration`.
 
 Every ffmpeg command is built by a pure function (`silenceDetectArgs`, `stemToFlacArgs`,
 `fitTurnArgs`, `loudnessArgs`, `mixArgs`, `muxArgs`, ...) tested as data in
@@ -625,7 +623,7 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
 
 - `ELEVENLABS_API_KEY` must be set for the **worker** (`packages/workers/.env` in
   production). It is set locally; the worker only needs it once someone picks ElevenLabs.
-- `MODAL_API_URL`, `GOOGLE_*` and `GCS_DUBBING_BUCKET`: unchanged.
+- `GOOGLE_*` and `GCS_DUBBING_BUCKET`: unchanged.
 - `ELEVENLABS_API_KEY` on the **worker** now also turns on Cypher's stem separation and
   forced alignment. A scoped key needs dubbing, speech to text / forced alignment, and
   music (stem separation) access.
@@ -633,10 +631,8 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
   alignment loss a window's word timing is used at. Every window's loss is logged.
 - `CYPHER_MAX_TEMPO` (worker, optional, default `1.15`, clamped to 1..1.5): the most a
   dubbed turn is sped up to fit its slot.
-- `CYPHER_TTS_V2_URL` and `CYPHER_TTS_V2_TOKEN` (worker): the Cypher TTS v2 service base
-  URL and its bearer token. Leave unset until the service is deployed; the frozen Modal
-  app is used meanwhile. Set `CYPHER_TTS_V2_URL` on the **API** too, to show the voice
-  mode on Cypher. See `services/cypher-tts/README.md`.
+- `CYPHER_TTS_V2_URL` and `CYPHER_TTS_V2_TOKEN` (worker, required for Cypher): the Cypher
+  TTS service base URL and its bearer token. See `services/cypher-tts/README.md`.
 - `SMOKE_ELEVENLABS=1` (a developer machine only): lets `packages/workers/scripts/dubbing-smoke.ts` run.
 
 ### Deploy
@@ -655,9 +651,8 @@ gcloud storage buckets update gs://creator-ai-dubbing --lifecycle-file=lifecycle
    already moved to 94 by hand in this change; the generator writes the same line.)
 3. Apply the CORS and lifecycle config above.
 4. Deploy API, worker and web together (new routes, new job shape, new response shape).
-5. Modal: nothing to deploy. `modal/dubbing_app.py` is untouched. The Cypher TTS v2
-   service (`services/cypher-tts`, `modal/dubbing_app_v2.py`) is deployed separately,
-   whenever a GPU host is picked; see its README.
+5. Modal: the Cypher TTS service (`services/cypher-tts`, `modal/dubbing_app_v2.py`) is
+   deployed separately; see its README.
 
 ## Public pages
 

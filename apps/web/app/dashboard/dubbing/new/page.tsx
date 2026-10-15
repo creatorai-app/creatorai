@@ -113,7 +113,6 @@ function NewDubbing() {
     setVoiceMode,
     outputFormat,
     setOutputFormat,
-    voiceModeEngines,
     maxLanguages,
     mediaName,
     setMediaName,
@@ -442,12 +441,10 @@ function NewDubbing() {
                     <DubSourceLanguage value={sourceLanguage} onChange={setSourceLanguage} targets={pickedLanguages} />
                   </div>
 
-                  {voiceModeEngines.includes(engine) && (
-                    <div className="space-y-2">
-                      <Label>Voice</Label>
-                      <DubVoiceModePicker engine={engine} value={voiceMode} onChange={setVoiceMode} />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label>Voice</Label>
+                    <DubVoiceModePicker engine={engine} value={voiceMode} onChange={setVoiceMode} />
+                  </div>
                 </div>
               </motion.div>
             )}

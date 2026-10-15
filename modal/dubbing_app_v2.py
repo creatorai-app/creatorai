@@ -5,10 +5,8 @@
 # Dockerfile there packages them for Cloud Run GPU or any Docker GPU host. Moving hosts
 # never means rewriting the model code.
 #
-# NOT the frozen app. modal/dubbing_app.py ("creator-ai-dubbing") is what is deployed
-# today and must stay byte for byte as it is. This is a separate app,
-# "creator-ai-dubbing-v2", with its own URL. Deploying it needs a payment method on the
-# Modal workspace (GPU functions require one).
+# The app is "creator-ai-dubbing-v2". Deploying it needs a payment method on the Modal
+# workspace (GPU functions require one).
 #
 # Deploy:
 #   modal secret create cypher-tts-v2 CYPHER_TTS_V2_TOKEN=<a long random string>

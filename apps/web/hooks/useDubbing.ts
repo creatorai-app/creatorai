@@ -47,11 +47,7 @@ interface DubAccess {
   maxUploadBytes: number;
   maxLanguages: number;
   creditsPerSecond: number;
-  voiceModeEngines?: DubEngine[];
 }
-
-// Where the voice mode does something; ElevenLabs always, Cypher once its v2 voices are live.
-const DEFAULT_VOICE_MODE_ENGINES: DubEngine[] = ["elevenlabs"];
 
 // BullMQ SSE state -> the UI's DubbingProgress state.
 function mapState(state: string): DubbingProgress["state"] {
@@ -129,7 +125,6 @@ export function useDubbing() {
   const maxUploadBytes = access?.maxUploadBytes ?? null;
   const creditsPerSecond = access?.creditsPerSecond ?? null;
   const maxLanguages = access?.maxLanguages ?? 1;
-  const voiceModeEngines = access?.voiceModeEngines ?? DEFAULT_VOICE_MODE_ENGINES;
 
   // The job followed over SSE (null when none), and whether the user asked to cancel
   // (suppresses the generic failure toast).
@@ -613,7 +608,6 @@ export function useDubbing() {
     setVoiceMode,
     outputFormat,
     setOutputFormat,
-    voiceModeEngines,
     maxLanguages,
     mediaName,
     setMediaName,

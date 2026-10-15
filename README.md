@@ -153,7 +153,7 @@ Fill it in with your credentials. See [`.env.example`](./.env.example) for every
 | Google Vertex AI (Gemini) | `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, ADC (`GOOGLE_APPLICATION_CREDENTIALS`) | Yes | Scripts, ideation, training, subtitles, thumbnails, video |
 | Redis | `REDIS_URL` | Yes | BullMQ job queues (api + worker) |
 | Google Cloud Storage | `GCS_SUBTITLE_BUCKET`, `GCS_VIDEO_BUCKET`, `GCS_DUBBING_BUCKET` | Yes | Direct media uploads, read by Vertex from `gs://` |
-| Modal | `MODAL_API_URL` | For dubbing | Serverless-GPU voice clone; dubbing fails without it |
+| Cypher TTS (Modal) | `CYPHER_TTS_V2_URL`, `CYPHER_TTS_V2_TOKEN` | For Cypher dubbing | Serverless-GPU voice clone (`services/cypher-tts`); Cypher dubs fail without it |
 | Resend | `RESEND_API_KEY` | Optional | Transactional emails & campaigns |
 | YouTube | `YOUTUBE_API_KEY` | Optional | Channel integration |
 | Google OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | YouTube OAuth |
